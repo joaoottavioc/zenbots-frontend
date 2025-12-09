@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch"; // Importe o Switch
+import { Switch } from "@/components/ui/switch"; 
 import { 
   Select, 
   SelectContent, 
@@ -14,7 +14,8 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, Bike, ShoppingBag, MessageCircle, Bot, User } from "lucide-react";
+// Importe o Undo2 para o ícone de voltar
+import { Clock, Bike, ShoppingBag, MessageCircle, Bot, User, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // --- Tipos ---
@@ -32,11 +33,8 @@ interface Order {
   customer_address: string | null;
   created_at: string;
   display_items: OrderItem[];
-  // Novos campos vindos do backend
   customer_phone: string;
   human_takeover_active: boolean;
-  
-  // Campos calculados
   timeElapsed?: string; 
   customerName?: string; 
   type?: "DELIVERY" | "PICKUP";
@@ -64,7 +62,7 @@ export default function PedidosPage() {
     if (bots && bots.length === 1) setSelectedBotId(String(bots[0].id));
   }, [bots]);
 
-  // 2. BUSCA PEDIDOS (Polling)
+  // 2. BUSCA PEDIDOS
   const { data: orders, isLoading: isLoadingOrders } = useQuery<Order[]>({
     queryKey: ['orders', selectedBotId],
     queryFn: async () => {
@@ -73,7 +71,6 @@ export default function PedidosPage() {
         ...order,
         status: order.status.toUpperCase(), 
         timeElapsed: calculateTimeElapsed(order.created_at),
-        // Tenta pegar o nome do cliente de onde der (o backend poderia mandar melhor isso futuro)
         customerName: order.customer_address ? "Cliente Delivery" : "Cliente Retirada", 
         type: order.customer_address ? "DELIVERY" : "PICKUP"
       }));
@@ -82,7 +79,7 @@ export default function PedidosPage() {
     refetchInterval: 10000, 
   });
 
-  // 3. MUTAÇÃO DE STATUS (Mover Card)
+  // 3. MUTAÇÃO DE STATUS
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, newStatus }: { orderId: number, newStatus: string }) => {
       return api.patch(`${API_BASE}/bots/${selectedBotId}/orders/${orderId}`, {
@@ -96,19 +93,14 @@ export default function PedidosPage() {
     onError: () => toast({ title: "Erro ao atualizar", variant: "destructive" })
   });
 
-  // 4. MUTAÇÃO DE TAKEOVER (Novo Botão Switch)
- const takeoverMutation = useMutation({
+  // 4. MUTAÇÃO DE TAKEOVER
+  const takeoverMutation = useMutation({
     mutationFn: async ({ phone, active }: { phone: string, active: boolean }) => {
-      // Define a ação com base no estado do Switch (true = activate, false = deactivate)
       const action = active ? "activate" : "deactivate";
-      
-      // Chama a rota correta definida em takeover_routes.py
       return api.post(`${API_BASE}/takeover/${selectedBotId}/${phone}/${action}`);
     },
     onSuccess: (data, variables) => {
-      // Atualiza a lista para refletir a mudança visualmente
       queryClient.invalidateQueries({ queryKey: ['orders', selectedBotId] });
-      
       const status = variables.active ? "Ativado (Humano)" : "Desativado (Bot)";
       toast({ title: `Atendimento manual ${status}` });
     },
@@ -147,7 +139,9 @@ export default function PedidosPage() {
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4 h-full overflow-hidden">
-          {/* COLUNA 1 */}
+          
+          {/* COLUNA 1: FILA */}
+          {/* Avançar: preparing */}
           <OrderColumn 
             title="Fila / A Fazer" 
             orders={getOrdersByStatus(["PENDING", "PAID"])} 
@@ -159,25 +153,31 @@ export default function PedidosPage() {
             actionColor="bg-blue-600 hover:bg-blue-700"
             loading={updateStatusMutation.isPending}
           />
-          {/* COLUNA 2 */}
+
+          {/* COLUNA 2: EM PREPARO */}
+          {/* Avançar: ready | Voltar: paid */}
           <OrderColumn 
             title="Em Preparação" 
             orders={getOrdersByStatus(["PREPARING"])} 
             color="bg-yellow-50 border-yellow-200"
             badgeColor="bg-yellow-500"
             onAction={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "ready" })}
+            onBack={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "paid" })}
             onTakeover={(phone: string, active: boolean) => takeoverMutation.mutate({ phone, active })}
             actionLabel="✔ Marcar Pronto"
             actionColor="bg-yellow-600 hover:bg-yellow-700"
             loading={updateStatusMutation.isPending}
           />
-          {/* COLUNA 3 */}
+
+          {/* COLUNA 3: PRONTO */}
+          {/* Avançar: completed | Voltar: preparing */}
           <OrderColumn 
             title="Pronto / Expedição" 
             orders={getOrdersByStatus(["READY"])} 
             color="bg-green-50 border-green-200"
             badgeColor="bg-green-500"
             onAction={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "completed" })}
+            onBack={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "preparing" })}
             onTakeover={(phone: string, active: boolean) => takeoverMutation.mutate({ phone, active })}
             actionLabel="Concluir (Arquivar)"
             actionColor="bg-green-600 hover:bg-green-700"
@@ -191,7 +191,7 @@ export default function PedidosPage() {
 
 // --- Componentes Auxiliares ---
 
-function OrderColumn({ title, orders, color, badgeColor, onAction, onTakeover, actionLabel, actionColor, loading }: any) {
+function OrderColumn({ title, orders, color, badgeColor, onAction, onBack, onTakeover, actionLabel, actionColor, loading }: any) {
   return (
     <div className={`flex flex-col rounded-xl border-2 p-2 ${color} h-full overflow-hidden`}>
       <div className="flex items-center justify-between mb-2 px-2 shrink-0">
@@ -207,6 +207,8 @@ function OrderColumn({ title, orders, color, badgeColor, onAction, onTakeover, a
             key={order.id} 
             order={order} 
             onAction={() => onAction(order.id)}
+            // Passa a função onBack apenas se ela existir
+            onBack={onBack ? () => onBack(order.id) : undefined} 
             onTakeover={onTakeover}
             actionLabel={actionLabel}
             actionColor={actionColor}
@@ -218,8 +220,7 @@ function OrderColumn({ title, orders, color, badgeColor, onAction, onTakeover, a
   );
 }
 
-// --- CARD ULTIMATE (Com o Layout do Figma) ---
-function OrderCard({ order, onAction, onTakeover, actionLabel, actionColor, disabled }: any) {
+function OrderCard({ order, onAction, onBack, onTakeover, actionLabel, actionColor, disabled }: any) {
   const minutes = getMinutesFromDate(order.created_at);
   let timerColor = "bg-green-100 text-green-700 border-green-200"; 
   if (minutes > 20) timerColor = "bg-red-100 text-red-700 border-red-200 animate-pulse"; 
@@ -230,7 +231,7 @@ function OrderCard({ order, onAction, onTakeover, actionLabel, actionColor, disa
   return (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-all border-l-[6px] ${borderClass}`}>
       
-      {/* 1. TOPO: ID, Timer e Switch */}
+      {/* 1. TOPO */}
       <div className="flex justify-between items-center bg-gray-50 p-2 border-b border-gray-100">
         <div className="flex items-center gap-2">
             <span className="font-black text-lg text-gray-800">#{order.id}</span>
@@ -240,7 +241,6 @@ function OrderCard({ order, onAction, onTakeover, actionLabel, actionColor, disa
             </div>
         </div>
 
-        {/* Switch de Takeover */}
         <div className="flex items-center gap-2" title={order.human_takeover_active ? "Humano no controle" : "Bot ativo"}>
              {order.human_takeover_active ? <User className="w-4 h-4 text-blue-600" /> : <Bot className="w-4 h-4 text-green-600" />}
              <Switch 
@@ -251,7 +251,7 @@ function OrderCard({ order, onAction, onTakeover, actionLabel, actionColor, disa
         </div>
       </div>
 
-      {/* 2. BARRA DE CONTEXTO: Cliente e Tipo */}
+      {/* 2. CONTEXTO */}
       <div className="px-3 py-1.5 flex justify-between items-center border-b border-dashed border-gray-100">
           <div className="flex flex-col leading-tight">
               <span className="text-xs font-bold text-gray-800 truncate w-32" title={order.customerName || "Cliente"}>
@@ -274,7 +274,7 @@ function OrderCard({ order, onAction, onTakeover, actionLabel, actionColor, disa
           )}
       </div>
 
-      {/* 3. LISTA DE ITENS */}
+      {/* 3. ITENS */}
       <div className="p-3 flex-1 space-y-2 max-h-[150px] overflow-y-auto scrollbar-thin">
         {order.display_items.map((item: OrderItem, idx: number) => (
           <div key={idx} className="flex items-start text-sm leading-tight border-b border-dashed border-gray-100 last:border-0 pb-1 last:pb-0">
@@ -288,26 +288,45 @@ function OrderCard({ order, onAction, onTakeover, actionLabel, actionColor, disa
         ))}
       </div>
 
-      {/* 4. RODAPÉ */}
-      <button 
-        onClick={onAction}
-        disabled={disabled}
-        className={`w-full py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-colors ${actionColor} disabled:opacity-50 hover:brightness-110`}
-      >
-        {disabled ? "..." : actionLabel}
-      </button>
+      {/* 4. RODAPÉ (AÇÃO + VOLTAR) */}
+      <div className="flex border-t border-gray-100">
+        
+        {/* Botão de Voltar (Só aparece se onBack for passado) */}
+        {onBack && (
+            <button
+                onClick={onBack}
+                disabled={disabled}
+                className="px-3 bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors border-r border-gray-200"
+                title="Voltar etapa"
+            >
+                <Undo2 className="w-4 h-4" />
+            </button>
+        )}
+
+        {/* Botão Principal */}
+        <button 
+            onClick={onAction}
+            disabled={disabled}
+            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-colors ${actionColor} disabled:opacity-50 hover:brightness-110`}
+        >
+            {disabled ? "..." : actionLabel}
+        </button>
+      </div>
     </div>
   );
 }
 
 function getMinutesFromDate(dateString: string) {
-  const start = new Date(dateString).getTime();
+  if (!dateString) return 0;
+  const utcString = dateString.endsWith("Z") ? dateString : `${dateString}Z`;
+  const start = new Date(utcString).getTime();
   const now = new Date().getTime();
   return Math.floor((now - start) / 60000);
 }
 
 function calculateTimeElapsed(dateString: string) {
   const diff = getMinutesFromDate(dateString);
+  if (diff < 0) return "0 min";
   if (diff < 60) return `${diff} min`;
   const hours = Math.floor(diff / 60);
   const mins = diff % 60;

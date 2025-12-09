@@ -1,69 +1,58 @@
-// app/login/page.tsx
-"use client"; // Obrigatório para usar hooks do React (useState, etc.)
+"use client"; 
 
 import React, { useState } from 'react';
-import { useMutation } from '@tanstack/react-query'; // Para lidar com o "submit"
-import { useRouter } from 'next/navigation'; // Para redirecionar após o login
-import { api } from '@/lib/api'; // Nosso cliente Axios do Passo 4
-import { Button } from '@/components/ui/button'; // Componente Shadcn
-import { Input } from '@/components/ui/input'; // Componente Shadcn
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'; // Componente Shadcn
+import { useMutation } from '@tanstack/react-query'; 
+import { useRouter } from 'next/navigation'; 
+import Link from "next/link"; // <--- Importe o Link
+import { api } from '@/lib/api'; 
+import { Button } from '@/components/ui/button'; 
+import { Input } from '@/components/ui/input'; 
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card'; // Adicionei CardDescription
 import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter(); // Hook para navegar
+  const router = useRouter(); 
   
-  
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-  // 1. Configuração do React Query para a "mutação" (o login)
   const loginMutation = useMutation({
     mutationFn: (formData: URLSearchParams) => {
-      // 2. Chama a rota /token do FastAPI
-      // NOTA: O OAuth2PasswordRequestForm do FastAPI espera dados de formulário, não JSON.
       return api.post(`${API_BASE}/token`, formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
     },
     onSuccess: (response) => {
-      // 3. SUCESSO: Salva o token no "bolso" do navegador
       const token = response.data.access_token;
       localStorage.setItem('zenbots_token', token);
-      
-      // 4. Redireciona para o dashboard
       router.push('/meus-bots');
     },
     onError: (error) => {
-      // 5. FALHA: Mostra uma mensagem de erro
       console.error("Erro no login:", error);
       setError("Email ou senha inválidos.");
     }
   });
 
-  // 6. Função chamada quando o formulário é enviado
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null); // Limpa erros antigos
-
-    // 7. Prepara os dados no formato de formulário que o FastAPI espera
+    setError(null); 
     const formData = new URLSearchParams();
-    formData.append('username', email); // O FastAPI espera 'username'
+    formData.append('username', email); 
     formData.append('password', password);
-
-    // 8. Executa a mutação
     loginMutation.mutate(formData);
   };
 
-  // 9. O formulário visual (JSX)
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Card className="w-[350px]">
+    // Removemos a div centralizadora daqui porque o layout.tsx já faz isso!
+    <Card className="w-[350px] shadow-lg"> 
         <form onSubmit={handleSubmit}>
-          <CardHeader>
-            <CardTitle>Login - ZenBots</CardTitle>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl text-center">Login</CardTitle>
+            <CardDescription className="text-center">
+              Entre para gerenciar seus bots
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -88,20 +77,27 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
               />
             </div>
             {error && (
-              <p className="text-sm text-red-500">{error}</p>
+              <p className="text-sm text-red-500 text-center">{error}</p>
             )}
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col space-y-4">
             <Button 
               type="submit" 
               className="w-full"
-              disabled={loginMutation.isPending} // Desativa o botão enquanto carrega
+              disabled={loginMutation.isPending} 
             >
               {loginMutation.isPending ? "Entrando..." : "Entrar"}
             </Button>
+
+            {/* Link para Cadastro */}
+            <p className="text-sm text-gray-600 text-center">
+              Ainda não tem conta?{" "}
+              <Link href="/cadastro" className="text-blue-600 hover:underline font-medium">
+                Criar Conta
+              </Link>
+            </p>
           </CardFooter>
         </form>
       </Card>
-    </div>
   );
 }
