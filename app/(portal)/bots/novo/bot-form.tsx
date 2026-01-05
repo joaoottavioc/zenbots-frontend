@@ -21,7 +21,7 @@ import {
 // define o schema de um dia:
 const dayScheduleSchema = z.object({
   active: z.boolean(),
-  start: z.string(), // você pode depois refinar com regex HH:MM se quiser
+  start: z.string(),
   end: z.string(),
 });
 
@@ -30,9 +30,10 @@ const formSchema = z.object({
   restaurant_name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
   whatsapp_number: z.string().min(10, { message: "Digite o número completo com DDD." }),
   pix_key: z.string().min(5, { message: "A chave PIX é necessária para receber pagamentos." }),
+  
   delivery_fee: z.coerce.number().min(0).optional(),
+  min_order_value: z.coerce.number().min(0).optional(),
 
-  // NOVOS CAMPOS (alinhados ao create_bot do backend)
   whatsapp_token: z.string().min(10, { message: "Informe o token de acesso da API do WhatsApp." }),
   phone_number_id: z.string().min(5, { message: "Informe o phone_number_id da API do WhatsApp." }),
 
@@ -49,7 +50,6 @@ interface BotFormProps {
   isPending: boolean;
 }
 
-// Dias da semana para o loop
 const WEEKDAYS = [
   { key: "mon", label: "Segunda" },
   { key: "tue", label: "Terça" },
@@ -60,34 +60,53 @@ const WEEKDAYS = [
   { key: "sun", label: "Domingo" },
 ];
 
+// ▼▼▼ CORREÇÃO 1: Constante de horário padrão definida fora para reuso ▼▼▼
+const DEFAULT_SCHEDULE = WEEKDAYS.reduce(
+  (acc, day) => ({
+    ...acc,
+    [day.key]: { active: true, start: "18:00", end: "23:00" },
+  }),
+  {} as Record<string, z.infer<typeof dayScheduleSchema>>
+);
+
 export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
+  
+  // ▼▼▼ CORREÇÃO 2: Função auxiliar para mesclar dados salvos com o padrão ▼▼▼
+  // Isso impede que dias faltantes no banco quebrem o formulário (undefined)
+  const getMergedSchedule = (savedSchedule: any) => {
+    if (!savedSchedule || Object.keys(savedSchedule).length === 0) {
+      return DEFAULT_SCHEDULE;
+    }
+    const merged: any = {};
+    WEEKDAYS.forEach((day) => {
+      // Se o dia existir no salvo, usa ele. Se não, usa o padrão.
+      merged[day.key] = savedSchedule[day.key] || { active: true, start: "18:00", end: "23:00" };
+    });
+    return merged;
+  };
+
   const form = useForm({
     resolver: zodResolver(formSchema),
+    // ▼▼▼ CORREÇÃO 3: Valores padrão blindados contra undefined/null ▼▼▼
     defaultValues: {
       restaurant_name: initialData?.restaurant_name || "",
       whatsapp_number: initialData?.whatsapp_number || "",
       pix_key: initialData?.pix_key || "",
+      
+      // Use ?? 0 para números, pois 0 é um valor falso em JS (|| 0 falharia se o valor fosse 0 real)
       delivery_fee: initialData?.delivery_fee ?? 0,
+      min_order_value: initialData?.min_order_value ?? 0,
 
-      // NOVOS CAMPOS
       whatsapp_token: initialData?.whatsapp_token || "",
       phone_number_id: initialData?.phone_number_id || "",
 
       is_open: initialData?.is_open ?? true,
-      closing_message:
-        initialData?.closing_message ||
-        "Olá! No momento estamos fechados. Nosso horário é das 18h às 23h. 🕒",
+      
+      // Garante uma string vazia ou padrão se vier null
+      closing_message: initialData?.closing_message || "Olá! No momento estamos fechados. Nosso horário é das 18h às 23h. 🕒",
 
-      // Se não tiver schedule salvo, cria um padrão (18h-23h todos os dias)
-      schedule:
-        initialData?.schedule ||
-        WEEKDAYS.reduce(
-          (acc, day) => ({
-            ...acc,
-            [day.key]: { active: true, start: "18:00", end: "23:00" },
-          }),
-          {} as Record<string, z.infer<typeof dayScheduleSchema>>
-        ),
+      // Usa a função de merge para garantir a estrutura completa
+      schedule: getMergedSchedule(initialData?.schedule),
     },
   });
 
@@ -96,11 +115,11 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* Grupo 1: Identidade e Pix (Básico) */}
+        {/* Grupo 1: Identidade e Financeiro */}
         <Card>
           <CardHeader>
             <CardTitle>Dados Básicos</CardTitle>
-            <CardDescription>Informações essenciais do seu bot.</CardDescription>
+            <CardDescription>Informações essenciais e financeiras do seu bot.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -132,20 +151,21 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="pix_key"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Chave PIX</FormLabel>
+                  <FormControl>
+                    <Input placeholder="CPF/Email..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="pix_key"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Chave PIX</FormLabel>
-                    <FormControl>
-                      <Input placeholder="CPF/Email..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="delivery_fee"
@@ -164,11 +184,34 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                   </FormItem>
                 )}
               />
+              
+              <FormField
+                control={form.control}
+                name="min_order_value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pedido Mínimo (R$)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...field}
+                        value={(field.value ?? 0) as number | string}
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Deixe 0 para não ter mínimo.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
+
           </CardContent>
         </Card>
 
-        {/* Grupo 2: Integração WhatsApp (NOVO) */}
+        {/* Grupo 2: Integração WhatsApp */}
         <Card>
           <CardHeader>
             <CardTitle>Integração WhatsApp</CardTitle>
@@ -229,7 +272,6 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Bot ligado/desligado */}
             <FormField
               control={form.control}
               name="is_open"
@@ -252,7 +294,6 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               )}
             />
 
-            {/* Mensagem de Fechado */}
             <FormField
               control={form.control}
               name="closing_message"
@@ -271,14 +312,12 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               )}
             />
 
-            {/* Tabela de Dias */}
             <div className={`border rounded-lg divide-y ${!isOpen ? "opacity-60 pointer-events-none" : ""}`}>
               {WEEKDAYS.map((day) => (
                 <div
                   key={day.key}
                   className="flex items-center justify-between p-4 hover:bg-gray-50"
                 >
-                  {/* Switch do Dia */}
                   <FormField
                     control={form.control}
                     name={`schedule.${day.key}.active`}
@@ -291,18 +330,13 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                             disabled={!isOpen}
                           />
                         </FormControl>
-                        <span
-                          className={`font-medium ${
-                            field.value ? "text-gray-900" : "text-gray-400"
-                          }`}
-                        >
+                        <span className={`font-medium ${field.value ? "text-gray-900" : "text-gray-400"}`}>
                           {day.label}
                         </span>
                       </div>
                     )}
                   />
 
-                  {/* Inputs de Hora */}
                   <div className="flex items-center gap-4">
                     <FormField
                       control={form.control}
@@ -314,10 +348,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                             type="time"
                             {...field}
                             className="w-28"
-                            disabled={
-                              !isOpen ||
-                              !form.watch(`schedule.${day.key}.active`)
-                            }
+                            disabled={!isOpen || !form.watch(`schedule.${day.key}.active`)}
                           />
                         </div>
                       )}
@@ -332,10 +363,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                             type="time"
                             {...field}
                             className="w-28"
-                            disabled={
-                              !isOpen ||
-                              !form.watch(`schedule.${day.key}.active`)
-                            }
+                            disabled={!isOpen || !form.watch(`schedule.${day.key}.active`)}
                           />
                         </div>
                       )}

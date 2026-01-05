@@ -1,16 +1,18 @@
+// app/(portal)/produtos/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // Necessário para os inputs na linha
-import { Plus, Trash2, UploadCloud, FileText, Pencil, Check, X } from 'lucide-react'; // Novos ícones Check e X
+import { Input } from '@/components/ui/input'; 
+import { Plus, Trash2, UploadCloud, FileText, Pencil, Check, X, Package } from 'lucide-react'; 
 import * as z from 'zod'; 
 
 // --- Imports de Componentes Locais ---
 import { ProductForm } from './product-form';
 import { MenuImportDialog } from './menu-import-dialog';
+import { BotSelector } from '@/components/ui/bot-selector'; 
 
 // --- Imports Shadcn ---
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,13 +26,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -53,10 +48,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 // --- Interfaces ---
-interface Bot {
-  id: number;
-  restaurant_name: string;
-}
 interface Product {
   id: number;
   name: string;
@@ -73,7 +64,7 @@ interface EditData {
   price: number;
 }
 
-// Schema do Formulário de Criação (mantido para o modal de novo produto)
+// Schema do Formulário de Criação
 const formSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
@@ -94,28 +85,13 @@ export default function ProdutosPage() {
   const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); 
   
-  // ▼▼▼ NOVOS ESTADOS PARA EDIÇÃO INLINE ▼▼▼
-  // Guarda o ID do produto que está sendo editado no momento (apenas um por vez)
+  // --- Estados para Edição Inline ---
   const [editingId, setEditingId] = useState<number | null>(null);
-  // Guarda os valores temporários dos inputs da linha
   const [editData, setEditData] = useState<EditData>({ name: "", description: "", price: 0 });
-  // ▲▲▲ FIM DOS NOVOS ESTADOS ▲▲▲
 
   // --- Hooks ---
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
-  // --- Queries ---
-  const { data: bots, isLoading: isLoadingBots } = useQuery<Bot[]>({
-    queryKey: ['myBots'],
-    queryFn: async () => (await api.get(`${API_BASE}/bots`)).data,
-  });
-
-  useEffect(() => {
-    if (bots && bots.length === 1) {
-      setSelectedBotId(String(bots[0].id));
-    }
-  }, [bots]);
 
   const { data: products, isLoading: isLoadingProducts } = useQuery<Product[]>({
     queryKey: ['products', selectedBotId],
@@ -192,7 +168,6 @@ export default function ProdutosPage() {
     onError: () => toast({ title: "Erro", description: "Falha ao atualizar status.", variant: "destructive" })
   });
 
-  // ▼▼▼ MUTAÇÃO DE EDIÇÃO INLINE ▼▼▼
   const inlineUpdateMutation = useMutation({
     mutationFn: async () => {
         if (!editingId) return;
@@ -200,20 +175,18 @@ export default function ProdutosPage() {
             name: editData.name,
             description: editData.description,
             price: editData.price,
-            // Mantemos a categoria atual (se quiser editar categoria na linha, precisaria de um Select aqui)
         });
     },
     onSuccess: () => {
         toast({ title: "Salvo!", description: "Produto atualizado." });
         queryClient.invalidateQueries({ queryKey: ['products', selectedBotId] });
-        setEditingId(null); // Sai do modo de edição
+        setEditingId(null); 
     },
     onError: () => toast({ title: "Erro", description: "Falha ao salvar.", variant: "destructive" })
   });
 
   // --- Handlers de Edição Inline ---
   
-  // 1. Iniciar Edição: Copia os dados do produto para o estado temporário
   const startEditing = (product: Product) => {
     setEditingId(product.id);
     setEditData({
@@ -223,7 +196,6 @@ export default function ProdutosPage() {
     });
   };
 
-  // 2. Cancelar Edição: Limpa o estado
   const cancelEditing = () => {
     setEditingId(null);
     setEditData({ name: "", description: "", price: 0 });
@@ -250,49 +222,88 @@ export default function ProdutosPage() {
 
   return (
     <div className="space-y-6 pb-10">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Gerenciar Produtos</h1>
+      
+      {/* --- HEADER CORRIGIDO --- */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         
-        {selectedBotId && (
-          <div className="flex gap-2">
-            {selectedProductIds.length > 0 && (
-              <Button variant="destructive" onClick={() => setIsBulkDeleteAlertOpen(true)} disabled={bulkDeleteMutation.isPending}>
-                <Trash2 className="mr-2 h-4 w-4" /> Excluir ({selectedProductIds.length})
-              </Button>
-            )}
-            
-            {!isEmpty && <MenuImportDialog botId={selectedBotId} />}
+        {/* 1. Lado Esquerdo: Título */}
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Package className="h-8 w-8 text-primary" />
+          Gerenciar Produtos
+        </h1>
+        
+        {/* 2. Lado Direito: Toolbar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+             
+             {/* A. Botões de Ação (Vem ANTES do Seletor para ficarem à esquerda dele) */}
+             {selectedBotId && (
+                <>
+                    {/* Botão de Excluir */}
+                    {selectedProductIds.length > 0 && (
+                    <Button variant="destructive" size="icon" onClick={() => setIsBulkDeleteAlertOpen(true)} disabled={bulkDeleteMutation.isPending} title="Excluir selecionados">
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                    )}
+                    
+                    {/* Importar com IA */}
+                    {!isEmpty && <MenuImportDialog botId={selectedBotId} />}
 
-            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus className="mr-2 h-4 w-4" /> Novo Produto</Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader><DialogTitle>Adicionar Novo Produto</DialogTitle></DialogHeader>
-                <ProductForm
-                  onSubmit={(values) => createMutation.mutate(values)}
-                  isPending={createMutation.isPending}
-                  categories={categories} 
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
-        )}
-      </div>
+                    {/* Novo Produto */}
+                    <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="whitespace-nowrap bg-gray-900 text-white hover:bg-gray-800">
+                                <Plus className="mr-2 h-4 w-4" /> Novo
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader><DialogTitle>Adicionar Novo Produto</DialogTitle></DialogHeader>
+                            <ProductForm
+                                onSubmit={(values) => createMutation.mutate(values)}
+                                isPending={createMutation.isPending}
+                                categories={categories} 
+                            />
+                        </DialogContent>
+                    </Dialog>
+                </>
+             )}
 
-      {isLoadingBots && <Skeleton className="h-10 w-60" />}
-      {bots && bots.length > 1 && (
-         <div>
-          <label className="text-sm font-medium">Selecione um bot</label>
-          <Select onValueChange={handleBotChange} value={selectedBotId ?? undefined}>
-            <SelectTrigger className="w-60 mt-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-            <SelectContent>{bots.map(bot => <SelectItem key={bot.id} value={String(bot.id)}>{bot.restaurant_name}</SelectItem>)}</SelectContent>
-          </Select>
+             {/* B. Bot Selector (Agora é o ÚLTIMO, ficando na extrema direita) */}
+             <BotSelector 
+                selectedBotId={selectedBotId} 
+                onBotChange={handleBotChange} 
+             />
         </div>
-      )}
+      </div>
+      
+      <hr />
 
+      {/* --- CONTEÚDO DA PÁGINA --- */}
+
+      {/* Loading State */}
       {isLoadingProducts && renderLoadingSkeleton()}
 
+      {/* Empty State (Bot selecionado mas sem produtos) */}
+      {isEmpty && selectedBotId && (
+         <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-gray-50 text-center mt-6">
+            <div className="bg-white p-4 rounded-full shadow-sm mb-4"><FileText className="h-10 w-10 text-primary" /></div>
+            <h3 className="text-lg font-semibold mb-2">Seu cardápio está vazio</h3>
+            <p className="text-sm text-gray-500 mb-6">Comece adicionando itens manualmente ou use nossa IA para importar.</p>
+            <div className="flex gap-4">
+              <Button variant="outline" onClick={() => setIsCreateModalOpen(true)}>Adicionar Manualmente</Button>
+              <MenuImportDialog botId={selectedBotId} trigger={<Button><UploadCloud className="mr-2 h-4 w-4" /> Importar Cardápio com IA</Button>} />
+            </div>
+         </div>
+      )}
+      
+      {/* Empty State (Nenhum bot selecionado) */}
+      {!selectedBotId && (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+             <BotSelector selectedBotId={selectedBotId} onBotChange={handleBotChange} className="opacity-0 h-0 w-0 overflow-hidden" />
+             <p>Selecione uma loja para gerenciar o cardápio.</p>
+          </div>
+      )}
+
+      {/* Tabela de Produtos (Agrupada por Categoria) */}
       {!isLoadingProducts && products && !isEmpty && (
         <div className="space-y-10">
           {categories.map((category) => (
@@ -334,11 +345,11 @@ export default function ProdutosPage() {
                             <Checkbox 
                                 checked={selectedProductIds.includes(product.id)} 
                                 onCheckedChange={(checked) => handleSelectRow(product.id, !!checked)} 
-                                disabled={isEditing} // Trava seleção enquanto edita
+                                disabled={isEditing} 
                             />
                           </TableCell>
 
-                          {/* Nome (Texto ou Input) */}
+                          {/* Nome */}
                           <TableCell className="font-medium">
                             {isEditing ? (
                                 <Input 
@@ -351,7 +362,7 @@ export default function ProdutosPage() {
                             )}
                           </TableCell>
 
-                          {/* Descrição (Texto ou Input) */}
+                          {/* Descrição */}
                           <TableCell className="text-gray-500 text-sm">
                             {isEditing ? (
                                 <Input 
@@ -366,7 +377,7 @@ export default function ProdutosPage() {
                             )}
                           </TableCell>
 
-                          {/* Preço (Texto ou Input) */}
+                          {/* Preço */}
                           <TableCell className="text-right font-medium">
                             {isEditing ? (
                                 <Input 
@@ -381,7 +392,7 @@ export default function ProdutosPage() {
                             )}
                           </TableCell>
                           
-                          {/* Switch de Disponibilidade (Desabilitado durante edição para focar nos dados) */}
+                          {/* Switch */}
                           <TableCell className="text-center">
                             <div className="flex justify-center">
                                 <Switch
@@ -392,7 +403,7 @@ export default function ProdutosPage() {
                             </div>
                           </TableCell>
 
-                          {/* Ações (Alterna entre Editar/Deletar e Salvar/Cancelar) */}
+                          {/* Ações */}
                           <TableCell className="text-right">
                             {isEditing ? (
                                 <div className="flex justify-end gap-1">
@@ -445,19 +456,6 @@ export default function ProdutosPage() {
             </div>
           ))}
         </div>
-      )}
-
-      {!selectedBotId && !isLoadingBots && bots && bots.length > 1 && <p className="text-center text-gray-500 pt-10">Selecione um bot para ver seus produtos.</p>}
-      
-      {isEmpty && selectedBotId && (
-         <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-gray-50 text-center mt-6">
-            <div className="bg-white p-4 rounded-full shadow-sm mb-4"><FileText className="h-10 w-10 text-primary" /></div>
-            <h3 className="text-lg font-semibold mb-2">Seu cardápio está vazio</h3>
-            <div className="flex gap-4">
-              <Button variant="outline" onClick={() => setIsCreateModalOpen(true)}>Adicionar Manualmente</Button>
-              <MenuImportDialog botId={selectedBotId} trigger={<Button><UploadCloud className="mr-2 h-4 w-4" /> Importar Cardápio com IA</Button>} />
-            </div>
-         </div>
       )}
 
       {/* --- DIALOGS DE CONFIRMAÇÃO --- */}

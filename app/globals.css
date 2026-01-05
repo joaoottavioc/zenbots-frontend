@@ -57,3 +57,30 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  /* Esconde tudo que não for area de impressão */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Exibe apenas o nosso ticket */
+  #printable-area, #printable-area * {
+    visibility: visible;
+  }
+
+  #printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Remove margens automáticas do navegador para economizar papel */
+  @page {
+    margin: 0;
+    size: auto;
+  }
+}
