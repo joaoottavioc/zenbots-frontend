@@ -60,7 +60,9 @@ export default function PedidosPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // 1. BUSCA PEDIDOS
+  const [isConnected, setIsConnected] = useState(false);
+
+  // 1. BUSCA PEDIDOS (MODIFICADO: Sem Polling)
   const { data: orders, isLoading: isLoadingOrders } = useQuery<Order[]>({
     queryKey: ['orders', selectedBotId],
     queryFn: async () => {
@@ -69,15 +71,67 @@ export default function PedidosPage() {
         ...order,
         status: order.status.toUpperCase(),
         timeElapsed: calculateTimeElapsed(order.created_at),
-        // Lógica aprimorada para Nome e Endereço:
         customerName: order.customer_name || order.customer_phone, 
         fullAddress: order.customer_address,
         type: order.customer_address ? "DELIVERY" : "PICKUP"
       }));
     },
     enabled: !!selectedBotId,
-    refetchInterval: 10000,
+    // 🔴 REMOVIDO: refetchInterval: 10000 
+    // (Não precisamos mais ficar perguntando a cada 10s)
   });
+
+  // ▼▼▼ NOVO: ESCUTA EVENTOS EM TEMPO REAL (SSE) ▼▼▼
+  useEffect(() => {
+    // Só conecta se tivermos um Bot selecionado (ou pode deixar global se preferir)
+    // Aqui conectamos na rota /stream global
+    const evtSource = new EventSource(`${API_BASE}/stream`);
+
+    evtSource.onopen = () => console.log("🟢 Conectado ao Stream de Pedidos");
+
+    evtSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'ping') return;
+
+        if (data.type === 'new_order') {
+          console.log("🔔 NOVO PEDIDO RECEBIDO VIA SSE:", data.payload);
+          
+          // 1. Força o React Query a atualizar a lista IMEDIATAMENTE
+          // Isso fará o 'useQuery' acima rodar de novo e pegar os dados atualizados do banco
+          queryClient.invalidateQueries({ queryKey: ['orders', selectedBotId] });
+          
+          // 2. Feedback Visual Rápido
+          toast({ 
+            title: "Novo Pedido! 🚀", 
+            description: `${data.payload.customer_name} acabou de pedir.`,
+            className: "bg-green-500 text-white border-none"
+          });
+          
+          // Nota: O som tocará automaticamente porque o 'invalidateQueries' vai atualizar
+          // a variável 'orders', disparando o seu useEffect de som existente abaixo.
+        }
+      } catch (err) {
+        console.error("Erro no SSE:", err);
+      }
+    };
+
+    evtSource.onerror = (err) => {
+      console.error("🔴 Erro ou desconexão no SSE", err);
+      setIsConnected(false);
+      
+      // Opcional: Tentar reconectar manualmente após 3s se o navegador não fizer
+      // Mas geralmente, ao fechar e mudar o state, o useEffect roda de novo se as dependências mudarem
+      // Ou você pode deixar o navegador tentar (o EventSource nativo tem auto-retry).
+    };
+
+    return () => {
+      evtSource.close();
+      console.log("🔴 Desconectado do Stream");
+    };
+  }, [selectedBotId, queryClient, toast]);
+  // ▲▲▲ FIM DO BLOCO SSE ▲▲▲
+
 
   // 2. MUTAÇÃO DE STATUS
   const updateStatusMutation = useMutation({
@@ -111,32 +165,25 @@ export default function PedidosPage() {
     }
   });
 
-  // --- LÓGICA DO ALERTA SONORO ---
-
-  // Inicializa o áudio ao montar o componente
+  // --- LÓGICA DO ALERTA SONORO (Mantida igual) ---
   useEffect(() => {
     audioRef.current = new Audio("/sounds/bell.mp3");
   }, []);
 
-  // Monitora novos pedidos para tocar o som
   useEffect(() => {
     if (!orders) return;
 
-    // Filtra apenas pedidos na fila inicial (PENDING ou PAID)
     const pendingOrders = orders.filter(o => ["PENDING", "PAID"].includes(o.status));
     const currentCount = pendingOrders.length;
 
-    // Se a quantidade aumentou e o som está ligado, toca o alerta
+    // A mágica acontece aqui: Quando o SSE chama 'invalidateQueries', o 'orders' muda,
+    // este useEffect roda, percebe que currentCount aumentou e toca o som.
     if (currentCount > previousPendingCount.current && soundEnabled) {
       audioRef.current?.play().catch(error => {
         console.log("Autoplay bloqueado pelo navegador:", error);
       });
       
-      toast({ 
-        title: "🔔 Novo Pedido!", 
-        description: `Chegou na fila.`,
-        className: "bg-green-500 text-white border-none"
-      });
+      // Toast de reforço (opcional, já tem o do SSE, mas este confirma que entrou na lista)
     }
 
     previousPendingCount.current = currentCount;
@@ -145,7 +192,6 @@ export default function PedidosPage() {
   // Função para alternar o som
   const toggleSound = () => {
     if (!soundEnabled) {
-      // Tenta tocar um som vazio ou o próprio som para desbloquear o áudio no navegador
       audioRef.current?.play().catch(() => {});
       toast({ title: "Som Ativado 🔊", description: "Você será avisado de novos pedidos." });
     } else {
@@ -154,12 +200,9 @@ export default function PedidosPage() {
     setSoundEnabled(!soundEnabled);
   };
 
-  // --- FIM DA LÓGICA DE SOM ---
-
   // NOVA FUNÇÃO DE IMPRESSÃO
   const handlePrint = (order: Order) => {
     setOrderToPrint(order);
-    // Pequeno delay para o React renderizar o ticket antes de abrir a janela de print
     setTimeout(() => {
       window.print();
     }, 100);
@@ -167,11 +210,13 @@ export default function PedidosPage() {
 
   const getOrdersByStatus = (statusList: OrderStatus[]) => {
     const filtered = orders?.filter((order) => statusList.includes(order.status)) || [];
-    // ORDENAÇÃO FIFO (O mais antigo fica no topo)
     return filtered.sort((a, b) => a.id - b.id);
   };
 
   return (
+    // ... (O RESTO DO SEU JSX CONTINUA EXATAMENTE IGUAL) ...
+    // Vou omitir o JSX para economizar espaço, pois não precisamos mudar nada no visual.
+    // Apenas copie e cole o return original aqui.
     <div className="h-[calc(100vh-100px)] flex flex-col pb-4">
       
       {/* --- HEADER --- */}
@@ -275,8 +320,7 @@ export default function PedidosPage() {
   );
 }
 
-// --- Componentes Auxiliares ---
-
+// ... (Mantenha os componentes OrderColumn, OrderCard e TicketImpressao exatamente como estão)
 function OrderColumn({ title, orders, color, badgeColor, onAction, onBack, onTakeover, onPrint, actionLabel, actionColor, loading }: any) {
   return (
     <div className={`flex flex-col rounded-xl border-2 p-2 ${color} h-full overflow-hidden`}>
