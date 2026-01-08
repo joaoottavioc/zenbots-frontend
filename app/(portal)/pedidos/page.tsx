@@ -29,6 +29,7 @@ type OrderStatus = "PENDING" | "PAID" | "PREPARING" | "READY" | "COMPLETED" | "C
 interface OrderItem {
   quantity: number;
   product_name: string;
+  notes?: string | null; // <-- ADICIONADO: Campo de observações
 }
 
 interface Order {
@@ -77,8 +78,6 @@ export default function PedidosPage() {
       }));
     },
     enabled: !!selectedBotId,
-    // 🔴 REMOVIDO: refetchInterval: 10000 
-    // (Não precisamos mais ficar perguntando a cada 10s)
   });
 
   // ▼▼▼ NOVO: ESCUTA EVENTOS EM TEMPO REAL (SSE) ▼▼▼
@@ -119,10 +118,6 @@ export default function PedidosPage() {
     evtSource.onerror = (err) => {
       console.error("🔴 Erro ou desconexão no SSE", err);
       setIsConnected(false);
-      
-      // Opcional: Tentar reconectar manualmente após 3s se o navegador não fizer
-      // Mas geralmente, ao fechar e mudar o state, o useEffect roda de novo se as dependências mudarem
-      // Ou você pode deixar o navegador tentar (o EventSource nativo tem auto-retry).
     };
 
     return () => {
@@ -176,14 +171,10 @@ export default function PedidosPage() {
     const pendingOrders = orders.filter(o => ["PENDING", "PAID"].includes(o.status));
     const currentCount = pendingOrders.length;
 
-    // A mágica acontece aqui: Quando o SSE chama 'invalidateQueries', o 'orders' muda,
-    // este useEffect roda, percebe que currentCount aumentou e toca o som.
     if (currentCount > previousPendingCount.current && soundEnabled) {
       audioRef.current?.play().catch(error => {
         console.log("Autoplay bloqueado pelo navegador:", error);
       });
-      
-      // Toast de reforço (opcional, já tem o do SSE, mas este confirma que entrou na lista)
     }
 
     previousPendingCount.current = currentCount;
@@ -214,9 +205,6 @@ export default function PedidosPage() {
   };
 
   return (
-    // ... (O RESTO DO SEU JSX CONTINUA EXATAMENTE IGUAL) ...
-    // Vou omitir o JSX para economizar espaço, pois não precisamos mudar nada no visual.
-    // Apenas copie e cole o return original aqui.
     <div className="h-[calc(100vh-100px)] flex flex-col pb-4">
       
       {/* --- HEADER --- */}
@@ -320,7 +308,8 @@ export default function PedidosPage() {
   );
 }
 
-// ... (Mantenha os componentes OrderColumn, OrderCard e TicketImpressao exatamente como estão)
+// ... Componentes auxiliares
+
 function OrderColumn({ title, orders, color, badgeColor, onAction, onBack, onTakeover, onPrint, actionLabel, actionColor, loading }: any) {
   return (
     <div className={`flex flex-col rounded-xl border-2 p-2 ${color} h-full overflow-hidden`}>
@@ -361,7 +350,7 @@ function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, 
   return (
     <div className={`bg-white border border-gray-200 rounded shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-all border-l-[6px] ${borderClass} mb-2`}>
 
-      {/* 1. TOPO: Mantido igual */}
+      {/* 1. TOPO */}
       <div className="flex justify-between items-center bg-gray-50 px-2 py-1.5 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <span className="font-black text-lg text-gray-800">#{order.id}</span>
@@ -389,7 +378,7 @@ function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, 
         </div>
       </div>
 
-      {/* 2. DADOS DO CLIENTE (AJUSTADO) */}
+      {/* 2. DADOS DO CLIENTE */}
       <div className="px-3 py-2 border-b border-gray-100">
         <div className="flex flex-col">
             <div className="flex justify-between items-center mb-0.5">
@@ -401,18 +390,14 @@ function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, 
                 )}
             </div>
             
-            {/* ▼▼▼ MUDANÇA AQUI ▼▼▼ */}
-            {/* Reduzido de 'text-lg font-black' para 'text-sm font-bold' */}
             <span className="font-bold text-sm text-gray-900 leading-tight mb-0.5 truncate" title={order.customerName}>
                 {order.customerName || "Cliente sem nome"}
             </span>
-            {/* ▲▲▲ FIM DA MUDANÇA ▲▲▲ */}
 
             <a 
               href={`https://wa.me/${order.customer_phone}`} 
               target="_blank" 
               rel="noreferrer"
-              // Link é text-[11px], o nome acima agora é text-sm (14px). Diferença sutil e elegante.
               className="flex items-center gap-1 text-[11px] text-green-600 hover:underline font-medium"
             >
               <MessageCircle className="w-3 h-3" />
@@ -431,18 +416,31 @@ function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, 
         </div>
       )}
 
-      {/* 4. LISTA DE ITENS */}
+      {/* 4. LISTA DE ITENS (ATUALIZADA) */}
       <div className="p-0 flex-1 overflow-y-auto scrollbar-thin bg-white min-h-[50px] max-h-[250px]">
         {order.display_items.map((item: OrderItem, idx: number) => (
-          <div key={idx} className="flex items-center px-3 py-2 border-b border-dashed border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
-            <div className="font-black mr-3 min-w-[30px] h-[30px] flex items-center justify-center text-lg text-gray-800 bg-gray-100 rounded border border-gray-200 shrink-0">
-              {item.quantity}
+          <div key={idx} className="flex flex-col px-3 py-2 border-b border-dashed border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+            
+            {/* Linha Principal: Qtd + Nome */}
+            <div className="flex items-center">
+              <div className="font-black mr-3 min-w-[30px] h-[30px] flex items-center justify-center text-lg text-gray-800 bg-gray-100 rounded border border-gray-200 shrink-0">
+                {item.quantity}
+              </div>
+              <div className="flex flex-col justify-center">
+                  <span className="font-bold text-base text-gray-800 uppercase leading-tight">
+                  {item.product_name}
+                  </span>
+              </div>
             </div>
-            <div className="flex flex-col justify-center">
-                <span className="font-bold text-base text-gray-800 uppercase leading-tight">
-                {item.product_name}
-                </span>
-            </div>
+
+            {/* ▼▼▼ RENDERIZAÇÃO DA OBSERVAÇÃO (NOVO) ▼▼▼ */}
+            {item.notes && (
+              <div className="mt-1 ml-[42px] text-sm font-semibold text-orange-700 bg-orange-50 p-1.5 rounded border border-orange-200 flex items-start gap-1.5">
+                <span className="text-[10px] mt-[3px]">✏️</span>
+                <span className="uppercase">{item.notes}</span>
+              </div>
+            )}
+
           </div>
         ))}
       </div>
@@ -511,12 +509,22 @@ function TicketImpressao({ order }: { order: Order | null }) {
         )}
       </div>
 
-      {/* ITENS */}
+      {/* ITENS (ATUALIZADO) */}
       <div className="border-b-2 border-dashed border-black pb-2 mb-2">
         {order.display_items.map((item, idx) => (
-          <div key={idx} className="flex gap-2 mb-1 items-start">
-            <span className="font-bold text-lg">{item.quantity}x</span>
-            <span className="text-sm uppercase leading-tight mt-0.5">{item.product_name}</span>
+          <div key={idx} className="mb-2">
+            <div className="flex gap-2 items-start">
+              <span className="font-bold text-lg">{item.quantity}x</span>
+              <span className="text-sm uppercase leading-tight mt-0.5">{item.product_name}</span>
+            </div>
+
+            {/* ▼▼▼ OBSERVAÇÃO NA IMPRESSÃO (NOVO) ▼▼▼ */}
+            {item.notes && (
+              <p className="text-xs font-black ml-8 mt-0.5 uppercase">
+                (OBS: {item.notes})
+              </p>
+            )}
+            
           </div>
         ))}
       </div>
