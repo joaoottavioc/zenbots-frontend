@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Bot as BotIcon, Settings, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EditBotSheet } from "./edit-bot-sheet"; // Certifique-se de que este arquivo existe na mesma pasta
+import { EditBotSheet } from "./edit-bot-sheet"; 
+import ConnectWhatsappButton from "@/components/ui/connect-whatsapp-button"; // <--- 1. IMPORTAR AQUI
 
 import {
   AlertDialog,
@@ -24,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// Interface para tipagem
+// ... (Mantenha suas interfaces e API_BASE iguais) ...
 interface Bot {
   id: number;
   restaurant_name: string;
@@ -40,11 +41,10 @@ export default function MeusBotsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Estados para controlar Modais e Sheets
   const [botToDelete, setBotToDelete] = useState<Bot | null>(null);
   const [editingBot, setEditingBot] = useState<Bot | null>(null);
 
-  // 1. Busca Bots
+  // ... (Mantenha os hooks useQuery e useMutation iguais) ...
   const { data: bots, isLoading, error } = useQuery<Bot[]>({
     queryKey: ["myBots"],
     queryFn: async () => {
@@ -53,7 +53,6 @@ export default function MeusBotsPage() {
     },
   });
 
-  // 2. Mutação de Delete
   const deleteBotMutation = useMutation({
     mutationFn: async (botId: number) => {
       return api.delete(`${API_BASE}/bots/${botId}`);
@@ -69,12 +68,8 @@ export default function MeusBotsPage() {
     },
   });
 
-  // 3. Mutação: Abrir/Fechar Loja (Switch)
   const toggleStoreMutation = useMutation({
     mutationFn: async ({ bot, isOpen }: { bot: Bot; isOpen: boolean }) => {
-      // Precisamos enviar os outros dados obrigatórios no PUT ou o backend pode reclamar,
-      // dependendo de como o schema foi feito (se for partial, só is_open basta).
-      // Por segurança, enviamos o payload conforme sua rota de update espera.
       return api.put(`${API_BASE}/bots/${bot.id}`, {
         restaurant_name: bot.restaurant_name,
         whatsapp_number: bot.whatsapp_number,
@@ -93,7 +88,6 @@ export default function MeusBotsPage() {
     },
   });
 
-  // Handler para clicar no Card (Abre Edição)
   const handleCardClick = (bot: Bot) => {
     setEditingBot(bot);
   };
@@ -113,19 +107,24 @@ export default function MeusBotsPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-4">
-      {/* HEADER */}
-      <div className="flex justify-between items-center mb-8">
+      {/* HEADER ATUALIZADO */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Seus Bots</h1>
           <p className="text-muted-foreground mt-1">Gerencie seus assistentes de atendimento.</p>
         </div>
 
-        <Button asChild>
-          <Link href="/bots/novo">
-            <Plus className="mr-2 h-4 w-4" />
-            Criar Novo Bot
-          </Link>
-        </Button>
+        <div className="flex gap-3">
+          {/* 2. ADICIONE O BOTÃO AQUI */}
+          <ConnectWhatsappButton />
+          
+          <Button variant="outline" asChild>
+            <Link href="/bots/novo">
+              <Plus className="mr-2 h-4 w-4" />
+              Manual
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* LISTAGEM DE BOTS */}
@@ -133,14 +132,16 @@ export default function MeusBotsPage() {
         <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-xl bg-gray-50">
           <BotIcon className="h-12 w-12 text-gray-300 mb-4" />
           <p className="text-gray-500 font-medium">Você ainda não tem nenhum bot.</p>
-          <Button variant="link" asChild className="mt-2">
-            <Link href="/bots/novo">Criar o primeiro agora</Link>
-          </Button>
+          <div className="mt-4 flex gap-4">
+             {/* Opção extra de conectar no estado vazio */}
+             <ConnectWhatsappButton />
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* ... (O restante do código de renderização dos cards permanece IDÊNTICO ao seu) ... */}
           {bots?.map((bot) => (
-            <Card
+             <Card
               key={bot.id}
               onClick={() => handleCardClick(bot)}
               className={`hover:shadow-lg transition-all cursor-pointer group border-l-4 relative ${
@@ -161,7 +162,6 @@ export default function MeusBotsPage() {
                     <p className="text-sm text-gray-500 font-mono">{bot.whatsapp_number}</p>
                   </div>
 
-                  {/* Botão de Delete (Com stopPropagation para não abrir o edit) */}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -185,7 +185,6 @@ export default function MeusBotsPage() {
               </CardContent>
 
               <CardFooter className="pt-3 border-t bg-gray-50/50 flex justify-between items-center rounded-b-lg">
-                {/* Switch de Abrir/Fechar (Com stopPropagation) */}
                 <div
                   className="flex items-center gap-2"
                   onClick={(e) => {
@@ -212,14 +211,12 @@ export default function MeusBotsPage() {
         </div>
       )}
 
-      {/* COMPONENT DE EDIÇÃO (SHEET) */}
       <EditBotSheet 
         bot={editingBot} 
         isOpen={!!editingBot} 
         onClose={() => setEditingBot(null)} 
       />
 
-      {/* Modal de Confirmação (Delete) */}
       <AlertDialog open={!!botToDelete} onOpenChange={(isOpen) => !isOpen && setBotToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
