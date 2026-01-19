@@ -19,7 +19,10 @@ import {
   MapPin, 
   Printer,
   Volume2, 
-  VolumeX
+  VolumeX,
+  ChefHat,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -29,7 +32,7 @@ type OrderStatus = "PENDING" | "PAID" | "PREPARING" | "READY" | "COMPLETED" | "C
 interface OrderItem {
   quantity: number;
   product_name: string;
-  notes?: string | null; // <-- ADICIONADO: Campo de observações
+  notes?: string | null;
 }
 
 interface Order {
@@ -63,7 +66,7 @@ export default function PedidosPage() {
 
   const [isConnected, setIsConnected] = useState(false);
 
-  // 1. BUSCA PEDIDOS (MODIFICADO: Sem Polling)
+  // 1. BUSCA PEDIDOS
   const { data: orders, isLoading: isLoadingOrders } = useQuery<Order[]>({
     queryKey: ['orders', selectedBotId],
     queryFn: async () => {
@@ -80,13 +83,14 @@ export default function PedidosPage() {
     enabled: !!selectedBotId,
   });
 
-  // ▼▼▼ NOVO: ESCUTA EVENTOS EM TEMPO REAL (SSE) ▼▼▼
+  // 2. SSE (TEMPO REAL)
   useEffect(() => {
-    // Só conecta se tivermos um Bot selecionado (ou pode deixar global se preferir)
-    // Aqui conectamos na rota /stream global
     const evtSource = new EventSource(`${API_BASE}/stream`);
 
-    evtSource.onopen = () => console.log("🟢 Conectado ao Stream de Pedidos");
+    evtSource.onopen = () => {
+      console.log("🟢 Conectado ao KDS Stream");
+      setIsConnected(true);
+    };
 
     evtSource.onmessage = (event) => {
       try {
@@ -94,41 +98,30 @@ export default function PedidosPage() {
         if (data.type === 'ping') return;
 
         if (data.type === 'new_order') {
-          console.log("🔔 NOVO PEDIDO RECEBIDO VIA SSE:", data.payload);
-          
-          // 1. Força o React Query a atualizar a lista IMEDIATAMENTE
-          // Isso fará o 'useQuery' acima rodar de novo e pegar os dados atualizados do banco
+          console.log("🔔 Novo Pedido:", data.payload);
           queryClient.invalidateQueries({ queryKey: ['orders', selectedBotId] });
-          
-          // 2. Feedback Visual Rápido
           toast({ 
-            title: "Novo Pedido! 🚀", 
-            description: `${data.payload.customer_name} acabou de pedir.`,
-            className: "bg-green-500 text-white border-none"
+            title: "Novo Pedido na Cozinha! 👨‍🍳", 
+            description: `Cliente: ${data.payload.customer_name}`,
+            className: "bg-slate-900 text-white border-slate-800"
           });
-          
-          // Nota: O som tocará automaticamente porque o 'invalidateQueries' vai atualizar
-          // a variável 'orders', disparando o seu useEffect de som existente abaixo.
         }
       } catch (err) {
-        console.error("Erro no SSE:", err);
+        console.error("Erro SSE:", err);
       }
     };
 
     evtSource.onerror = (err) => {
-      console.error("🔴 Erro ou desconexão no SSE", err);
+      console.error("🔴 Erro SSE", err);
       setIsConnected(false);
     };
 
     return () => {
       evtSource.close();
-      console.log("🔴 Desconectado do Stream");
     };
   }, [selectedBotId, queryClient, toast]);
-  // ▲▲▲ FIM DO BLOCO SSE ▲▲▲
 
-
-  // 2. MUTAÇÃO DE STATUS
+  // 3. MUTAÇÕES
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, newStatus }: { orderId: number, newStatus: string }) => {
       return api.patch(`${API_BASE}/bots/${selectedBotId}/orders/${orderId}`, {
@@ -137,13 +130,11 @@ export default function PedidosPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders', selectedBotId] });
-      queryClient.invalidateQueries({ queryKey: ['myBots'] });
-      toast({ title: "Pedido atualizado!" });
+      // toast({ title: "Status atualizado" }); // Comentado para limpar visual
     },
     onError: () => toast({ title: "Erro ao atualizar", variant: "destructive" })
   });
 
-  // 3. MUTAÇÃO DE TAKEOVER
   const takeoverMutation = useMutation({
     mutationFn: async ({ phone, active }: { phone: string, active: boolean }) => {
       const action = active ? "activate" : "deactivate";
@@ -151,47 +142,35 @@ export default function PedidosPage() {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['orders', selectedBotId] });
-      const status = variables.active ? "Ativado (Humano)" : "Desativado (Bot)";
-      toast({ title: `Atendimento manual ${status}` });
+      const msg = variables.active ? "Atendimento Manual Ativado" : "Bot Reativado";
+      toast({ title: msg, className: "bg-slate-800 text-white" });
     },
-    onError: (error) => {
-      console.error(error);
-      toast({ title: "Erro ao alterar modo", description: "Verifique se o telefone é válido.", variant: "destructive" });
+    onError: () => {
+      toast({ title: "Erro no Takeover", variant: "destructive" });
     }
   });
 
-  // --- LÓGICA DO ALERTA SONORO (Mantida igual) ---
+  // 4. ÁUDIO
   useEffect(() => {
     audioRef.current = new Audio("/sounds/bell.mp3");
   }, []);
 
   useEffect(() => {
     if (!orders) return;
-
     const pendingOrders = orders.filter(o => ["PENDING", "PAID"].includes(o.status));
     const currentCount = pendingOrders.length;
-
     if (currentCount > previousPendingCount.current && soundEnabled) {
-      audioRef.current?.play().catch(error => {
-        console.log("Autoplay bloqueado pelo navegador:", error);
-      });
-    }
-
-    previousPendingCount.current = currentCount;
-  }, [orders, soundEnabled, toast]);
-
-  // Função para alternar o som
-  const toggleSound = () => {
-    if (!soundEnabled) {
       audioRef.current?.play().catch(() => {});
-      toast({ title: "Som Ativado 🔊", description: "Você será avisado de novos pedidos." });
-    } else {
-      toast({ title: "Som Desativado 🔇" });
     }
+    previousPendingCount.current = currentCount;
+  }, [orders, soundEnabled]);
+
+  const toggleSound = () => {
+    if (!soundEnabled) audioRef.current?.play().catch(() => {});
     setSoundEnabled(!soundEnabled);
+    toast({ title: !soundEnabled ? "Som Ativado 🔊" : "Som Mudo 🔇" });
   };
 
-  // NOVA FUNÇÃO DE IMPRESSÃO
   const handlePrint = (order: Order) => {
     setOrderToPrint(order);
     setTimeout(() => {
@@ -200,35 +179,37 @@ export default function PedidosPage() {
   };
 
   const getOrdersByStatus = (statusList: OrderStatus[]) => {
-    const filtered = orders?.filter((order) => statusList.includes(order.status)) || [];
-    return filtered.sort((a, b) => a.id - b.id);
+    return orders?.filter((order) => statusList.includes(order.status)).sort((a, b) => a.id - b.id) || [];
   };
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col pb-4">
+    <div className="h-[calc(100vh-80px)] flex flex-col bg-slate-50/50">
       
       {/* --- HEADER --- */}
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <LayoutList className="h-8 w-8 text-primary" /> 
-          Painel de Cozinha
-        </h1>
+      <header className="px-6 py-4 bg-white border-b border-slate-200 flex flex-col md:flex-row justify-between md:items-center gap-4 sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-slate-900 rounded-lg">
+            <ChefHat className="h-6 w-6 text-white" /> 
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">KDS Cozinha</h1>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+                <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></div>
+                {isConnected ? "Sistema Online" : "Desconectado"}
+            </div>
+          </div>
+        </div>
         
-        {/* Container da direita com Botão de Som e Seletor */}
         <div className="flex items-center gap-3">
             <button
                 onClick={toggleSound}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
                     soundEnabled 
-                    ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-200" 
-                    : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200"
+                    ? "bg-white border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50" 
+                    : "bg-slate-100 text-slate-400 border-transparent"
                 }`}
-                title={soundEnabled ? "Desativar alertas sonoros" : "Ativar alertas sonoros"}
             >
-                {soundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
-                <span className="text-sm font-semibold hidden sm:inline">
-                    {soundEnabled ? "Som Ligado" : "Som Mudo"}
-                </span>
+                {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
             </button>
 
             <BotSelector 
@@ -236,91 +217,105 @@ export default function PedidosPage() {
                 onBotChange={setSelectedBotId} 
             />
         </div>
-      </div>
+      </header>
 
-      {/* --- CONTEÚDO --- */}
+      {/* --- BOARD KANBAN --- */}
       {!selectedBotId ? (
-        <div className="flex-1 flex items-center justify-center text-gray-400">
-          <BotSelector selectedBotId={selectedBotId} onBotChange={setSelectedBotId} className="hidden" />
-          Selecione um bot para ver os pedidos.
+        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-4">
+          <ChefHat className="h-16 w-16 opacity-20" />
+          <p>Selecione um restaurante acima para visualizar os pedidos.</p>
         </div>
       ) : isLoadingOrders ? (
-         <div className="p-8 space-y-4">
-             <Skeleton className="h-10 w-full" />
-             <div className="grid grid-cols-3 gap-4">
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-64 w-full" />
-             </div>
+         <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1,2,3].map(i => <Skeleton key={i} className="h-[500px] w-full rounded-xl" />)}
          </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full overflow-hidden">
-          
-          {/* COLUNA 1: FILA */}
-          <OrderColumn
-            title="Fila / A Fazer"
-            orders={getOrdersByStatus(["PENDING", "PAID"])}
-            color="bg-blue-50 border-blue-200"
-            badgeColor="bg-blue-500"
-            onAction={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "preparing" })}
-            onTakeover={(phone: string, active: boolean) => takeoverMutation.mutate({ phone, active })}
-            actionLabel="▶ Iniciar Preparo"
-            actionColor="bg-blue-600 hover:bg-blue-700"
-            loading={updateStatusMutation.isPending}
-            onPrint={handlePrint}
-          />
+        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+          <div className="h-full p-6 grid grid-cols-1 md:grid-cols-3 gap-6 min-w-[1000px]">
+            
+            {/* COLUNA 1: A FAZER */}
+            <OrderColumn
+              title="A Fazer"
+              subtitle="Entrada de pedidos"
+              orders={getOrdersByStatus(["PENDING", "PAID"])}
+              topLineColor="bg-blue-500"
+              statusBadgeColor="bg-blue-100 text-blue-700"
+              onAction={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "preparing" })}
+              onTakeover={(phone: string, active: boolean) => takeoverMutation.mutate({ phone, active })}
+              actionLabel="Iniciar Preparo"
+              actionVariant="primary"
+              loading={updateStatusMutation.isPending}
+              onPrint={handlePrint}
+            />
 
-          {/* COLUNA 2: EM PREPARO */}
-          <OrderColumn
-            title="Em Preparação"
-            orders={getOrdersByStatus(["PREPARING"])}
-            color="bg-yellow-50 border-yellow-200"
-            badgeColor="bg-yellow-500"
-            onAction={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "ready" })}
-            onBack={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "paid" })}
-            onTakeover={(phone: string, active: boolean) => takeoverMutation.mutate({ phone, active })}
-            actionLabel="✔ Marcar Pronto"
-            actionColor="bg-yellow-600 hover:bg-yellow-700"
-            loading={updateStatusMutation.isPending}
-            onPrint={handlePrint}
-          />
+            {/* COLUNA 2: PREPARANDO */}
+            <OrderColumn
+              title="Em Preparo"
+              subtitle="Cozinha ativa"
+              orders={getOrdersByStatus(["PREPARING"])}
+              topLineColor="bg-amber-500" // <--- MUDANÇA AQUI
+              statusBadgeColor="bg-amber-100 text-amber-700"
+              onAction={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "ready" })}
+              onBack={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "paid" })}
+              onTakeover={(phone: string, active: boolean) => takeoverMutation.mutate({ phone, active })}
+              actionLabel="Marcar Pronto"
+              actionVariant="warning"
+              loading={updateStatusMutation.isPending}
+              onPrint={handlePrint}
+            />
 
-          {/* COLUNA 3: PRONTO */}
-          <OrderColumn
-            title="Pronto / Expedição"
-            orders={getOrdersByStatus(["READY"])}
-            color="bg-green-50 border-green-200"
-            badgeColor="bg-green-500"
-            onAction={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "completed" })}
-            onBack={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "preparing" })}
-            onTakeover={(phone: string, active: boolean) => takeoverMutation.mutate({ phone, active })}
-            actionLabel="Concluir (Arquivar)"
-            actionColor="bg-green-600 hover:bg-green-700"
-            loading={updateStatusMutation.isPending}
-            onPrint={handlePrint}
-          />
+            {/* COLUNA 3: PRONTO */}
+            <OrderColumn
+              title="Pronto / Expedição"
+              subtitle="Aguardando entrega"
+              orders={getOrdersByStatus(["READY"])}
+              topLineColor="bg-emerald-500" // <--- MUDANÇA AQUI
+              statusBadgeColor="bg-emerald-100 text-emerald-700"
+              onAction={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "completed" })}
+              onBack={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "preparing" })}
+              onTakeover={(phone: string, active: boolean) => takeoverMutation.mutate({ phone, active })}
+              actionLabel="Finalizar"
+              actionVariant="success"
+              loading={updateStatusMutation.isPending}
+              onPrint={handlePrint}
+            />
+          </div>
         </div>
       )}
       
-      {/* COMPONENTE INVISÍVEL DE IMPRESSÃO */}
       <TicketImpressao order={orderToPrint} />
     </div>
   );
 }
 
-// ... Componentes auxiliares
+// --- SUB-COMPONENTES DE DESIGN ---
 
-function OrderColumn({ title, orders, color, badgeColor, onAction, onBack, onTakeover, onPrint, actionLabel, actionColor, loading }: any) {
+function OrderColumn({ title, subtitle, orders, topLineColor, statusBadgeColor, onAction, onBack, onTakeover, onPrint, actionLabel, actionVariant, loading }: any) {
   return (
-    <div className={`flex flex-col rounded-xl border-2 p-2 ${color} h-full overflow-hidden`}>
-      <div className="flex items-center justify-between mb-2 px-2 shrink-0">
-        <h2 className="font-bold text-gray-700">{title}</h2>
-        <Badge className={`${badgeColor} text-white hover:${badgeColor}`}>
+    <div className="flex flex-col h-full bg-slate-100/50 rounded-xl border border-slate-200 shadow-inner overflow-hidden relative">
+      
+      {/* --- AQUI ESTÁ A CORREÇÃO: A BARRA COLORIDA NO TOPO --- */}
+      <div className={`h-1.5 w-full ${topLineColor}`} />
+
+      {/* Column Header (Sem borda colorida, apenas a barra acima) */}
+      <div className="px-4 py-3 bg-white border-b border-slate-200 flex justify-between items-center">
+        <div>
+          <h2 className="font-bold text-slate-800 text-base">{title}</h2>
+          <p className="text-xs text-slate-400 font-medium">{subtitle}</p>
+        </div>
+        <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-slate-200">
           {orders.length}
         </Badge>
       </div>
-      <div className="flex-1 overflow-y-auto space-y-2 px-1 pb-2 scrollbar-thin">
-        {orders.length === 0 && <div className="h-32 flex items-center justify-center text-gray-400 text-sm italic">Sem pedidos aqui</div>}
+
+      {/* Cards Container */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin scrollbar-thumb-slate-300">
+        {orders.length === 0 && (
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+            <LayoutList className="h-10 w-10 mb-2" />
+            <span className="text-sm">Vazio</span>
+          </div>
+        )}
         {orders.map((order: any) => (
           <OrderCard
             key={order.id}
@@ -330,8 +325,9 @@ function OrderColumn({ title, orders, color, badgeColor, onAction, onBack, onTak
             onTakeover={onTakeover}
             onPrint={() => onPrint(order)}
             actionLabel={actionLabel}
-            actionColor={actionColor}
+            actionVariant={actionVariant}
             disabled={loading}
+            badgeColor={statusBadgeColor}
           />
         ))}
       </div>
@@ -339,136 +335,136 @@ function OrderColumn({ title, orders, color, badgeColor, onAction, onBack, onTak
   );
 }
 
-function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, actionColor, disabled }: any) {
+function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, actionVariant, disabled, badgeColor }: any) {
   const minutes = getMinutesFromDate(order.created_at);
-  let timerColor = "bg-green-100 text-green-700 border-green-200";
-  if (minutes > 20) timerColor = "bg-red-100 text-red-700 border-red-200 animate-pulse";
-  else if (minutes > 10) timerColor = "bg-yellow-100 text-yellow-700 border-yellow-200";
+  
+  // Lógica de Timer visual (Mais sutil)
+  let timerClass = "bg-slate-100 text-slate-600";
+  if (minutes > 20) timerClass = "bg-red-50 text-red-600 border-red-100 animate-pulse";
+  else if (minutes > 10) timerClass = "bg-amber-50 text-amber-600 border-amber-100";
 
-  const borderClass = order.type === "DELIVERY" ? "border-l-blue-500" : "border-l-orange-500";
+  // Variantes de Botão
+  const btnVariants: any = {
+    primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 shadow-md",
+    warning: "bg-amber-500 hover:bg-amber-600 text-white",
+    success: "bg-emerald-600 hover:bg-emerald-700 text-white"
+  };
 
   return (
-    <div className={`bg-white border border-gray-200 rounded shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-all border-l-[6px] ${borderClass} mb-2`}>
-
-      {/* 1. TOPO */}
-      <div className="flex justify-between items-center bg-gray-50 px-2 py-1.5 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <span className="font-black text-lg text-gray-800">#{order.id}</span>
-          <div className={`px-1.5 py-0.5 rounded border text-xs font-mono font-bold flex items-center gap-1 ${timerColor}`}>
-            <Clock className="w-3.5 h-3.5" />
-            {order.timeElapsed}
+    <div className="group bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col">
+      
+      {/* CARD HEADER */}
+      <div className="p-3 border-b border-slate-100 flex justify-between items-start">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-lg font-bold text-slate-800 tracking-tight">#{order.id}</span>
+            <div className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 border border-transparent ${timerClass}`}>
+              <Clock className="w-3 h-3" />
+              {order.timeElapsed}
+            </div>
+          </div>
+          {/* Tipo de Pedido */}
+          <div className="flex items-center gap-1">
+             {order.type === "DELIVERY" ? (
+                <div className="flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">
+                    <Bike className="w-3 h-3" /> Entrega
+                </div>
+             ) : (
+                <div className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded uppercase">
+                    <ShoppingBag className="w-3 h-3" /> Retirada
+                </div>
+             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
-            <button 
-                onClick={onPrint}
-                className="p-1.5 hover:bg-gray-200 rounded text-gray-600 transition-colors"
-                title="Imprimir Ticket"
-            >
+        {/* Ferramentas do Card */}
+        <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+            <button onClick={onPrint} className="p-1.5 hover:bg-slate-100 rounded text-slate-600" title="Imprimir">
                 <Printer className="w-4 h-4" />
             </button>
-            <div className="h-4 w-px bg-gray-300 mx-1"></div>
-            {order.human_takeover_active ? <User className="w-4 h-4 text-blue-600" /> : <Bot className="w-4 h-4 text-green-600" />}
-            <Switch
-                className="scale-75"
-                checked={order.human_takeover_active}
-                onCheckedChange={(checked) => onTakeover(order.customer_phone, checked)}
-            />
-        </div>
-      </div>
-
-      {/* 2. DADOS DO CLIENTE */}
-      <div className="px-3 py-2 border-b border-gray-100">
-        <div className="flex flex-col">
-            <div className="flex justify-between items-center mb-0.5">
-                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Cliente</span>
-                {order.type === "DELIVERY" ? (
-                    <Badge variant="secondary" className="px-1.5 py-0 text-[10px] bg-blue-100 text-blue-800 border-blue-200 font-bold"><Bike className="w-3 h-3 mr-1" /> ENTREGA</Badge>
-                ) : (
-                    <Badge variant="outline" className="px-1.5 py-0 text-[10px] bg-orange-100 text-orange-800 border-orange-200 font-bold"><ShoppingBag className="w-3 h-3 mr-1" /> BALCÃO</Badge>
-                )}
+            <div className="h-4 w-px bg-slate-200 mx-1"></div>
+            <div title="Atendimento Humano">
+              <Switch
+                  className="scale-75 data-[state=checked]:bg-blue-600"
+                  checked={order.human_takeover_active}
+                  onCheckedChange={(checked) => onTakeover(order.customer_phone, checked)}
+              />
             </div>
-            
-            <span className="font-bold text-sm text-gray-900 leading-tight mb-0.5 truncate" title={order.customerName}>
-                {order.customerName || "Cliente sem nome"}
-            </span>
-
-            <a 
-              href={`https://wa.me/${order.customer_phone}`} 
-              target="_blank" 
-              rel="noreferrer"
-              className="flex items-center gap-1 text-[11px] text-green-600 hover:underline font-medium"
-            >
-              <MessageCircle className="w-3 h-3" />
-              {order.customer_phone}
-            </a>
         </div>
       </div>
 
-      {/* 3. ENDEREÇO */}
-      {order.type === "DELIVERY" && order.fullAddress && (
-        <div className="px-3 py-1.5 bg-slate-50 border-b border-gray-100 flex items-start gap-2">
-            <MapPin className="w-3 h-3 text-red-500 mt-0.5 shrink-0" />
-            <span className="text-xs font-medium text-slate-700 leading-tight line-clamp-2">
-                {order.fullAddress}
-            </span>
-        </div>
-      )}
-
-      {/* 4. LISTA DE ITENS (ATUALIZADA) */}
-      <div className="p-0 flex-1 overflow-y-auto scrollbar-thin bg-white min-h-[50px] max-h-[250px]">
-        {order.display_items.map((item: OrderItem, idx: number) => (
-          <div key={idx} className="flex flex-col px-3 py-2 border-b border-dashed border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
-            
-            {/* Linha Principal: Qtd + Nome */}
-            <div className="flex items-center">
-              <div className="font-black mr-3 min-w-[30px] h-[30px] flex items-center justify-center text-lg text-gray-800 bg-gray-100 rounded border border-gray-200 shrink-0">
+      {/* CARD BODY (ITEMS) */}
+      <div className="p-3 flex-1">
+        <div className="space-y-3">
+          {order.display_items.map((item: OrderItem, idx: number) => (
+            <div key={idx} className="flex items-start gap-3 text-sm">
+              {/* Quantidade em destaque */}
+              <div className="font-mono font-bold text-slate-700 bg-slate-100 border border-slate-200 rounded min-w-[28px] h-[28px] flex items-center justify-center shrink-0">
                 {item.quantity}
               </div>
-              <div className="flex flex-col justify-center">
-                  <span className="font-bold text-base text-gray-800 uppercase leading-tight">
-                  {item.product_name}
-                  </span>
+              
+              <div className="flex flex-col w-full">
+                <span className="font-semibold text-slate-800 leading-tight uppercase">
+                    {item.product_name}
+                </span>
+                
+                {/* OBSERVAÇÃO CRÍTICA */}
+                {item.notes && (
+                  <div className="mt-1.5 bg-red-50 border border-red-100 text-red-700 p-2 rounded text-xs font-semibold flex items-start gap-1.5">
+                    <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                    <span className="uppercase tracking-wide">{item.notes}</span>
+                  </div>
+                )}
               </div>
             </div>
+          ))}
+        </div>
+      </div>
 
-            {/* ▼▼▼ RENDERIZAÇÃO DA OBSERVAÇÃO (NOVO) ▼▼▼ */}
-            {item.notes && (
-              <div className="mt-1 ml-[42px] text-sm font-semibold text-orange-700 bg-orange-50 p-1.5 rounded border border-orange-200 flex items-start gap-1.5">
-                <span className="text-[10px] mt-[3px]">✏️</span>
-                <span className="uppercase">{item.notes}</span>
-              </div>
+      {/* CARD FOOTER (Customer Info + Actions) */}
+      <div className="bg-slate-50 p-3 border-t border-slate-100">
+        
+        {/* Info Cliente (Minimalista) */}
+        <div className="mb-3 flex items-start gap-2 text-xs text-slate-500">
+            <User className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
+            <div className="flex flex-col overflow-hidden">
+                <span className="font-semibold text-slate-700 truncate" title={order.customerName}>
+                    {order.customerName || "Cliente"}
+                </span>
+                {order.type === "DELIVERY" && order.fullAddress && (
+                    <span className="text-[10px] leading-tight line-clamp-2 mt-0.5 text-slate-400">
+                        {order.fullAddress}
+                    </span>
+                )}
+            </div>
+        </div>
+
+        {/* Botões de Ação */}
+        <div className="flex gap-2">
+            {onBack && (
+              <button
+                onClick={onBack}
+                disabled={disabled}
+                className="px-3 py-2 rounded-md bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors shadow-sm"
+              >
+                <Undo2 className="w-4 h-4" />
+              </button>
             )}
-
-          </div>
-        ))}
+            <button
+              onClick={onAction}
+              disabled={disabled}
+              className={`flex-1 py-2 px-4 rounded-md text-xs font-bold uppercase tracking-wider shadow-sm transition-all active:scale-[0.98] ${btnVariants[actionVariant]}`}
+            >
+              {disabled ? "..." : actionLabel}
+            </button>
+        </div>
       </div>
 
-      {/* 5. RODAPÉ */}
-      <div className="flex border-t border-gray-200">
-        {onBack && (
-          <button
-            onClick={onBack}
-            disabled={disabled}
-            className="px-3 bg-gray-50 hover:bg-gray-200 text-gray-500 transition-colors border-r border-gray-200"
-          >
-            <Undo2 className="w-4 h-4" />
-          </button>
-        )}
-        <button
-          onClick={onAction}
-          disabled={disabled}
-          className={`flex-1 py-3 text-xs font-black uppercase tracking-widest text-white transition-all shadow-inner ${actionColor} disabled:opacity-50 hover:brightness-110 active:scale-[0.98]`}
-        >
-          {disabled ? "..." : actionLabel}
-        </button>
-      </div>
     </div>
   );
 }
 
-// --- Funções Auxiliares ---
+// --- UTILS & PRINT ---
 
 function getMinutesFromDate(dateString: string) {
   if (!dateString) return 0;
@@ -480,8 +476,8 @@ function getMinutesFromDate(dateString: string) {
 
 function calculateTimeElapsed(dateString: string) {
   const diff = getMinutesFromDate(dateString);
-  if (diff < 0) return "0 min";
-  if (diff < 60) return `${diff} min`;
+  if (diff < 0) return "0m";
+  if (diff < 60) return `${diff}m`;
   const hours = Math.floor(diff / 60);
   const mins = diff % 60;
   return `${hours}h ${mins}m`;
@@ -491,47 +487,39 @@ function TicketImpressao({ order }: { order: Order | null }) {
   if (!order) return null;
 
   return (
-    <div id="printable-area" className="hidden print:block w-[80mm] p-2 font-mono text-black">
-      {/* CABEÇALHO */}
-      <div className="text-center border-b-2 border-dashed border-black pb-2 mb-2">
-        <h2 className="text-xl font-black uppercase">SENHA: #{order.id}</h2>
-        <p className="text-xs">{new Date().toLocaleString('pt-BR')}</p>
-        <p className="font-bold text-lg mt-1">{order.customerName}</p>
+    <div id="printable-area" className="hidden print:block w-[80mm] p-0 font-mono text-black text-[12px] leading-tight">
+      <div className="text-center border-b border-black pb-2 mb-2">
+        <h2 className="text-2xl font-black">#{order.id}</h2>
+        <p className="text-[10px]">{new Date().toLocaleString('pt-BR')}</p>
+        <p className="font-bold text-sm mt-1 uppercase">{order.customerName}</p>
       </div>
 
-      {/* TIPO E ENDEREÇO */}
-      <div className="mb-2 text-sm">
-        <p className="font-bold">
+      <div className="mb-2">
+        <p className="font-bold uppercase border-b border-black inline-block mb-1">
           {order.type === "DELIVERY" ? "🛵 ENTREGA" : "👜 RETIRADA"}
         </p>
         {order.type === "DELIVERY" && order.fullAddress && (
-          <p className="text-xs leading-tight mt-1">{order.fullAddress}</p>
+          <p className="text-[10px] mt-1">{order.fullAddress}</p>
         )}
       </div>
 
-      {/* ITENS (ATUALIZADO) */}
       <div className="border-b-2 border-dashed border-black pb-2 mb-2">
         {order.display_items.map((item, idx) => (
-          <div key={idx} className="mb-2">
+          <div key={idx} className="mb-3">
             <div className="flex gap-2 items-start">
-              <span className="font-bold text-lg">{item.quantity}x</span>
-              <span className="text-sm uppercase leading-tight mt-0.5">{item.product_name}</span>
+              <span className="font-bold text-lg">{item.quantity}</span>
+              <span className="text-sm uppercase font-semibold">{item.product_name}</span>
             </div>
-
-            {/* ▼▼▼ OBSERVAÇÃO NA IMPRESSÃO (NOVO) ▼▼▼ */}
             {item.notes && (
-              <p className="text-xs font-black ml-8 mt-0.5 uppercase">
-                (OBS: {item.notes})
+              <p className="text-xs font-black ml-6 mt-0.5 bg-black text-white inline-block px-1 uppercase">
+                OBS: {item.notes}
               </p>
             )}
-            
           </div>
         ))}
       </div>
-
-      {/* RODAPÉ */}
       <div className="text-center mt-4">
-        <p className="text-xs">=== FIM DO PEDIDO ===</p>
+        <p className="text-[10px]">*** FIM DO PEDIDO ***</p>
       </div>
     </div>
   );
