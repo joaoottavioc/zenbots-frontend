@@ -5,92 +5,151 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api"; 
-import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function ConnectWhatsappButton() {
+// Tipagem global para o SDK do Facebook
+declare global {
+  interface Window {
+    FB: any;
+    fbAsyncInit: () => void;
+  }
+}
+
+interface ConnectWhatsappButtonProps {
+  botId: number;
+}
+
+export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonProps) {
   const { toast } = useToast();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-  const hasFetchedRef = useRef(false);
+  const [isSdkLoaded, setIsSdkLoaded] = useState(false);
+  
+  // Ref para rastrear se o evento "Happy Path" ocorreu
+  const eventReceivedRef = useRef(false);
 
   // Variáveis de Ambiente
   const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
-  const solutionId = process.env.NEXT_PUBLIC_FB_LOGIN_CONFIG_ID; // <--- NOVO
+  const configId = process.env.NEXT_PUBLIC_FB_LOGIN_CONFIG_ID; 
+  // URL apenas para referência (não usada para redirect real neste fluxo)
+  const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/whatsapp-callback` : ''; 
 
-  // 1. Captura o CODE no retorno (Passo 6 da estratégia - Lado Cliente)
+  // 1. Carregamento do SDK do Facebook (Apenas uma vez)
   useEffect(() => {
-    const code = searchParams.get('code');
-    
-    if (code && !isLoading && !hasFetchedRef.current) {
-        hasFetchedRef.current = true;
-        setIsLoading(true);
-        
-        // Limpa a URL visualmente
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        console.log("📦 Code recebido. Enviando para backend...");
+    if (window.FB) { setIsSdkLoaded(true); return; }
 
-        // O redirect_uri enviado aqui deve ser IGUAL ao usado para gerar o link
-        const currentRedirectUri = window.location.origin + window.location.pathname;
+    window.fbAsyncInit = function() {
+      window.FB.init({ appId: appId, cookie: true, xfbml: true, version: 'v19.0' });
+      setIsSdkLoaded(true);
+      console.log("✅ Facebook SDK Initialized");
+    };
 
-        api.post('/bots/whatsapp/auth', { 
-            code: code,
-            redirect_uri: currentRedirectUri 
-        })
-        .then((res) => {
-             toast({ title: "Sucesso!", description: `Bot ${res.data.number} conectado (Sandbox).` });
-             setTimeout(() => window.location.reload(), 1500);
-        })
-        .catch((err) => {
-             console.error("❌ Erro Backend:", err);
-             toast({ title: "Falha", description: "Erro na troca do token.", variant: "destructive" });
-             setIsLoading(false); 
-        });
-    }
-  }, [searchParams, isLoading, toast]); 
+    const script = document.createElement('script');
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.async = true; 
+    script.defer = true; 
+    script.crossOrigin = "anonymous";
+    document.body.appendChild(script);
+  }, [appId]);
 
-  // 2. Monta a URL e Redireciona (Passo 4 da estratégia)
+  // 2. Listener do Evento "Happy Path" (WA_EMBEDDED_SIGNUP)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin && !event.origin.includes("facebook.com")) return;
+
+      if (event.data?.type === 'WA_EMBEDDED_SIGNUP') {
+          console.log("✨ Evento Happy Path Recebido!", event.data);
+          eventReceivedRef.current = true; // Marca que o evento chegou
+          
+          const { business_id, waba_id, phone_number_id, display_phone_number, code } = event.data.data || event.data;
+          
+          // Envia o pacote completo para o backend
+          finishOnboarding({
+             business_id, waba_id, phone_number_id, display_phone_number, code, access_token: null
+          });
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [botId]);
+
+  // 3. Função Unificada de Envio ao Backend
+  const finishOnboarding = async (payload: any) => {
+      try {
+          // O frontend é "burro": ele apenas repassa o que tem para o backend
+          await api.post("/bots/whatsapp/complete-onboarding", {
+            bot_id: botId,
+            redirect_uri: redirectUri,
+            ...payload
+          });
+
+          toast({ 
+            title: "Conectado! 🚀", 
+            description: "WhatsApp integrado com sucesso.",
+            className: "bg-emerald-50 border-emerald-200"
+          });
+          
+          setTimeout(() => window.location.reload(), 2000);
+
+      } catch (error: any) {
+          console.error(error);
+          const msg = error.response?.data?.detail || "Não foi possível concluir a conexão.";
+          toast({ title: "Erro na Conexão", description: msg, variant: "destructive" });
+          setIsLoading(false);
+      }
+  };
+
+  // 4. Gatilho de Login (Popup)
   const handleConnect = () => {
-    setIsLoading(true);
-
-    if (!appId || !solutionId) {
-        toast({ title: "Erro Config", description: "Falta APP_ID ou SOLUTION_ID no .env", variant: "destructive" });
-        setIsLoading(false);
+    if (!appId || !configId) {
+        toast({ title: "Erro Config", description: "Falta APP_ID ou CONFIG_ID", variant: "destructive" });
         return;
     }
+    if (!isSdkLoaded || !window.FB) return;
 
-    const redirectUri = window.location.origin + window.location.pathname;
-    const state = "random_string_" + Math.random().toString(36).substring(7); // CSRF simples
+    setIsLoading(true);
+    eventReceivedRef.current = false; // Reseta flag
 
-    // Montagem manual da URL conforme sua estratégia
-    const baseUrl = "https://www.facebook.com/v19.0/dialog/oauth";
-    const params = new URLSearchParams({
-        client_id: appId,
-        redirect_uri: redirectUri,
-        response_type: "code",
-        scope: "whatsapp_business_management,whatsapp_business_messaging",
-        state: state,
-        // O pulo do gato: EXTRAS com o Solution ID
-        extras: JSON.stringify({
-            setup: {
-                solutionID: solutionId
-            }
-        })
+    // Abre o Popup via SDK
+    window.FB.login((response: any) => {
+        if (response.authResponse) {
+            console.log("✅ Popup fechado. Aguardando evento ou timeout...");
+            
+            // Lógica de Fallback Silencioso:
+            // Se o evento WA_EMBEDDED_SIGNUP não chegar em 5 segundos,
+            // assumimos que é uma reconexão rápida e enviamos o TOKEN CURTO.
+            setTimeout(() => {
+                if (!eventReceivedRef.current) {
+                    console.warn("⚠️ Fallback ativado: Enviando token curto para o backend.");
+                    
+                    finishOnboarding({
+                        business_id: null, 
+                        waba_id: null, 
+                        phone_number_id: null, 
+                        display_phone_number: null, 
+                        code: null,
+                        access_token: response.authResponse.accessToken // Token curto do SDK
+                    });
+                }
+            }, 5000); // 5 segundos de tolerância
+
+        } else {
+            console.log('Login cancelado pelo usuário.');
+            setIsLoading(false);
+        }
+    }, {
+        // Permissões Essenciais
+        scope: 'whatsapp_business_management,whatsapp_business_messaging',
+        extras: { setup: { solutionID: configId } } // Ativa o fluxo Embedded
     });
-
-    console.log("🚀 Redirecionando para Embedded Signup...");
-    window.location.href = `${baseUrl}?${params.toString()}`;
   };
 
   return (
     <Button 
       onClick={handleConnect}
-      disabled={isLoading}
-      className="bg-[#25D366] hover:bg-[#128C7E] text-white font-bold transition-all"
+      disabled={isLoading || !isSdkLoaded}
+      className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold h-9 text-xs shadow-sm transition-all"
     >
-      {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageCircle className="mr-2 h-5 w-5" />}
-      {isLoading ? "Conectar (Sandbox)" : "Conectar WhatsApp"}
+      {isLoading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="mr-2 h-3.5 w-3.5" />}
+      {isLoading ? "Conectando..." : "Conectar WhatsApp"}
     </Button>
   );
 }

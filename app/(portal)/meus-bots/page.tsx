@@ -3,21 +3,35 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { Plus, Bot as BotIcon, LayoutGrid, List } from "lucide-react";
+import { Plus, Bot as BotIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EditBotSheet } from "./edit-bot-sheet"; // Certifique-se que o caminho está certo
-import { BotCard } from "@/components/ui/bot-card"; // O componente novo acima
+import { EditBotSheet } from "./edit-bot-sheet"; 
+import { BotCard } from "@/components/ui/bot-card"; 
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export default function MyBotsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
   const [selectedBot, setSelectedBot] = useState<any | null>(null);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
+  
+  // Estado para controlar qual bot será deletado
+  const [botToDelete, setBotToDelete] = useState<any | null>(null);
 
   // 1. Fetch Bots
   const { data: bots, isLoading } = useQuery({
@@ -28,50 +42,73 @@ export default function MyBotsPage() {
     },
   });
 
-  // 2. Toggle Status (Abrir/Fechar Loja Rápido)
+  // 2. Toggle Status (Correção da cor do Toast aqui)
   const toggleStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: boolean }) => {
-      // Endpoint simplificado de patch ou usando o update completo
-      return api.put(`${API_BASE}/bots/${id}`, { 
-        // Nota: Idealmente seu backend teria um PATCH /bots/{id}/status
-        // Aqui estamos assumindo que o PUT precisa de todos os dados, 
-        // mas num cenário real faremos um PATCH otimizado.
-        // Se seu backend exigir tudo, você precisaria buscar o bot completo antes.
-        // Vou assumir que o backend aceita partial update ou você tem uma rota específica.
-        is_open: status 
-        // ... (resto dos dados se necessário)
-      }); 
-      // OBS: Se o seu PUT atual exige TODOS os campos (nome, token, etc), 
-      // essa chamada vai falhar se não passarmos tudo. 
-      // RECOMENDAÇÃO: Crie uma rota PATCH no backend apenas para status.
+    mutationFn: async (bot: any) => {
+      return api.put(`${API_BASE}/bots/${bot.id}`, bot);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["myBots"] });
-      toast({ description: "Status da loja atualizado!" });
+      const statusText = variables.is_open ? "ABERTA 🟢" : "FECHADA 🔴";
+      
+      // AJUSTE: Removido 'variant: destructive'. Agora o toast é sempre padrão (branco).
+      toast({ 
+        description: `Loja ${statusText}`,
+        // Opcional: Adicionar uma borda vermelha sutil se quiser diferenciar sem pintar o fundo todo
+        className: !variables.is_open ? "border-l-4 border-l-red-500" : "border-l-4 border-l-emerald-500"
+      });
     },
     onError: () => {
-      toast({ title: "Erro", description: "Não foi possível atualizar o status.", variant: "destructive" });
+      toast({ title: "Erro", description: "Falha ao atualizar status.", variant: "destructive" });
     }
   });
 
+  // 3. Delete Bot Mutation
+  const deleteBotMutation = useMutation({
+    mutationFn: async (botId: number) => {
+      return api.delete(`${API_BASE}/bots/${botId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["myBots"] });
+      toast({ title: "Bot deletado", description: "O assistente foi removido com sucesso." });
+      setBotToDelete(null); 
+    },
+    onError: (error) => {
+      console.error(error);
+      toast({ title: "Erro", description: "Não foi possível deletar o bot.", variant: "destructive" });
+    }
+  });
+
+  // 4. Disconnect Bot Mutation (NOVO: Limpa as credenciais)
+  const disconnectBotMutation = useMutation({
+    mutationFn: async (bot: any) => {
+      // Enviamos strings vazias para limpar as credenciais no banco
+      return api.put(`${API_BASE}/bots/${bot.id}`, {
+        ...bot,
+        phone_number_id: "", 
+        whatsapp_token: ""
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["myBots"] });
+      toast({ description: "Bot desconectado. Você pode reconectar agora." });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao desconectar.", variant: "destructive" });
+    }
+  });
+
+  // Handlers
   const handleEdit = (bot: any) => {
     setSelectedBot(bot);
     setIsEditSheetOpen(true);
   };
 
-  const handleToggleStatus = (id: number, currentStatus: boolean) => {
-    // Para simplificar o front, assumindo que vamos implementar o PATCH ou 
-    // que o usuário vai editar pelo menu de configurações se o PUT for estrito.
-    // Mas para a UI funcionar visualmente:
-    console.log("Toggle status", id, !currentStatus);
-    // toggleStatusMutation.mutate({ id, status: !currentStatus });
-    
-    // Fallback: Abrir o sheet de edição se não tiver rota PATCH pronta
-    const botToEdit = bots.find((b: any) => b.id === id);
-    if(botToEdit) {
-        handleEdit(botToEdit); 
-        toast({ description: "Use a janela lateral para alterar o status." });
-    }
+  const handleToggleStatus = (id: number, newStatus: boolean) => {
+    const botToUpdate = bots.find((b: any) => b.id === id);
+    if (!botToUpdate) return;
+    const updatedBot = { ...botToUpdate, is_open: newStatus };
+    toggleStatusMutation.mutate(updatedBot);
   };
 
   return (
@@ -121,6 +158,9 @@ export default function MyBotsPage() {
                 bot={bot} 
                 onEdit={handleEdit}
                 onToggleStatus={handleToggleStatus}
+                onDelete={(b) => setBotToDelete(b)}
+                // Passamos a função de desconectar aqui
+                onDisconnect={(b) => disconnectBotMutation.mutate(b)} 
             />
           ))}
         </div>
@@ -132,6 +172,28 @@ export default function MyBotsPage() {
         isOpen={isEditSheetOpen}
         onClose={() => setIsEditSheetOpen(false)}
       />
+
+      {/* DIALOG DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      <AlertDialog open={!!botToDelete} onOpenChange={(open) => !open && setBotToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação irá excluir permanentemente o bot <strong>{botToDelete?.restaurant_name}</strong> e todo o seu histórico de conversas e cardápio.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => botToDelete && deleteBotMutation.mutate(botToDelete.id)}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {deleteBotMutation.isPending ? "Excluindo..." : "Sim, Excluir Bot"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }

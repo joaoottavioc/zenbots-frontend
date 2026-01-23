@@ -6,18 +6,10 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Check, X } from "lucide-react"; // Ícones para o feedback visual
+import { Check, X, Command, Loader2 } from "lucide-react"; 
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -29,16 +21,16 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api"; 
 
-// 1. Schema de Validação com Política Forte
+// Schema mantido (Política Forte)
 const registerSchema = z.object({
   email: z.string().email({ message: "Digite um email válido." }),
   password: z
     .string()
     .min(8, { message: "Mínimo de 8 caracteres." })
-    .regex(/[A-Z]/, { message: "Precisa ter uma letra maiúscula." })
-    .regex(/[a-z]/, { message: "Precisa ter uma letra minúscula." })
-    .regex(/[0-9]/, { message: "Precisa ter um número." })
-    .regex(/[^A-Za-z0-9]/, { message: "Precisa ter um caractere especial (!@#$)." }),
+    .regex(/[A-Z]/, { message: "Letra maiúscula." })
+    .regex(/[a-z]/, { message: "Letra minúscula." })
+    .regex(/[0-9]/, { message: "Um número." })
+    .regex(/[^A-Za-z0-9]/, { message: "Caractere especial (!@#)." }),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "As senhas não coincidem.",
@@ -56,19 +48,13 @@ export default function RegisterPage() {
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    mode: "onChange", // Valida enquanto digita para feedback rápido nos erros do form
-    defaultValues: {
-      email: "",
-      password: "",
-      confirmPassword: "",
-    },
+    mode: "onChange",
+    defaultValues: { email: "", password: "", confirmPassword: "" },
   });
 
-  // 2. Monitoramento em Tempo Real da Senha
-  // Isso permite que a gente atualize a UI visual sem esperar o submit
   const passwordValue = form.watch("password");
 
-  // Funções auxiliares para verificar cada regra visualmente
+  // Validadores visuais
   const hasMinLen = passwordValue?.length >= 8;
   const hasUpper = /[A-Z]/.test(passwordValue || "");
   const hasLower = /[a-z]/.test(passwordValue || "");
@@ -78,143 +64,146 @@ export default function RegisterPage() {
   async function onSubmit(values: RegisterValues) {
     setIsLoading(true);
     try {
-      await api.post(`${API_BASE}/register`, {
+      await api.post(`${API_BASE}/auth/register`, {
         email: values.email,
         password: values.password,
       });
 
       toast({
-        title: "Conta criada com sucesso! 🎉",
-        description: "Você será redirecionado para o login.",
+        title: "Conta criada! 🎉",
+        description: "Redirecionando para o login...",
+        className: "bg-emerald-50 border-emerald-200"
       });
 
-      setTimeout(() => {
-        router.push("/login");
-      }, 2000);
+      setTimeout(() => router.push("/login"), 1500);
 
     } catch (error: any) {
-      console.error("Erro no cadastro:", error);
-      let msg = "Erro ao criar conta. Tente novamente.";
-
+      console.error("Erro cadastro:", error);
+      let msg = "Falha ao criar conta.";
       if (error.response?.data?.detail) {
-        const detail = error.response.data.detail;
-        if (Array.isArray(detail)) {
-          msg = detail.map((err: any) => {
-             const field = err.loc[err.loc.length - 1]; 
-             return `${field}: ${err.msg}`;
-          }).join(", ");
-        } else if (typeof detail === "string") {
-          msg = detail;
-        }
+        msg = typeof error.response.data.detail === 'string' 
+            ? error.response.data.detail 
+            : "Dados inválidos.";
       }
-      
-      toast({
-        title: "Erro no cadastro",
-        description: msg,
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: msg, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   }
 
-  // Componente de Item da Lista de Senha
-  const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
-    <div className={`flex items-center gap-2 text-xs ${met ? "text-green-600" : "text-muted-foreground"}`}>
-      {met ? (
-        <Check className="h-3 w-3 text-green-600" />
-      ) : (
-        <X className="h-3 w-3 text-red-400" />
-      )}
+  const PasswordReq = ({ met, text }: { met: boolean; text: string }) => (
+    <div className={`flex items-center gap-1.5 text-[11px] ${met ? "text-emerald-600" : "text-muted-foreground/60"}`}>
+      {met ? <Check className="h-3 w-3" /> : <div className="h-1.5 w-1.5 rounded-full bg-slate-200" />}
       <span className={met ? "font-medium" : ""}>{text}</span>
     </div>
   );
 
   return (
-    <Card className="w-full max-w-md shadow-lg">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Criar Conta</CardTitle>
-        <CardDescription className="text-center">
-          Comece a automatizar seu atendimento hoje.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            
-            {/* Email */}
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="seu@email.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+    <div className="w-full h-screen lg:grid lg:grid-cols-2">
+      
+      {/* --- COLUNA VISUAL (ESQUERDA) - Invertida para variar ou manter padrão --- */}
+      <div className="hidden bg-slate-900 lg:flex flex-col justify-between p-10 text-white relative overflow-hidden">
+        {/* Abstract Background Element */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-primary/20 blur-3xl rounded-full pointer-events-none" />
+        
+        <div className="flex items-center text-lg font-medium gap-2 z-10">
+          <div className="bg-white/10 p-1 rounded-md">
+            <Command className="h-6 w-6" />
+          </div>
+          ZenBots AI
+        </div>
+        
+        <div className="space-y-4 z-10 max-w-md">
+          <h2 className="text-3xl font-bold tracking-tight">Comece a vender mais com Inteligência Artificial.</h2>
+          <p className="text-slate-400">Junte-se a centenas de restaurantes que automatizaram seus pedidos e delivery.</p>
+        </div>
+      </div>
 
-            {/* Senha */}
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Senha</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="******" {...field} />
-                  </FormControl>
-                  
-                  {/* ▼▼▼ CHECKLIST DE SENHA VISUAL ▼▼▼ */}
-                  <div className="mt-3 space-y-1 rounded-md border p-3 bg-slate-50">
-                    <p className="text-xs font-semibold text-gray-700 mb-2">Sua senha deve ter:</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                        <PasswordRequirement met={hasMinLen} text="8 caracteres" />
-                        <PasswordRequirement met={hasUpper} text="Maiúscula (A-Z)" />
-                        <PasswordRequirement met={hasLower} text="Minúscula (a-z)" />
-                        <PasswordRequirement met={hasNumber} text="Número (0-9)" />
-                        <PasswordRequirement met={hasSpecial} text="Símbolo (!@#)" />
+      {/* --- COLUNA FORMULÁRIO (DIREITA) --- */}
+      <div className="flex items-center justify-center py-12 px-8 bg-background">
+        <div className="mx-auto w-full max-w-[400px] space-y-6">
+          
+          <div className="flex flex-col space-y-2 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">Criar uma conta</h1>
+            <p className="text-sm text-muted-foreground">
+              Preencha os dados abaixo para começar
+            </p>
+          </div>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="seu@email.com" {...field} className="h-10" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Senha</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="******" {...field} className="h-10" />
+                    </FormControl>
+                    
+                    {/* Checklist Compacto e Elegante */}
+                    <div className="grid grid-cols-2 gap-y-1 gap-x-4 pt-1 pl-1">
+                        <PasswordReq met={hasMinLen} text="Min. 8 caracteres" />
+                        <PasswordReq met={hasUpper} text="Maiúscula" />
+                        <PasswordReq met={hasLower} text="Minúscula" />
+                        <PasswordReq met={hasNumber} text="Número" />
+                        <PasswordReq met={hasSpecial} text="Símbolo (!@#)" />
                     </div>
-                  </div>
-                  {/* ▲▲▲ FIM DO CHECKLIST ▲▲▲ */}
 
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Confirmar Senha */}
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirmar Senha</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="******" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirmar Senha</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="******" {...field} className="h-10" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Criando conta..." : "Cadastrar"}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-      <CardFooter className="justify-center">
-        <p className="text-sm text-gray-600">
-          Já tem uma conta?{" "}
-          <Link href="/login" className="text-blue-600 hover:underline font-medium">
-            Fazer Login
-          </Link>
-        </p>
-      </CardFooter>
-    </Card>
+              <Button type="submit" className="w-full h-10 font-bold" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading ? "Criando..." : "Cadastrar Gratuitamente"}
+              </Button>
+            </form>
+          </Form>
+
+          <p className="px-8 text-center text-sm text-muted-foreground">
+            Já possui cadastro?{" "}
+            <Link 
+                href="/login" 
+                className="font-medium text-primary hover:text-primary/80 hover:underline underline-offset-4"
+            >
+              Fazer Login
+            </Link>
+          </p>
+
+        </div>
+      </div>
+    </div>
   );
 }

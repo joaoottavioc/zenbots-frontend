@@ -12,15 +12,17 @@ import {
   Package,        // Pedidos
   BarChart,       // Analytics
   ShoppingCart,   // Produtos
-  LifeBuoy        // Suporte
+  LifeBuoy,
+  Wallet        // Integração Pix
 } from "lucide-react";
 
 // 2. O array navLinks agora é GLOBAL
 const navLinks = [
   { href: "/meus-bots", label: "Meus Bots", icon: Bot },
-  { href: "/pedidos", label: "Pedidos", icon: Package },
   { href: "/produtos", label: "Produtos", icon: ShoppingCart },
+  { href: "/pedidos", label: "Pedidos", icon: Package },
   { href: "/analytics", label: "Mais Vendidos", icon: BarChart },
+  { href: "/pagamentos", label: "Integração Pix", icon: Wallet },
   { href: "/settings", label: "Configurações", icon: Settings },
   { href: "/suporte", label: "Suporte", icon: LifeBuoy },
 ];
