@@ -97,14 +97,26 @@ export default function PedidosPage() {
         const data = JSON.parse(event.data);
         if (data.type === 'ping') return;
 
-        if (data.type === 'new_order') {
-          console.log("🔔 Novo Pedido:", data.payload);
+        if (data.type === 'new_order' || data.type === 'payment_confirmed') {
+          console.log("🔔 Atualização recebida:", data.type, data.payload);
+          
+          // OBRIGATÓRIO: Isso força o React a baixar a lista atualizada (com o status PAID)
           queryClient.invalidateQueries({ queryKey: ['orders', selectedBotId] });
-          toast({ 
-            title: "Novo Pedido na Cozinha! 👨‍🍳", 
-            description: `Cliente: ${data.payload.customer_name}`,
-            className: "bg-slate-900 text-white border-slate-800"
-          });
+
+          // Notificação específica para cada caso
+          if (data.type === 'new_order') {
+            toast({ 
+              title: "Novo Pedido na Cozinha! 👨‍🍳", 
+              description: `Cliente: ${data.payload.customer_name}`,
+              className: "bg-slate-900 text-white border-slate-800"
+            });
+          } else if (data.type === 'payment_confirmed') {
+             toast({ 
+              title: "Pagamento Recebido! 💰", 
+              description: `O Pedido #${data.payload.id || '?'} foi pago.`,
+              className: "bg-emerald-600 text-white border-emerald-500"
+            });
+          }
         }
       } catch (err) {
         console.error("Erro SSE:", err);
@@ -338,24 +350,32 @@ function OrderColumn({ title, subtitle, orders, topLineColor, statusBadgeColor, 
 function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, actionVariant, disabled, badgeColor }: any) {
   const minutes = getMinutesFromDate(order.created_at);
   
-  // Lógica de Timer visual (Mais sutil)
+  // Lógica de Timer visual
   let timerClass = "bg-slate-100 text-slate-600";
   if (minutes > 20) timerClass = "bg-red-50 text-red-600 border-red-100 animate-pulse";
   else if (minutes > 10) timerClass = "bg-amber-50 text-amber-600 border-amber-100";
 
-  // Variantes de Botão
   const btnVariants: any = {
     primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 shadow-md",
     warning: "bg-amber-500 hover:bg-amber-600 text-white",
     success: "bg-emerald-600 hover:bg-emerald-700 text-white"
   };
 
+  // Limpa o telefone para o link do WhatsApp (remove caracteres não numéricos)
+  const whatsappLink = order.customer_phone 
+    ? `https://wa.me/${order.customer_phone.replace(/\D/g, '')}` 
+    : null;
+
+  const isPaid = order.status === "PAID" || order.status === "PREPARING" || order.status === "READY" || order.status === "COMPLETED";
+
   return (
     <div className="group bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col">
       
       {/* CARD HEADER */}
       <div className="p-3 border-b border-slate-100 flex justify-between items-start">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5"> {/* Aumentei um pouco o gap */}
+          
+          {/* Linha 1: ID e Timer */}
           <div className="flex items-center gap-2">
             <span className="font-mono text-lg font-bold text-slate-800 tracking-tight">#{order.id}</span>
             <div className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 border border-transparent ${timerClass}`}>
@@ -363,15 +383,28 @@ function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, 
               {order.timeElapsed}
             </div>
           </div>
-          {/* Tipo de Pedido */}
-          <div className="flex items-center gap-1">
+
+          {/* Linha 2: Badges de Tipo e Pagamento (NOVO) */}
+          <div className="flex items-center gap-2 flex-wrap">
+             {/* Tipo Entrega/Retirada */}
              {order.type === "DELIVERY" ? (
-                <div className="flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">
+                <div className="flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 uppercase">
                     <Bike className="w-3 h-3" /> Entrega
                 </div>
              ) : (
-                <div className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded uppercase">
+                <div className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 uppercase">
                     <ShoppingBag className="w-3 h-3" /> Retirada
+                </div>
+             )}
+
+             {/* Badge de Pagamento (NOVO) */}
+             {isPaid ? (
+                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase">
+                    <span className="text-xs">$</span> Pago
+                </div>
+             ) : (
+                <div className="flex items-center gap-1 text-[10px] font-bold text-yellow-700 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-100 uppercase animate-pulse">
+                    <AlertCircle className="w-3 h-3" /> Pendente
                 </div>
              )}
           </div>
@@ -398,7 +431,6 @@ function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, 
         <div className="space-y-3">
           {order.display_items.map((item: OrderItem, idx: number) => (
             <div key={idx} className="flex items-start gap-3 text-sm">
-              {/* Quantidade em destaque */}
               <div className="font-mono font-bold text-slate-700 bg-slate-100 border border-slate-200 rounded min-w-[28px] h-[28px] flex items-center justify-center shrink-0">
                 {item.quantity}
               </div>
@@ -408,7 +440,6 @@ function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, 
                     {item.product_name}
                 </span>
                 
-                {/* OBSERVAÇÃO CRÍTICA */}
                 {item.notes && (
                   <div className="mt-1.5 bg-red-50 border border-red-100 text-red-700 p-2 rounded text-xs font-semibold flex items-start gap-1.5">
                     <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
@@ -424,19 +455,36 @@ function OrderCard({ order, onAction, onBack, onTakeover, onPrint, actionLabel, 
       {/* CARD FOOTER (Customer Info + Actions) */}
       <div className="bg-slate-50 p-3 border-t border-slate-100">
         
-        {/* Info Cliente (Minimalista) */}
-        <div className="mb-3 flex items-start gap-2 text-xs text-slate-500">
-            <User className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
-            <div className="flex flex-col overflow-hidden">
-                <span className="font-semibold text-slate-700 truncate" title={order.customerName}>
-                    {order.customerName || "Cliente"}
-                </span>
-                {order.type === "DELIVERY" && order.fullAddress && (
-                    <span className="text-[10px] leading-tight line-clamp-2 mt-0.5 text-slate-400">
-                        {order.fullAddress}
+        {/* Info Cliente + WhatsApp Button (ALTERADO) */}
+        <div className="mb-3 flex items-start justify-between gap-2">
+            
+            {/* Dados do Cliente */}
+            <div className="flex items-start gap-2 text-xs text-slate-500 overflow-hidden">
+                <User className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
+                <div className="flex flex-col min-w-0">
+                    <span className="font-semibold text-slate-700 truncate" title={order.customerName}>
+                        {order.customerName || "Cliente"}
                     </span>
-                )}
+                    {order.type === "DELIVERY" && order.fullAddress && (
+                        <span className="text-[10px] leading-tight line-clamp-2 mt-0.5 text-slate-400">
+                            {order.fullAddress}
+                        </span>
+                    )}
+                </div>
             </div>
+
+            {/* Botão WhatsApp (NOVO) */}
+            {whatsappLink && (
+                <a 
+                    href={whatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 p-1.5 bg-white border border-slate-200 rounded-md text-slate-400 hover:text-green-600 hover:border-green-200 hover:bg-green-50 transition-all shadow-sm"
+                    title={`WhatsApp: ${order.customer_phone}`}
+                >
+                    <WhatsAppIcon className="w-4 h-4" />
+                </a>
+            )}
         </div>
 
         {/* Botões de Ação */}
@@ -522,5 +570,21 @@ function TicketImpressao({ order }: { order: Order | null }) {
         <p className="text-[10px]">*** FIM DO PEDIDO ***</p>
       </div>
     </div>
+  );
+}
+
+// Componente SVG do WhatsApp (padrão Bootstrap Icons)
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="16" 
+      height="16" 
+      fill="currentColor" 
+      viewBox="0 0 16 16"
+      className={className}
+    >
+      <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.601 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+    </svg>
   );
 }
