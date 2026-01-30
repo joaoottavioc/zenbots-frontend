@@ -11,7 +11,8 @@ import * as z from 'zod';
 // --- Imports de Componentes Locais ---
 import { ProductForm } from './product-form';
 import { MenuImportDialog } from './menu-import-dialog';
-import { BotSelector } from '@/components/ui/bot-selector'; 
+//import { BotSelector } from '@/components/ui/bot-selector'; 
+import { DashboardHeader } from '@/components/layout/dashboard-header';
 
 // --- Imports Shadcn ---
 import { Checkbox } from "@/components/ui/checkbox";
@@ -191,39 +192,36 @@ export default function ProdutosPage() {
   return (
     <div className="container mx-auto max-w-6xl p-6 space-y-8 min-h-screen bg-slate-50/50">
       
-      {/* HEADER SAAS STYLE */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Catálogo Digital</h1>
-          <p className="text-slate-500 mt-1">Gerencie produtos, preços e disponibilidade do cardápio.</p>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-             <BotSelector selectedBotId={selectedBotId} onBotChange={handleBotChange} />
-             
-             {selectedBotId && (
-                <>
-                    <MenuImportDialog botId={selectedBotId} />
-                    
-                    <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/10">
-                                <Plus className="mr-2 h-4 w-4" /> Novo Produto
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader><DialogTitle>Adicionar Produto</DialogTitle></DialogHeader>
-                            <ProductForm 
-                                onSubmit={(v) => createMutation.mutate(v)} 
-                                isPending={createMutation.isPending} 
-                                categories={sortedCategories} 
-                            />
-                        </DialogContent>
-                    </Dialog>
-                </>
-             )}
-        </div>
-      </div>
+      {/* 1. CABEÇALHO PADRONIZADO */}
+      <DashboardHeader 
+         title="Catálogo Digital"
+         description="Gerencie produtos, preços e disponibilidade do cardápio."
+         selectedBotId={selectedBotId}
+         onBotChange={handleBotChange}
+      >
+         {/* BOTÕES DE AÇÃO (Aparecem automaticamente ao lado do seletor) */}
+         {selectedBotId && (
+            <>
+                <MenuImportDialog botId={selectedBotId} />
+                
+                <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/10">
+                            <Plus className="mr-2 h-4 w-4" /> Novo Produto
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader><DialogTitle>Adicionar Produto</DialogTitle></DialogHeader>
+                        <ProductForm 
+                            onSubmit={(v) => createMutation.mutate(v)} 
+                            isPending={createMutation.isPending} 
+                            categories={sortedCategories} 
+                        />
+                    </DialogContent>
+                </Dialog>
+            </>
+         )}
+      </DashboardHeader>
 
       {/* BARRA FLUTUANTE DE AÇÕES EM MASSA (APARECE QUANDO SELECIONA ITENS) */}
       {selectedProductIds.length > 0 && (

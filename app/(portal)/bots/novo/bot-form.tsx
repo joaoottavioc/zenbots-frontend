@@ -18,14 +18,12 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 
-// define o schema de um dia:
 const dayScheduleSchema = z.object({
   active: z.boolean(),
   start: z.string(),
   end: z.string(),
 });
 
-// agora o schema completo:
 const formSchema = z.object({
   restaurant_name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
   whatsapp_number: z.string().min(10, { message: "Digite o número completo com DDD." }),
@@ -60,7 +58,6 @@ const WEEKDAYS = [
   { key: "sun", label: "Domingo" },
 ];
 
-// ▼▼▼ CORREÇÃO 1: Constante de horário padrão definida fora para reuso ▼▼▼
 const DEFAULT_SCHEDULE = WEEKDAYS.reduce(
   (acc, day) => ({
     ...acc,
@@ -71,15 +68,12 @@ const DEFAULT_SCHEDULE = WEEKDAYS.reduce(
 
 export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
   
-  // ▼▼▼ CORREÇÃO 2: Função auxiliar para mesclar dados salvos com o padrão ▼▼▼
-  // Isso impede que dias faltantes no banco quebrem o formulário (undefined)
   const getMergedSchedule = (savedSchedule: any) => {
     if (!savedSchedule || Object.keys(savedSchedule).length === 0) {
       return DEFAULT_SCHEDULE;
     }
     const merged: any = {};
     WEEKDAYS.forEach((day) => {
-      // Se o dia existir no salvo, usa ele. Se não, usa o padrão.
       merged[day.key] = savedSchedule[day.key] || { active: true, start: "18:00", end: "23:00" };
     });
     return merged;
@@ -87,25 +81,16 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
 
   const form = useForm({
     resolver: zodResolver(formSchema),
-    // ▼▼▼ CORREÇÃO 3: Valores padrão blindados contra undefined/null ▼▼▼
     defaultValues: {
       restaurant_name: initialData?.restaurant_name || "",
       whatsapp_number: initialData?.whatsapp_number || "",
       pix_key: initialData?.pix_key || "",
-      
-      // Use ?? 0 para números, pois 0 é um valor falso em JS (|| 0 falharia se o valor fosse 0 real)
       delivery_fee: initialData?.delivery_fee ?? 0,
       min_order_value: initialData?.min_order_value ?? 0,
-
       whatsapp_token: initialData?.whatsapp_token || "",
       phone_number_id: initialData?.phone_number_id || "",
-
       is_open: initialData?.is_open ?? true,
-      
-      // Garante uma string vazia ou padrão se vier null
       closing_message: initialData?.closing_message || "Olá! No momento estamos fechados. Nosso horário é das 18h às 23h. 🕒",
-
-      // Usa a função de merge para garantir a estrutura completa
       schedule: getMergedSchedule(initialData?.schedule),
     },
   });
@@ -114,9 +99,10 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* Grupo 1: Identidade e Financeiro */}
-        <Card>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 w-full max-w-full">
+        
+        {/* GRUPO 1: DADOS BÁSICOS */}
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Dados Básicos</CardTitle>
             <CardDescription>Informações essenciais e financeiras do seu bot.</CardDescription>
@@ -129,7 +115,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                 <FormItem>
                   <FormLabel>Nome do Restaurante</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Pizzaria do João" {...field} />
+                    <Input placeholder="Ex: Pizzaria do João" {...field} className="w-full" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -143,7 +129,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                 <FormItem>
                   <FormLabel>WhatsApp</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: 11999998888" type="tel" {...field} />
+                    <Input placeholder="Ex: 11999998888" type="tel" {...field} className="w-full" />
                   </FormControl>
                   <FormDescription>Apenas números com DDD.</FormDescription>
                   <FormMessage />
@@ -158,7 +144,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                 <FormItem>
                   <FormLabel>Chave PIX</FormLabel>
                   <FormControl>
-                    <Input placeholder="CPF/Email..." {...field} />
+                    <Input placeholder="CPF/Email..." {...field} className="w-full" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -207,16 +193,15 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                 )}
               />
             </div>
-
           </CardContent>
         </Card>
 
-        {/* Grupo 2: Integração WhatsApp */}
-        <Card>
+        {/* GRUPO 2: INTEGRAÇÃO WHATSAPP */}
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Integração WhatsApp</CardTitle>
             <CardDescription>
-              Configure o token e o phone_number_id fornecidos pelo painel da Meta.
+              Dados da Meta (Facebook Developers).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -224,18 +209,16 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               control={form.control}
               name="whatsapp_token"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="w-full min-w-0">
                   <FormLabel>WhatsApp Token</FormLabel>
                   <FormControl>
                     <Input
                       type="password"
-                      placeholder="Token de acesso da API do WhatsApp"
+                      placeholder="Token..."
                       {...field}
+                      className="w-full"
                     />
                   </FormControl>
-                  <FormDescription>
-                    Copie o token de acesso do painel do WhatsApp Cloud API.
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -245,17 +228,15 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               control={form.control}
               name="phone_number_id"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="w-full min-w-0">
                   <FormLabel>Phone Number ID</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Ex: 123456789012345"
+                      placeholder="Ex: 123456789..."
                       {...field}
+                      className="w-full"
                     />
                   </FormControl>
-                  <FormDescription>
-                    ID do número de telefone configurado na Meta (phone_number_id).
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -263,12 +244,12 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
           </CardContent>
         </Card>
 
-        {/* Grupo 3: Horário de Funcionamento */}
-        <Card>
+        {/* GRUPO 3: HORÁRIOS */}
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Horários Automáticos</CardTitle>
             <CardDescription>
-              Defina quando o bot deve atender. Fora desse horário, ele enviará a mensagem de fechado.
+              Defina quando o bot deve atender.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -277,10 +258,10 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               name="is_open"
               render={({ field }) => (
                 <FormItem className="flex items-center justify-between border rounded-lg px-4 py-3">
-                  <div>
+                  <div className="space-y-0.5">
                     <FormLabel className="font-medium">Bot Ativo</FormLabel>
-                    <FormDescription>
-                      Se desativado, o bot responderá sempre com a mensagem de fechamento.
+                    <FormDescription className="text-xs">
+                      Desligar = Mensagem de Fechado.
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -289,7 +270,6 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -298,13 +278,14 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               control={form.control}
               name="closing_message"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="w-full min-w-0">
                   <FormLabel>Mensagem de Fechamento</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Estamos fechados..."
                       {...field}
                       disabled={!isOpen}
+                      className="w-full"
                     />
                   </FormControl>
                   <FormMessage />
@@ -312,42 +293,47 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               )}
             />
 
-            <div className={`border rounded-lg divide-y ${!isOpen ? "opacity-60 pointer-events-none" : ""}`}>
+            {/* LISTA DE HORÁRIOS COM WRAP AUTOMÁTICO */}
+            <div className={`border rounded-lg divide-y w-full overflow-hidden ${!isOpen ? "opacity-60 pointer-events-none" : ""}`}>
               {WEEKDAYS.map((day) => (
                 <div
                   key={day.key}
-                  className="flex items-center justify-between p-4 hover:bg-gray-50"
+                  // MUDANÇA: flex-wrap permite quebrar linha se a tela for estreita
+                  className="flex flex-wrap items-center justify-between p-3 sm:p-4 hover:bg-slate-50 gap-y-3 w-full"
                 >
                   <FormField
                     control={form.control}
                     name={`schedule.${day.key}.active`}
                     render={({ field }) => (
-                      <div className="flex items-center gap-4 w-32">
+                      // MUDANÇA: mr-4 cria espaço seguro
+                      <div className="flex items-center gap-3 mr-4">
                         <FormControl>
                           <Switch
                             checked={field.value}
                             onCheckedChange={field.onChange}
                             disabled={!isOpen}
+                            className="data-[state=checked]:bg-emerald-500 shrink-0"
                           />
                         </FormControl>
-                        <span className={`font-medium ${field.value ? "text-gray-900" : "text-gray-400"}`}>
+                        <span className={`font-medium text-sm ${field.value ? "text-slate-900" : "text-slate-400"}`}>
                           {day.label}
                         </span>
                       </div>
                     )}
                   />
 
-                  <div className="flex items-center gap-4">
+                  {/* Container de inputs que vai para a linha de baixo se necessário */}
+                  <div className="flex items-center gap-2 sm:gap-4 ml-auto">
                     <FormField
                       control={form.control}
                       name={`schedule.${day.key}.start`}
                       render={({ field }) => (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">Abre</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] uppercase text-slate-500 font-bold">Abre</span>
                           <Input
                             type="time"
                             {...field}
-                            className="w-28"
+                            className="w-20 text-center h-9 text-sm px-1"
                             disabled={!isOpen || !form.watch(`schedule.${day.key}.active`)}
                           />
                         </div>
@@ -357,12 +343,12 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                       control={form.control}
                       name={`schedule.${day.key}.end`}
                       render={({ field }) => (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">Fecha</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] uppercase text-slate-500 font-bold">Fecha</span>
                           <Input
                             type="time"
                             {...field}
-                            className="w-28"
+                            className="w-20 text-center h-9 text-sm px-1"
                             disabled={!isOpen || !form.watch(`schedule.${day.key}.active`)}
                           />
                         </div>
@@ -375,7 +361,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
+        <div className="flex justify-end gap-4 pb-4">
           <Button
             type="submit"
             size="lg"

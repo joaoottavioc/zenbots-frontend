@@ -138,7 +138,7 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
       <DialogTrigger asChild>
         {trigger || (
           <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 border-0 shadow-sm">
-            <Sparkles className="mr-2 h-4 w-4" /> Importar com IA
+            <Sparkles className="mr-2 h-4 w-4" /> Cadastro Mágico
           </Button>
         )}
       </DialogTrigger>
@@ -146,10 +146,10 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
              <div className="p-2 bg-purple-100 rounded-lg"><Wand2 className="h-5 w-5 text-purple-600" /></div>
-             Importação Mágica
+             Cadastro Mágico
           </DialogTitle>
           <DialogDescription>
-            Envie uma foto do cardápio (PNG/JPG) ou um PDF. Máximo {MAX_SIZE_MB}MB.
+            Envie uma foto do cardápio (PNG/JPG) ou um PDF e nossa IA cadastra tudo pra você! Máximo {MAX_SIZE_MB}MB.
           </DialogDescription>
         </DialogHeader>
         

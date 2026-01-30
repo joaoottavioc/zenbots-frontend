@@ -1,5 +1,6 @@
 // tailwind.config.ts
 import type { Config } from "tailwindcss"
+import { fontFamily } from "tailwindcss/defaultTheme";
 
 const config = {
   darkMode: ["class"],
@@ -87,7 +88,14 @@ const config = {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
-  		}
+  		},
+		fontFamily: {
+      		// 1. Substitui a fonte padrão (sans) pela Inter
+      		sans: ["var(--font-inter)", ...fontFamily.sans],
+      
+      		// 2. Cria uma nova classe 'font-heading' para títulos (Outfit)
+      		heading: ["var(--font-outfit)", ...fontFamily.sans],
+    	},
   	}
   },
   plugins: [require("tailwindcss-animate")],

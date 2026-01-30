@@ -117,8 +117,9 @@ export default function MyBotsPage() {
       {/* HEADER DA PÁGINA */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Meus Bots</h1>
-          <p className="text-slate-500 mt-1">Gerencie seus assistentes virtuais e conexões.</p>
+          <h2 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">Meus BotZ
+          </h2>
+          <p className="text-slate-500 mt-1">Crie e gerencie seus assistentes virtuais e conexões.</p>
         </div>
         
         <div className="flex gap-3">

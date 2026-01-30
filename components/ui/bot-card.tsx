@@ -1,15 +1,15 @@
 "use client";
 
 import React from "react";
+import Image from "next/image"; // <--- Importante
 import { 
-  Bot, 
   MessageCircle, 
   Settings, 
   MoreVertical, 
   Copy,
   ExternalLink,
   Trash2,
-  Unplug // Ícone para desconectar
+  Unplug 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,13 +38,12 @@ interface BotCardProps {
   onEdit: (bot: BotData) => void;
   onToggleStatus: (id: number, currentStatus: boolean) => void;
   onDelete: (bot: BotData) => void;
-  onDisconnect: (bot: BotData) => void; // <--- NOVA PROP
+  onDisconnect: (bot: BotData) => void;
 }
 
 export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }: BotCardProps) {
   const { toast } = useToast();
   
-  // Verificação de segurança: só consideramos conectado se tiver ID E não for string vazia
   const isConnected = !!bot.phone_number_id && bot.phone_number_id.trim() !== "";
   const isOpen = bot.is_open;
 
@@ -58,36 +57,46 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
       "group relative rounded-xl border shadow-sm transition-all duration-300 overflow-hidden flex flex-col",
       isOpen 
         ? "bg-white border-slate-200 hover:shadow-md hover:border-blue-200" 
-        : "bg-rose-50/30 border-rose-100 hover:border-rose-200"
+        : "bg-rose-50/30 border-rose-100 hover:border-rose-200" // MANTIDO: Estilo vermelho suave
     )}>
       
+      {/* Barra lateral colorida */}
       <div className={cn(
         "absolute left-0 top-0 bottom-0 w-1 transition-colors duration-300",
-        isOpen ? "bg-emerald-500" : "bg-rose-500"
+        isOpen ? "bg-emerald-500" : "bg-rose-500" // MANTIDO: Vermelho quando fechado
       )} />
 
       <div className="p-5 flex-1">
         <div className="flex justify-between items-start mb-4 pl-2">
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            {/* --- IMAGEM DO ROBÔ --- */}
             <div className={cn(
-              "h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm transition-all duration-300 text-white",
+              "relative h-16 w-16 shrink-0 rounded-2xl overflow-hidden border-2 transition-all duration-300",
               isOpen 
-                ? "bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-200" 
-                : "bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-200"
+                ? "border-emerald-100 shadow-lg shadow-emerald-100/50" 
+                : "border-rose-200 shadow-lg shadow-rose-200/50" // MANTIDO: Borda vermelha/rose na imagem offline
             )}>
-              <Bot className="h-6 w-6" strokeWidth={1.5} />
+               <Image 
+                 src={isOpen ? "/bot-online.png" : "/bot-offline.png"} 
+                 alt={isOpen ? "Bot Online" : "Bot Offline"}
+                 fill
+                 className="object-cover"
+                 sizes="64px"
+                 // REMOVIDO: grayscale (Agora a imagem fica colorida mesmo fechada)
+               />
             </div>
             
             <div>
               <h3 className={cn(
                 "font-bold text-lg leading-tight transition-colors",
+                // MANTIDO: Texto fica vermelho (rose) quando fechado
                 isOpen ? "text-slate-900 group-hover:text-blue-600" : "text-slate-700 group-hover:text-rose-600"
               )}>
                 {bot.restaurant_name}
               </h3>
               
-              <div className="flex items-center gap-1.5 mt-1">
+              <div className="flex items-center gap-1.5 mt-1.5">
                 <span className={cn(
                   "flex h-2 w-2 rounded-full",
                   isConnected ? "bg-green-500" : "bg-amber-400"
@@ -116,7 +125,6 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
               
               <DropdownMenuSeparator />
               
-              {/* Opção DESCONECTAR (Aparece se estiver conectado) */}
               {isConnected && (
                   <DropdownMenuItem onClick={() => onDisconnect(bot)} className="text-amber-600 focus:text-amber-700 cursor-pointer">
                     <Unplug className="mr-2 h-4 w-4" /> Desconectar
@@ -134,19 +142,20 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
         </div>
 
         {/* INFO */}
-        <div className="pl-2 space-y-3">
+        <div className="pl-2 space-y-3 mt-2">
           <div className="flex items-center gap-2 text-sm text-slate-600 bg-white/50 p-2 rounded-lg border border-slate-100/50">
             <MessageCircle className="h-4 w-4 text-slate-400" />
             <span className="font-mono">{bot.whatsapp_number || "Sem número"}</span>
           </div>
           
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status Loja</span>
             </div>
             <div className="flex items-center gap-2">
                 <span className={cn(
                   "text-xs font-bold uppercase tracking-wider transition-colors",
+                  // MANTIDO: Texto "FECHADA" em vermelho
                   isOpen ? "text-emerald-600" : "text-rose-600"
                 )}>
                     {isOpen ? "Aberta" : "Fechada"}
@@ -167,6 +176,7 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
 
       <div className={cn(
         "border-t p-3 flex gap-2 transition-colors",
+        // MANTIDO: Footer avermelhado quando fechado
         isOpen ? "bg-slate-50 border-slate-100" : "bg-rose-50/50 border-rose-100"
       )}>
         {isConnected ? (

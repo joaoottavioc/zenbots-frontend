@@ -77,7 +77,7 @@ export default function BestSellersPage() {
             Produtos Campeões
           </h1>
           <p className="text-muted-foreground mt-1">
-            Análise detalhada de performance do seu cardápio.
+            Análise detalhada da performance do seu cardápio.
           </p>
         </div>
         <div className="w-full md:w-[300px]">
