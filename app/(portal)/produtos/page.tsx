@@ -5,13 +5,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input'; 
-import { Plus, Trash2, Pencil, Check, X, Package } from 'lucide-react'; 
+import { 
+  Plus, Trash2, Pencil, Check, X, Package, 
+  FileText, Image as ImageIcon, ExternalLink, Eye 
+} from 'lucide-react'; 
 import * as z from 'zod'; 
 
 // --- Imports de Componentes Locais ---
 import { ProductForm } from './product-form';
 import { MenuImportDialog } from './menu-import-dialog';
-//import { BotSelector } from '@/components/ui/bot-selector'; 
 import { DashboardHeader } from '@/components/layout/dashboard-header';
 
 // --- Imports Shadcn ---
@@ -59,6 +61,12 @@ interface Product {
   category: string; 
 }
 
+interface BotData {
+    id: number;
+    menu_url: string | null;
+    restaurant_name: string;
+}
+
 interface EditData { name: string; description: string; price: number; }
 
 const formSchema = z.object({
@@ -70,7 +78,6 @@ const formSchema = z.object({
 
 type ProductFormValues = z.infer<typeof formSchema>;
 
-// Palavras-chave para identificar categorias que devem ir para o final
 const BOTTOM_KEYWORDS = ["bebida", "cerveja", "drink", "refrigerante", "suco", "água", "agua", "vinho", "dose", "adicionais"];
 
 export default function ProdutosPage() {
@@ -85,11 +92,22 @@ export default function ProdutosPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // --- Queries ---
+  // --- Query: Produtos ---
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ['products', selectedBotId],
     queryFn: async () => (await api.get(`${API_BASE}/bots/${selectedBotId}/products`)).data,
     enabled: !!selectedBotId, 
+  });
+
+  // --- Query: Dados do Bot (Para pegar o Menu URL) ---
+  const { data: currentBot } = useQuery<BotData>({
+    queryKey: ['bot-details', selectedBotId],
+    queryFn: async () => {
+        // Fallback: Busca lista e filtra, caso não tenha rota GET /bots/{id}
+        const res = await api.get(`${API_BASE}/bots`);
+        return res.data.find((b: BotData) => b.id.toString() === selectedBotId);
+    },
+    enabled: !!selectedBotId
   });
 
   // --- Computed & Sorting ---
@@ -105,14 +123,10 @@ export default function ProdutosPage() {
 
   const sortedCategories = useMemo(() => {
     return Object.keys(groupedProducts).sort((a, b) => {
-        // Lógica de ordenação: Bebidas por último
         const isABeverage = BOTTOM_KEYWORDS.some(k => a.toLowerCase().includes(k));
         const isBBeverage = BOTTOM_KEYWORDS.some(k => b.toLowerCase().includes(k));
-
-        if (isABeverage && !isBBeverage) return 1; // A vai para o final
-        if (!isABeverage && isBBeverage) return -1; // B vai para o final
-        
-        // Se ambos forem do mesmo "tipo", ordena alfabeticamente
+        if (isABeverage && !isBBeverage) return 1; 
+        if (!isABeverage && isBBeverage) return -1; 
         return a.localeCompare(b);
     });
   }, [groupedProducts]);
@@ -160,23 +174,17 @@ export default function ProdutosPage() {
     }
   });
 
-  // --- Handlers ---
   const startEditing = (p: Product) => { setEditingId(p.id); setEditData({ name: p.name, description: p.description || "", price: p.price }); };
   const handleBotChange = (id: string) => { setSelectedBotId(id); setSelectedProductIds([]); };
 
-  // Lógica para selecionar todos da categoria
   const handleSelectCategory = (category: string) => {
     const categoryProducts = groupedProducts[category];
     const categoryIds = categoryProducts.map(p => p.id);
-    
-    // Verifica se TODOS dessa categoria já estão selecionados
     const allSelected = categoryIds.every(id => selectedProductIds.includes(id));
 
     if (allSelected) {
-        // Desmarcar todos dessa categoria
         setSelectedProductIds(prev => prev.filter(id => !categoryIds.includes(id)));
     } else {
-        // Adicionar os que faltam (Isso habilita a barra de exclusão lá embaixo)
         const missingIds = categoryIds.filter(id => !selectedProductIds.includes(id));
         setSelectedProductIds(prev => [...prev, ...missingIds]);
     }
@@ -188,6 +196,9 @@ export default function ProdutosPage() {
   };
 
   const isEmpty = !isLoading && (!products || products.length === 0);
+  
+  // Helper para identificar tipo
+  const isPdf = currentBot?.menu_url?.toLowerCase().endsWith(".pdf");
 
   return (
     <div className="container mx-auto max-w-6xl p-6 space-y-8 min-h-screen bg-slate-50/50">
@@ -199,7 +210,6 @@ export default function ProdutosPage() {
          selectedBotId={selectedBotId}
          onBotChange={handleBotChange}
       >
-         {/* BOTÕES DE AÇÃO (Aparecem automaticamente ao lado do seletor) */}
          {selectedBotId && (
             <>
                 <MenuImportDialog botId={selectedBotId} />
@@ -223,13 +233,40 @@ export default function ProdutosPage() {
          )}
       </DashboardHeader>
 
-      {/* BARRA FLUTUANTE DE AÇÕES EM MASSA (APARECE QUANDO SELECIONA ITENS) */}
+      {/* 2. NOVO: BANNER DE CARDÁPIO ATIVO */}
+      {selectedBotId && currentBot?.menu_url && (
+        <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-4">
+                <div className={`h-12 w-12 rounded-full flex items-center justify-center ${isPdf ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                    {isPdf ? <FileText className="h-6 w-6" /> : <ImageIcon className="h-6 w-6" />}
+                </div>
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        Cardápio Ativo
+                        <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-green-50 text-green-700 border-green-200">Online</Badge>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                        Este é o arquivo que seus clientes recebem no WhatsApp.
+                    </p>
+                </div>
+            </div>
+            <a 
+                href={currentBot.menu_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 px-4 py-2 rounded-lg transition-colors border border-slate-200"
+            >
+                <Eye className="h-4 w-4" /> Visualizar
+            </a>
+        </div>
+      )}
+
+      {/* BARRA FLUTUANTE DE AÇÕES EM MASSA */}
       {selectedProductIds.length > 0 && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-5 z-50">
              <span className="font-medium text-sm">{selectedProductIds.length} itens selecionados</span>
              <div className="h-4 w-px bg-slate-700"></div>
              
-             {/* BOTÃO QUE DELETA TUDO QUE FOI SELECIONADO (INCLUINDO CATEGORIAS INTEIRAS) */}
              <button 
                 onClick={() => setIsBulkDeleteAlertOpen(true)} 
                 className="text-red-400 hover:text-red-300 font-bold text-sm flex items-center gap-2 transition-colors"
@@ -243,7 +280,7 @@ export default function ProdutosPage() {
           </div>
       )}
 
-      {/* CONTENT */}
+      {/* CONTEÚDO PRINCIPAL (LISTA) */}
       {isLoading ? (
         <div className="space-y-4">
             {[1,2,3].map(i => <Skeleton key={i} className="h-40 w-full rounded-xl" />)}
@@ -261,6 +298,7 @@ export default function ProdutosPage() {
         <div className="space-y-8">
           {sortedCategories.map((category) => (
             <Card key={category} className="border-slate-200 shadow-sm overflow-hidden bg-white">
+              {/* Header da Categoria */}
               <CardHeader className="bg-slate-50/80 border-b border-slate-100 py-3 px-5 flex flex-row items-center justify-between">
                  <div className="flex items-center gap-3">
                     <h2 className="font-bold text-slate-800 text-lg">{category}</h2>
@@ -271,18 +309,15 @@ export default function ProdutosPage() {
               </CardHeader>
               
               <div className="overflow-x-auto">
-                {/* CORREÇÃO DO ERRO DE HIDRATAÇÃO: Removemos comentários de dentro da tag Table */}
                 <Table className="w-full table-fixed">
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-b border-slate-100">
-                      {/* CHECKBOX DA CATEGORIA: Seleciona/Desmarca todos desta lista */}
                       <TableHead className="w-[50px] pl-5 align-middle">
                           <Checkbox 
                             checked={isCategoryFullySelected(category)}
                             onCheckedChange={() => handleSelectCategory(category)}
                           />
                       </TableHead>
-                      
                       <TableHead className="w-[30%] align-middle">Produto</TableHead>
                       <TableHead className="hidden md:table-cell align-middle">Descrição</TableHead>
                       <TableHead className="w-[120px] text-right align-middle">Preço</TableHead>

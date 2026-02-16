@@ -1,13 +1,16 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { api } from '@/lib/api'; // Necessário para buscar o CEP
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from "@/components/ui/switch"; 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Search, MapPin } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -18,12 +21,15 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
 const dayScheduleSchema = z.object({
   active: z.boolean(),
   start: z.string(),
   end: z.string(),
 });
 
+// --- SCHEMA ATUALIZADO ---
 const formSchema = z.object({
   restaurant_name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
   whatsapp_number: z.string().min(10, { message: "Digite o número completo com DDD." }),
@@ -31,6 +37,15 @@ const formSchema = z.object({
   
   delivery_fee: z.coerce.number().min(0).optional(),
   min_order_value: z.coerce.number().min(0).optional(),
+
+  // Novos Campos de Localização
+  cep: z.string().min(8, "CEP inválido"),
+  address: z.string().min(5, "Endereço obrigatório"),
+  max_delivery_radius: z.coerce.number().min(1, "Mínimo 1km").default(10),
+  
+  // Coordenadas (Opcionais pois são preenchidas pelo sistema)
+  latitude: z.coerce.number().optional(),
+  longitude: z.coerce.number().optional(),
 
   whatsapp_token: z.string().min(10, { message: "Informe o token de acesso da API do WhatsApp." }),
   phone_number_id: z.string().min(5, { message: "Informe o phone_number_id da API do WhatsApp." }),
@@ -67,6 +82,8 @@ const DEFAULT_SCHEDULE = WEEKDAYS.reduce(
 );
 
 export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
+  const { toast } = useToast();
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
   
   const getMergedSchedule = (savedSchedule: any) => {
     if (!savedSchedule || Object.keys(savedSchedule).length === 0) {
@@ -87,6 +104,14 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
       pix_key: initialData?.pix_key || "",
       delivery_fee: initialData?.delivery_fee ?? 0,
       min_order_value: initialData?.min_order_value ?? 0,
+      
+      // Defaults novos
+      cep: initialData?.cep || "",
+      address: initialData?.address || "",
+      max_delivery_radius: initialData?.max_delivery_radius || 10,
+      latitude: initialData?.latitude || 0,
+      longitude: initialData?.longitude || 0,
+
       whatsapp_token: initialData?.whatsapp_token || "",
       phone_number_id: initialData?.phone_number_id || "",
       is_open: initialData?.is_open ?? true,
@@ -96,6 +121,73 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
   });
 
   const isOpen = form.watch("is_open");
+
+  // --- BUSCA DE CEP ---
+  const handleCepSearch = async () => {
+    const cep = form.getValues("cep")?.replace(/\D/g, "");
+    
+    if (!cep || cep.length !== 8) {
+      toast({ title: "CEP inválido", description: "Digite os 8 números.", variant: "destructive" });
+      return;
+    }
+
+    setIsLoadingCep(true);
+    try {
+      const response = await api.get(`${API_BASE}/utils/lookup-cep/${cep}`);
+      const data = response.data;
+
+      // 1. Montagem Inteligente do Endereço
+      // O backend retorna partes separadas, aqui juntamos para facilitar para o usuário
+      const parts = [
+        data.street,
+        data.neighborhood,
+        data.city && data.state ? `${data.city} - ${data.state}` : ""
+      ].filter(Boolean); // Remove campos vazios/null
+
+      const formattedAddress = parts.join(", ");
+      
+      // Se a string montada for muito curta, algo deu errado, mas salvamos o que veio
+      form.setValue("address", formattedAddress || "");
+
+      // 2. Mapeamento de Coordenadas (lat/lng do backend -> latitude/longitude do form)
+      // O utils.py retorna chaves curtas: 'lat' e 'lng'
+      if (data.lat && data.lng) {
+        form.setValue("latitude", data.lat);
+        form.setValue("longitude", data.lng);
+        toast({ 
+            title: "Localização Exata Encontrada! 🎯", 
+            description: "Coordenadas GPS atualizadas com sucesso." 
+        });
+      } else {
+        // Fallback: Zera coordenadas se não achou, mas mantém o endereço textual
+        form.setValue("latitude", 0);
+        form.setValue("longitude", 0);
+        
+        toast({ 
+            title: "Endereço encontrado (Sem GPS)", 
+            description: "Achamos a rua, mas não a latitude exata. O cálculo de raio pode falhar.", 
+            className: "bg-yellow-50 border-yellow-200 text-yellow-800" 
+        });
+      }
+
+    } catch (error: any) {
+      console.error("Erro CEP:", error);
+      // Tratamento para quando o CEP não existe na API
+      const msg = error.response?.status === 404 
+        ? "CEP não encontrado na base de dados." 
+        : (error.response?.data?.detail || "Falha ao buscar CEP.");
+        
+      toast({ title: "Erro na busca", description: msg, variant: "destructive" });
+      
+      // Opcional: Limpar campos se der erro
+      // form.setValue("address", "");
+      // form.setValue("latitude", 0);
+      // form.setValue("longitude", 0);
+
+    } finally {
+      setIsLoadingCep(false);
+    }
+  };
 
   return (
     <Form {...form}>
@@ -163,7 +255,8 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                         type="number"
                         step="0.01"
                         {...field}
-                        value={(field.value ?? 0) as number | string}
+                        value={typeof field.value === "string" || typeof field.value === "number" ? field.value : ''} // Fix para evitar erro de uncontrolled input
+                        className="w-full"
                       />
                     </FormControl>
                     <FormMessage />
@@ -182,7 +275,8 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                         type="number"
                         step="0.01"
                         {...field}
-                        value={(field.value ?? 0) as number | string}
+                        value={typeof field.value === "string" || typeof field.value === "number" ? field.value : ''} // Fix para evitar erro de uncontrolled input
+                        className="w-full"
                       />
                     </FormControl>
                     <FormDescription className="text-xs">
@@ -194,6 +288,121 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               />
             </div>
           </CardContent>
+        </Card>
+
+        {/* --- NOVO GRUPO: LOCALIZAÇÃO --- */}
+        <Card className="overflow-hidden border-blue-100 bg-blue-50/20">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-blue-600" />
+                    Localização e Entrega
+                </CardTitle>
+                <CardDescription>
+                    Usado para calcular a distância do cliente até você.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                
+                {/* Busca de CEP */}
+                <div className="flex gap-4 items-end">
+                    <FormField
+                        control={form.control}
+                        name="cep"
+                        render={({ field }) => (
+                            <FormItem className="w-[180px]">
+                                <FormLabel>CEP Loja</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="00000-000" {...field} className="bg-white" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <Button 
+                        type="button" 
+                        variant="secondary" 
+                        onClick={handleCepSearch} 
+                        disabled={isLoadingCep}
+                        className="mb-2 bg-white border border-slate-200 hover:bg-slate-50"
+                    >
+                        {isLoadingCep ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    </Button>
+                </div>
+
+                <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Endereço Completo</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Rua, Bairro, Cidade..." {...field} className="bg-white" />
+                            </FormControl>
+                            <FormDescription>Preenchido automaticamente pelo CEP.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="max_delivery_radius"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Raio de Entrega (KM)</FormLabel>
+                            <FormControl>
+                                 <div className="relative">
+                                    <Input 
+                                        type="number" 
+                                        step="0.5" 
+                                        {...field}
+                                        value={(field.value as number) ?? 10} // Valor padrão visual
+                                        className="pl-3 bg-white" 
+                                    />
+                                    <span className="absolute right-3 top-2.5 text-xs text-slate-400">km</span>
+                                 </div>
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    {/* Visualização de Coordenadas */}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-sm font-medium leading-none">
+                                      Coordenadas GPS
+                        </span>
+                    {/* Indicador visual se tem lat/long válida */}
+                    {form.watch("latitude") !== 0 && (
+                      <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
+                          ATIVO
+                      </span>
+                      )}
+                    </div>
+                      <div className="flex gap-2 mt-2">
+                        <Input 
+                          disabled 
+                          value={String(form.watch("latitude") || "")} 
+                          placeholder="Latitude" 
+                          className="bg-slate-100 text-xs h-9 font-mono" 
+                        />
+                        <Input 
+                          disabled 
+                          value={String(form.watch("longitude") || "")} 
+                          placeholder="Longitude" 
+                          className="bg-slate-100 text-xs h-9 font-mono" 
+                         />
+                      </div>
+                        {form.watch("latitude") === 0 && form.watch("address") !== "" && (
+                        <span className="text-[10px] text-red-500 font-medium">
+                        ⚠️ Necessário para cálculo de raio
+                        </span>
+                         )}
+                    </div>
+                </div>
+            </CardContent>
         </Card>
 
         {/* GRUPO 2: INTEGRAÇÃO WHATSAPP */}
@@ -298,14 +507,12 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               {WEEKDAYS.map((day) => (
                 <div
                   key={day.key}
-                  // MUDANÇA: flex-wrap permite quebrar linha se a tela for estreita
                   className="flex flex-wrap items-center justify-between p-3 sm:p-4 hover:bg-slate-50 gap-y-3 w-full"
                 >
                   <FormField
                     control={form.control}
                     name={`schedule.${day.key}.active`}
                     render={({ field }) => (
-                      // MUDANÇA: mr-4 cria espaço seguro
                       <div className="flex items-center gap-3 mr-4">
                         <FormControl>
                           <Switch
@@ -322,7 +529,6 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                     )}
                   />
 
-                  {/* Container de inputs que vai para a linha de baixo se necessário */}
                   <div className="flex items-center gap-2 sm:gap-4 ml-auto">
                     <FormField
                       control={form.control}

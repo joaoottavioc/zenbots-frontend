@@ -1,4 +1,3 @@
-// app/(portal)/produtos/menu-import-dialog.tsx
 "use client";
 
 import React, { useState, useCallback } from 'react';
@@ -7,7 +6,15 @@ import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from "@/hooks/use-toast";
-import { Wand2, UploadCloud, FileText, X, FileType2, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { 
+  Wand2, 
+  UploadCloud, 
+  X, 
+  FileType2, 
+  Image as ImageIcon, 
+  Sparkles,
+  Info
+} from 'lucide-react';
 import { useDropzone, FileRejection } from 'react-dropzone';
 import {
   Dialog,
@@ -18,6 +25,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -40,8 +48,6 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
   const queryClient = useQueryClient();
 
   const onDrop = useCallback((acceptedFiles: File[], fileRejections: FileRejection[]) => {
-    
-    // Tratamento de Erros Detalhado
     if (fileRejections.length > 0) {
       const rejection = fileRejections[0];
       const error = rejection.errors[0];
@@ -51,14 +57,13 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
       if (error.code === "file-too-large") {
           toast({ 
             title: "Arquivo muito grande", 
-            description: `O limite é de ${MAX_SIZE_MB}MB. Seu arquivo tem ${(rejection.file.size / 1024 / 1024).toFixed(1)}MB.`, 
+            description: `O limite é de ${MAX_SIZE_MB}MB.`, 
             variant: "destructive" 
           });
       } else if (error.code === "file-invalid-type") {
-          // Mostra o tipo que o navegador detectou para ajudar no debug
           toast({ 
             title: "Formato inválido", 
-            description: `O tipo detectado '${rejection.file.type}' não é aceito. Use PDF, JPG ou PNG.`, 
+            description: "Use PDF, JPG ou PNG.", 
             variant: "destructive" 
           });
       } else {
@@ -89,13 +94,12 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
     }
   }, [toast]);
 
-  // --- CORREÇÃO AQUI: TIPOS MIME EXPLÍCITOS ---
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
     accept: { 
         'text/plain': ['.txt'], 
-        'image/png': ['.png'],       // <--- Explícito para PNG
-        'image/jpeg': ['.jpg', '.jpeg'], // <--- Explícito para JPG
+        'image/png': ['.png'],
+        'image/jpeg': ['.jpg', '.jpeg'],
         'image/webp': ['.webp'],
         'application/pdf': ['.pdf'] 
     },
@@ -108,23 +112,36 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
       if (fileToUpload) {
         const formData = new FormData();
         formData.append("file", fileToUpload);
-        // Timeout de 2 minutos para IA
-        return api.post(`${API_BASE}/bots/${botId}/catalog/upload-from-file`, formData, { timeout: 120000 });
-      } else if (text) {
+        return api.post(`${API_BASE}/bots/${botId}/catalog/upload-from-file`, formData, { 
+          headers: { "Content-Type": "multipart/form-data" },
+          timeout: 120000 
+        });
+      } 
+      else if (text) {
         return api.post(`${API_BASE}/bots/${botId}/catalog/upload`, { catalog_text: text });
       }
       throw new Error("Nada para enviar");
     },
-    onSuccess: (data) => {
-      toast({ title: "Sucesso! ✨", description: data.data.message });
+    onSuccess: (response) => {
+      const msg = response.data?.message || "Processado com sucesso!";
+      
+      toast({ 
+        title: "Sucesso! ✨", 
+        description: msg,
+        className: "bg-green-50 border-green-200"
+      });
+
       queryClient.invalidateQueries({ queryKey: ['products', botId] });
+      queryClient.invalidateQueries({ queryKey: ['bot-details', botId] }); 
       setIsOpen(false);
-      setText(""); setFileName(null); setFileToUpload(null);
+      setText(""); 
+      setFileName(null); 
+      setFileToUpload(null);
     },
     onError: (error: any) => {
         console.error("Erro importação:", error);
-        const msg = error.response?.data?.detail || "Erro ao processar. Tente novamente.";
-        toast({ title: "Erro na IA", description: msg, variant: "destructive" });
+        const msg = error.response?.data?.detail || "Erro ao processar.";
+        toast({ title: "Erro", description: msg, variant: "destructive" });
     }
   });
 
@@ -142,18 +159,20 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
              <div className="p-2 bg-purple-100 rounded-lg"><Wand2 className="h-5 w-5 text-purple-600" /></div>
              Cadastro Mágico
           </DialogTitle>
           <DialogDescription>
-            Envie uma foto do cardápio (PNG/JPG) ou um PDF e nossa IA cadastra tudo pra você! Máximo {MAX_SIZE_MB}MB.
+            Envie seu cardápio e nossa IA cadastrará os produtos automaticamente.
           </DialogDescription>
         </DialogHeader>
         
         <div className="grid gap-6 py-4">
+          
+          {/* ÁREA DE UPLOAD */}
           <div 
             {...getRootProps()} 
             className={`
@@ -183,13 +202,22 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
             )}
           </div>
 
+          {/* DICA MELHORADA */}
+          <Alert className="bg-blue-50 border-blue-100 text-blue-800">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-700 font-semibold mb-1">Dica para melhorar o fluxo de vendas</AlertTitle>
+            <AlertDescription className="text-blue-700/80 text-xs leading-relaxed">
+              Prefira enviar o cardápio como <strong>Imagem (JPG/PNG)</strong>. Elas abrem automaticamente no WhatsApp, evitando que o cliente precise baixar um PDF.
+            </AlertDescription>
+          </Alert>
+
           <div className="relative">
             <div className="absolute -top-3 left-4 bg-white px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Ou cole o texto
             </div>
             <Textarea 
               placeholder="Hamburguer Clássico - R$ 25,00..." 
-              className="h-[120px] font-mono text-sm pt-4 border-slate-200 focus:border-purple-500 transition-colors"
+              className="h-[100px] font-mono text-sm pt-4 border-slate-200 focus:border-purple-500 transition-colors"
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={!!fileToUpload && !text} 

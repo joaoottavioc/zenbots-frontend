@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Image from "next/image"; // <--- Importante
+import Image from "next/image"; 
 import { 
   MessageCircle, 
   Settings, 
@@ -57,13 +57,13 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
       "group relative rounded-xl border shadow-sm transition-all duration-300 overflow-hidden flex flex-col",
       isOpen 
         ? "bg-white border-slate-200 hover:shadow-md hover:border-blue-200" 
-        : "bg-rose-50/30 border-rose-100 hover:border-rose-200" // MANTIDO: Estilo vermelho suave
+        : "bg-slate-50/50 border-slate-200 hover:border-slate-300" // AGORA: Cinza suave quando fechado
     )}>
       
       {/* Barra lateral colorida */}
       <div className={cn(
         "absolute left-0 top-0 bottom-0 w-1 transition-colors duration-300",
-        isOpen ? "bg-emerald-500" : "bg-rose-500" // MANTIDO: Vermelho quando fechado
+        isOpen ? "bg-emerald-500" : "bg-slate-400" // AGORA: Cinza quando fechado
       )} />
 
       <div className="p-5 flex-1">
@@ -75,7 +75,7 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
               "relative h-16 w-16 shrink-0 rounded-2xl overflow-hidden border-2 transition-all duration-300",
               isOpen 
                 ? "border-emerald-100 shadow-lg shadow-emerald-100/50" 
-                : "border-rose-200 shadow-lg shadow-rose-200/50" // MANTIDO: Borda vermelha/rose na imagem offline
+                : "border-slate-200 shadow-none grayscale" // AGORA: Cinza e sem sombra quando fechado
             )}>
                <Image 
                  src={isOpen ? "/bot-online.png" : "/bot-offline.png"} 
@@ -83,15 +83,13 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
                  fill
                  className="object-cover"
                  sizes="64px"
-                 // REMOVIDO: grayscale (Agora a imagem fica colorida mesmo fechada)
                />
             </div>
             
             <div>
               <h3 className={cn(
                 "font-bold text-lg leading-tight transition-colors",
-                // MANTIDO: Texto fica vermelho (rose) quando fechado
-                isOpen ? "text-slate-900 group-hover:text-blue-600" : "text-slate-700 group-hover:text-rose-600"
+                isOpen ? "text-slate-900 group-hover:text-blue-600" : "text-slate-600" // AGORA: Texto cinza quando fechado
               )}>
                 {bot.restaurant_name}
               </h3>
@@ -155,8 +153,7 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
             <div className="flex items-center gap-2">
                 <span className={cn(
                   "text-xs font-bold uppercase tracking-wider transition-colors",
-                  // MANTIDO: Texto "FECHADA" em vermelho
-                  isOpen ? "text-emerald-600" : "text-rose-600"
+                  isOpen ? "text-emerald-600" : "text-slate-500" // AGORA: Texto "FECHADA" em cinza
                 )}>
                     {isOpen ? "Aberta" : "Fechada"}
                 </span>
@@ -166,7 +163,7 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
                     className={cn(
                       "scale-75 transition-all",
                       "data-[state=checked]:bg-emerald-500",
-                      "data-[state=unchecked]:bg-slate-200 dark:data-[state=unchecked]:bg-slate-700"
+                      "data-[state=unchecked]:bg-slate-200 dark:data-[state=unchecked]:bg-slate-400" // Switch cinza quando fechado
                     )}
                 />
             </div>
@@ -176,8 +173,7 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
 
       <div className={cn(
         "border-t p-3 flex gap-2 transition-colors",
-        // MANTIDO: Footer avermelhado quando fechado
-        isOpen ? "bg-slate-50 border-slate-100" : "bg-rose-50/50 border-rose-100"
+        isOpen ? "bg-slate-50 border-slate-100" : "bg-slate-100/50 border-slate-200" // AGORA: Footer cinza claro quando fechado
       )}>
         {isConnected ? (
            <Button 
