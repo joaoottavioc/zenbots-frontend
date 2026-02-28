@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -49,8 +49,6 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 // --- Tipos e Interfaces ---
 interface Product {
   id: number;
@@ -93,9 +91,9 @@ export default function ProdutosPage() {
   const { toast } = useToast();
 
   // --- Query: Produtos ---
-  const { data: products, isLoading } = useQuery<Product[]>({
+  const { data: products, isLoading, isError } = useQuery<Product[]>({
     queryKey: ['products', selectedBotId],
-    queryFn: async () => (await api.get(`${API_BASE}/bots/${selectedBotId}/products`)).data,
+    queryFn: async () => (await api.get(`/bots/${selectedBotId}/products`)).data,
     enabled: !!selectedBotId, 
   });
 
@@ -104,7 +102,7 @@ export default function ProdutosPage() {
     queryKey: ['bot-details', selectedBotId],
     queryFn: async () => {
         // Fallback: Busca lista e filtra, caso não tenha rota GET /bots/{id}
-        const res = await api.get(`${API_BASE}/bots`);
+        const res = await api.get(`/bots`);
         return res.data.find((b: BotData) => b.id.toString() === selectedBotId);
     },
     enabled: !!selectedBotId
@@ -133,49 +131,54 @@ export default function ProdutosPage() {
 
   // --- Mutations ---
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => api.delete(`${API_BASE}/bots/${selectedBotId}/products/${id}`),
-    onSuccess: () => { 
-      toast({ title: "Deletado" }); 
-      queryClient.invalidateQueries({queryKey:['products', selectedBotId]}); 
-      setProductToDelete(null); 
-    }
+    mutationFn: (id: number) => api.delete(`/bots/${selectedBotId}/products/${id}`),
+    onSuccess: () => {
+      toast({ title: "Deletado" });
+      queryClient.invalidateQueries({queryKey:['products', selectedBotId]});
+      setProductToDelete(null);
+    },
+    onError: () => { toast({ title: "Erro ao excluir", variant: "destructive" }); }
   });
   
   const bulkDeleteMutation = useMutation({
-    mutationFn: (ids: number[]) => api.post(`${API_BASE}/bots/${selectedBotId}/products/bulk-delete`, { product_ids: ids }),
-    onSuccess: (d) => { 
-      toast({ title: d.data.message }); 
-      queryClient.invalidateQueries({queryKey:['products', selectedBotId]}); 
-      setSelectedProductIds([]); 
-      setIsBulkDeleteAlertOpen(false); 
-    }
+    mutationFn: (ids: number[]) => api.post(`/bots/${selectedBotId}/products/bulk-delete`, { product_ids: ids }),
+    onSuccess: (d) => {
+      toast({ title: d.data.message });
+      queryClient.invalidateQueries({queryKey:['products', selectedBotId]});
+      setSelectedProductIds([]);
+      setIsBulkDeleteAlertOpen(false);
+    },
+    onError: () => { toast({ title: "Erro ao excluir itens", variant: "destructive" }); }
   });
 
   const createMutation = useMutation({
-    mutationFn: (values: ProductFormValues) => api.post(`${API_BASE}/bots/${selectedBotId}/products`, values),
-    onSuccess: () => { 
-      toast({ title: "Criado!" }); 
-      queryClient.invalidateQueries({queryKey:['products', selectedBotId]}); 
-      setIsCreateModalOpen(false); 
-    }
+    mutationFn: (values: ProductFormValues) => api.post(`/bots/${selectedBotId}/products`, values),
+    onSuccess: () => {
+      toast({ title: "Criado!" });
+      queryClient.invalidateQueries({queryKey:['products', selectedBotId]});
+      setIsCreateModalOpen(false);
+    },
+    onError: () => { toast({ title: "Erro ao criar produto", variant: "destructive" }); }
   });
 
   const toggleStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: boolean }) => api.put(`${API_BASE}/bots/${selectedBotId}/products/${id}`, { is_available: !status }),
+    mutationFn: ({ id, status }: { id: number; status: boolean }) => api.put(`/bots/${selectedBotId}/products/${id}`, { is_available: !status }),
     onSuccess: () => queryClient.invalidateQueries({queryKey:['products', selectedBotId]}),
+    onError: () => { toast({ title: "Erro ao alterar disponibilidade", variant: "destructive" }); }
   });
 
   const inlineUpdateMutation = useMutation({
-    mutationFn: () => api.put(`${API_BASE}/bots/${selectedBotId}/products/${editingId}`, editData),
-    onSuccess: () => { 
-      toast({ title: "Atualizado" }); 
-      queryClient.invalidateQueries({queryKey:['products', selectedBotId]}); 
-      setEditingId(null); 
-    }
+    mutationFn: () => api.put(`/bots/${selectedBotId}/products/${editingId}`, editData),
+    onSuccess: () => {
+      toast({ title: "Atualizado" });
+      queryClient.invalidateQueries({queryKey:['products', selectedBotId]});
+      setEditingId(null);
+    },
+    onError: () => { toast({ title: "Erro ao atualizar", variant: "destructive" }); }
   });
 
   const startEditing = (p: Product) => { setEditingId(p.id); setEditData({ name: p.name, description: p.description || "", price: p.price }); };
-  const handleBotChange = (id: string) => { setSelectedBotId(id); setSelectedProductIds([]); };
+  const handleBotChange = useCallback((id: string) => { setSelectedBotId(id); setSelectedProductIds([]); }, []);
 
   const handleSelectCategory = (category: string) => {
     const categoryProducts = groupedProducts[category];
@@ -284,6 +287,14 @@ export default function ProdutosPage() {
       {isLoading ? (
         <div className="space-y-4">
             {[1,2,3].map(i => <Skeleton key={i} className="h-40 w-full rounded-xl" />)}
+        </div>
+      ) : isError && selectedBotId ? (
+        <div className="flex flex-col items-center justify-center p-16 bg-white border border-red-200 rounded-2xl text-center">
+          <h3 className="text-lg font-semibold text-slate-900">Erro ao carregar produtos</h3>
+          <p className="text-slate-500 mb-6">Não foi possível carregar o catálogo.</p>
+          <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['products', selectedBotId] })}>
+            Tentar novamente
+          </Button>
         </div>
       ) : isEmpty && selectedBotId ? (
          <div className="flex flex-col items-center justify-center p-16 bg-white border border-dashed border-slate-200 rounded-2xl text-center">

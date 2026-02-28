@@ -12,11 +12,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import type { Bot, BotFormValues } from "@/lib/types";
 
 interface EditBotSheetProps {
-  bot: any | null; // O bot selecionado para edição
+  bot: Bot | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -27,12 +26,12 @@ export function EditBotSheet({ bot, isOpen, onClose }: EditBotSheetProps) {
 
   // 1. Mutação de Atualização (PUT)
   const updateBotMutation = useMutation({
-    mutationFn: async (values: any) => {
+    mutationFn: async (values: BotFormValues) => {
       // Limpeza básica igual na criação
       const cleanNumber = values.whatsapp_number.replace(/\D/g, "");
       
       // Chama a rota PUT /bots/{id}
-      return api.put(`${API_BASE}/bots/${bot.id}`, {
+      return api.put(`/bots/${bot!.id}`, {
         ...values,
         whatsapp_number: cleanNumber,
       });
@@ -42,7 +41,7 @@ export function EditBotSheet({ bot, isOpen, onClose }: EditBotSheetProps) {
       queryClient.invalidateQueries({ queryKey: ["myBots"] }); // Atualiza a lista no fundo
       onClose(); // Fecha a gaveta
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error(error);
       toast({
         title: "Erro ao atualizar",

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { 
@@ -12,8 +12,6 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Store } from 'lucide-react'; // O ícone da "casinha/loja"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 interface Bot {
   id: number;
@@ -28,21 +26,28 @@ interface BotSelectorProps {
 
 export function BotSelector({ selectedBotId, onBotChange, className }: BotSelectorProps) {
   // 1. Busca os bots (cacheado pelo React Query)
-  const { data: bots, isLoading } = useQuery<Bot[]>({
+  const { data: bots, isLoading, isError } = useQuery<Bot[]>({
     queryKey: ['myBots'],
-    queryFn: async () => (await api.get(`${API_BASE}/bots`)).data,
+    queryFn: async () => (await api.get('/bots')).data,
     staleTime: 1000 * 60 * 5, // Cache por 5 minutos
   });
 
   // 2. Auto-seleciona o primeiro se nenhum estiver selecionado
+  const onBotChangeRef = useRef(onBotChange);
+  onBotChangeRef.current = onBotChange;
+
   useEffect(() => {
     if (bots && bots.length > 0 && !selectedBotId) {
-      onBotChange(String(bots[0].id));
+      onBotChangeRef.current(String(bots[0].id));
     }
-  }, [bots, selectedBotId, onBotChange]);
+  }, [bots, selectedBotId]);
 
   if (isLoading) {
     return <Skeleton className="h-10 w-[240px]" />;
+  }
+
+  if (isError) {
+    return <div className="text-sm text-destructive">Erro ao carregar bots</div>;
   }
 
   if (!bots || bots.length === 0) {

@@ -8,31 +8,37 @@ interface LogoProps {
 
 export function Logo({ className = "", collapsed = false }: LogoProps) {
   return (
-    // Gap removido (gap-0) e itens alinhados pelo centro
     <div className={`flex items-center gap-0 ${className}`}>
-      
-      {/* ÍCONE Z 
-         -mr-2: Margem negativa para a direita. Isso puxa o texto "enBot" para mais perto do ícone.
-         Se ainda ficar longe, aumente para -mr-3 ou -mr-4.
-      */}
+
+      {/* Icon */}
       <div className="relative w-14 h-14 flex items-center justify-center shrink-0 -mr-2">
-        <Image 
-          src="/logo-zenbotz.png" 
+        <Image
+          src="/logo-zenbotz.png"
           alt="ZenBotZ Logo"
-          width={56} 
-          height={56} 
+          width={56}
+          height={56}
           className="object-contain drop-shadow-md"
-          priority 
+          priority
         />
       </div>
 
-      {/* TEXTO RESTANTE ("enBotZ") */}
+      {/* Wordmark — Space Grotesk for tech/circuit aesthetic */}
       {!collapsed && (
         <div className="flex flex-col justify-center select-none pt-1">
-          <span className="font-heading font-extrabold text-3xl leading-none tracking-tight">
-            {/* Texto cinza claro, colado no ícone */}
-            <span className="text-slate-300">enBot</span>
-            <span className="text-sky-500">Z</span>
+          <span className="font-logo font-bold text-[1.65rem] leading-none tracking-[-0.02em]">
+            <span className="text-slate-200">en</span>
+            <span className="text-white">Bot</span>
+            <span
+              className="text-cyan-400 font-extrabold"
+              style={{
+                textShadow: "0 0 8px rgba(34,211,238,0.4), 0 0 20px rgba(6,182,212,0.15)",
+              }}
+            >
+              Z
+            </span>
+          </span>
+          <span className="font-logo text-[0.55rem] tracking-[0.32em] text-slate-500 uppercase ml-[1px]">
+            AI Delivery
           </span>
         </div>
       )}

@@ -1,50 +1,107 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu, Bot, ShoppingBag, Package, BarChart3, QrCode, Settings, LifeBuoy } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { UserNav } from "@/components/ui/user-nav";
+import { Logo } from "@/components/ui/logo";
+import { CircuitBg } from "@/components/ui/circuit-bg";
+
+const mobileRoutes = [
+  { label: "Meus BotZ", icon: Bot, href: "/meus-bots", color: "text-sky-500" },
+  { label: "Produtos", icon: ShoppingBag, href: "/produtos", color: "text-violet-500" },
+  { label: "Pedidos", icon: Package, href: "/pedidos", color: "text-pink-700" },
+  { label: "Mais Vendidos", icon: BarChart3, href: "/analytics", color: "text-orange-700" },
+  { label: "Integração Pix", icon: QrCode, href: "/pagamentos", color: "text-emerald-500" },
+  { label: "Configurações", icon: Settings, href: "/settings" },
+  { label: "Suporte", icon: LifeBuoy, href: "/suporte" },
+];
 
 export function TopHeader() {
-  // Definimos o SVG do circuito aqui para ficar organizado
-  // Cor: %230ea5e9 é o código do azul sky-500 (o neon do seu robô)
-  const circuitPattern = `data:image/svg+xml,%3Csvg width='100' height='20' viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 10h10l5-5h10l5 5h20l5-5h10l5 5h20' stroke='%230ea5e9' stroke-width='1' fill='none' opacity='0.5'/%3E%3C/svg%3E`;
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
-    // CORREÇÃO: Removido 'overflow-hidden' desta tag principal.
-    // Isso permite que o modal/dropdown do UserNav ultrapasse os limites da barra.
-    <header className="relative h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-40 shadow-sm">
-      
-      {/* --- CONTAINER DE FUNDO (ISOLADO) --- */}
-      {/* Movemos o overflow-hidden para este container interno. 
-          Assim, os circuitos não vazam para fora da barra, mas o UserNav não é afetado. */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        
-        {/* CAMADA 1: CIRCUITOS */}
-        <div 
-          className="absolute inset-0 z-0"
-          style={{
-              backgroundImage: `url("${circuitPattern}")`, 
-              backgroundRepeat: "repeat",
-              backgroundSize: "300px auto", 
-              opacity: 0.4, 
-              // Máscara para suavizar
-              maskImage: "linear-gradient(to bottom, black, transparent 90%)",
-              WebkitMaskImage: "linear-gradient(to bottom, black, transparent 90%)"
-          }}
-        ></div>
+    <header className="relative h-16 flex items-center justify-between px-6 z-40 bg-brand-nav border-b border-slate-700/60">
 
-        {/* CAMADA 2: REFLEXO AZUL (Lado Esquerdo) */}
-        <div 
-          className="absolute left-0 top-0 bottom-0 w-64 z-0 bg-gradient-to-r from-sky-500/10 to-transparent"
-        ></div>
-      </div>
+      {/* Mobile hamburger */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="md:hidden relative z-10 text-white hover:bg-white/10"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Abrir menu"
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
 
+      {/* Mobile navigation sheet */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="left" className="w-[280px] bg-brand-nav border-slate-700/60 p-0">
+          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
 
-      {/* --- CONTEÚDO (Fica na frente, z-10) --- */}
-      <div className="flex items-center gap-4 relative z-10">
-        {/* Lado esquerdo vazio (pode colocar breadcrumbs aqui depois) */}
-      </div>
+          <div className="relative h-24 flex items-start justify-center pt-3 mb-4">
+            <Logo />
+            <div
+              className="absolute bottom-0 left-3 right-3 h-px"
+              style={{ background: "linear-gradient(90deg, transparent 0%, #0e7490 30%, #06b6d4 50%, #0e7490 70%, transparent 100%)" }}
+            />
+          </div>
 
+          <nav className="px-3 space-y-1">
+            {mobileRoutes.map((route) => (
+              <Link
+                key={route.href}
+                href={route.href}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition",
+                  pathname === route.href ? "text-white bg-white/10" : "text-zinc-400"
+                )}
+              >
+                <div className="flex items-center flex-1">
+                  <route.icon className={cn("h-5 w-5 mr-3", route.color)} />
+                  {route.label}
+                </div>
+              </Link>
+            ))}
+          </nav>
+        </SheetContent>
+      </Sheet>
+
+      {/* Top accent line */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px] pointer-events-none"
+        style={{ background: "linear-gradient(90deg, transparent 0%, #06b6d4 30%, #22d3ee 50%, #06b6d4 70%, transparent 100%)" }}
+      />
+
+      {/* Bottom glow border */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-px pointer-events-none"
+        style={{ background: "linear-gradient(90deg, transparent 0%, #0e7490 30%, #06b6d4 50%, #0e7490 70%, transparent 100%)" }}
+      />
+
+      {/* Circuit artwork */}
+      <CircuitBg />
+
+      {/* Subtle left-edge ambient glow */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-32 pointer-events-none"
+        style={{
+          background: "radial-gradient(ellipse at 0% 50%, rgba(6,182,212,0.06) 0%, transparent 70%)",
+        }}
+      />
+
+      {/* Flex spacer */}
+      <div className="flex-1 relative z-10" />
+
+      {/* Right: user nav */}
       <div className="relative z-10">
-          <UserNav />
+        <UserNav />
       </div>
     </header>
   );

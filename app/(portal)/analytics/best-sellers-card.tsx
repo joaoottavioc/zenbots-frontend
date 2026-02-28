@@ -10,8 +10,6 @@ import { Trophy, ArrowRight, Store } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 interface BestSeller {
   name: string;
   quantity: number;
@@ -21,14 +19,23 @@ interface BestSeller {
 export function BestSellersCard({ botId }: { botId: string }) {
   const router = useRouter();
 
-  const { data: products, isLoading } = useQuery<BestSeller[]>({
+  const { data: products, isLoading, isError } = useQuery<BestSeller[]>({
     queryKey: ['best-sellers-widget', botId],
-    queryFn: async () => (await api.get(`${API_BASE}/bots/${botId}/analytics/best-sellers`)).data,
+    queryFn: async () => (await api.get(`/bots/${botId}/analytics/best-sellers`)).data,
     enabled: !!botId,
   });
 
   if (isLoading) {
     return <Skeleton className="h-[350px] w-full rounded-xl" />;
+  }
+
+  if (isError) {
+    return (
+      <Card className="h-full flex flex-col justify-center items-center text-center p-6 border-red-200">
+        <h3 className="font-semibold text-slate-700">Erro ao carregar dados</h3>
+        <p className="text-sm text-muted-foreground mt-1">Não foi possível carregar os destaques.</p>
+      </Card>
+    );
   }
 
   // Se não tiver dados, mostra estado vazio
@@ -93,7 +100,7 @@ export function BestSellersCard({ botId }: { botId: string }) {
             <Button 
                 variant="outline" 
                 className="w-full text-xs h-8 gap-2 group-hover:border-primary/50 group-hover:text-primary transition-colors"
-                onClick={() => router.push('/mais-vendidos')}
+                onClick={() => router.push('/analytics')}
             >
                 Ver Relatório Completo
                 <ArrowRight className="h-3 w-3 ml-auto opacity-50" />

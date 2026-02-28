@@ -10,7 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Switch } from "@/components/ui/switch"; 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Search, MapPin } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, Search, MapPin, Copy, Clock } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -20,8 +22,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 const dayScheduleSchema = z.object({
   active: z.boolean(),
@@ -84,6 +84,8 @@ const DEFAULT_SCHEDULE = WEEKDAYS.reduce(
 export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
   const { toast } = useToast();
   const [isLoadingCep, setIsLoadingCep] = useState(false);
+  const [bulkStart, setBulkStart] = useState("18:00");
+  const [bulkEnd, setBulkEnd] = useState("23:00");
   
   const getMergedSchedule = (savedSchedule: any) => {
     if (!savedSchedule || Object.keys(savedSchedule).length === 0) {
@@ -133,7 +135,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
 
     setIsLoadingCep(true);
     try {
-      const response = await api.get(`${API_BASE}/utils/lookup-cep/${cep}`);
+      const response = await api.get(`/utils/lookup-cep/${cep}`);
       const data = response.data;
 
       // 1. Montagem Inteligente do Endereço
@@ -304,13 +306,13 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
             <CardContent className="space-y-4">
                 
                 {/* Busca de CEP */}
-                <div className="flex gap-4 items-end">
+                <div className="flex gap-2 items-end">
                     <FormField
                         control={form.control}
                         name="cep"
                         render={({ field }) => (
-                            <FormItem className="w-[180px]">
-                                <FormLabel>CEP Loja</FormLabel>
+                            <FormItem className="w-44">
+                                <FormLabel>CEP da Loja</FormLabel>
                                 <FormControl>
                                     <Input placeholder="00000-000" {...field} className="bg-white" />
                                 </FormControl>
@@ -318,12 +320,13 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                             </FormItem>
                         )}
                     />
-                    <Button 
-                        type="button" 
-                        variant="secondary" 
-                        onClick={handleCepSearch} 
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleCepSearch}
                         disabled={isLoadingCep}
-                        className="mb-2 bg-white border border-slate-200 hover:bg-slate-50"
+                        className="shrink-0"
                     >
                         {isLoadingCep ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                     </Button>
@@ -344,63 +347,64 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                     )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="max_delivery_radius"
-                        render={({ field }) => (
-                            <FormItem>
+                <FormField
+                    control={form.control}
+                    name="max_delivery_radius"
+                    render={({ field }) => (
+                        <FormItem>
                             <FormLabel>Raio de Entrega (KM)</FormLabel>
                             <FormControl>
-                                 <div className="relative">
-                                    <Input 
-                                        type="number" 
-                                        step="0.5" 
+                                <div className="relative">
+                                    <Input
+                                        type="number"
+                                        step="0.5"
                                         {...field}
-                                        value={(field.value as number) ?? 10} // Valor padrão visual
-                                        className="pl-3 bg-white" 
+                                        value={(field.value as number) ?? 10}
+                                        className="bg-white max-w-[200px]"
                                     />
                                     <span className="absolute right-3 top-2.5 text-xs text-slate-400">km</span>
-                                 </div>
+                                </div>
                             </FormControl>
                             <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                        </FormItem>
+                    )}
+                />
 
-                    {/* Visualização de Coordenadas */}
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-sm font-medium leading-none">
-                                      Coordenadas GPS
-                        </span>
-                    {/* Indicador visual se tem lat/long válida */}
-                    {form.watch("latitude") !== 0 && (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
-                          ATIVO
-                      </span>
-                      )}
+                <Separator />
+
+                {/* Coordenadas GPS */}
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Coordenadas GPS</span>
+                        {form.watch("latitude") !== 0 ? (
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-[10px]">
+                                Ativo
+                            </Badge>
+                        ) : form.watch("address") !== "" ? (
+                            <Badge variant="destructive" className="text-[10px]">
+                                Pendente
+                            </Badge>
+                        ) : null}
                     </div>
-                      <div className="flex gap-2 mt-2">
-                        <Input 
-                          disabled 
-                          value={String(form.watch("latitude") || "")} 
-                          placeholder="Latitude" 
-                          className="bg-slate-100 text-xs h-9 font-mono" 
+                    <div className="grid grid-cols-2 gap-2">
+                        <Input
+                            disabled
+                            value={String(form.watch("latitude") || "")}
+                            placeholder="Latitude"
+                            className="bg-slate-100 text-xs font-mono"
                         />
-                        <Input 
-                          disabled 
-                          value={String(form.watch("longitude") || "")} 
-                          placeholder="Longitude" 
-                          className="bg-slate-100 text-xs h-9 font-mono" 
-                         />
-                      </div>
-                        {form.watch("latitude") === 0 && form.watch("address") !== "" && (
-                        <span className="text-[10px] text-red-500 font-medium">
-                        ⚠️ Necessário para cálculo de raio
-                        </span>
-                         )}
+                        <Input
+                            disabled
+                            value={String(form.watch("longitude") || "")}
+                            placeholder="Longitude"
+                            className="bg-slate-100 text-xs font-mono"
+                        />
                     </div>
+                    {form.watch("latitude") === 0 && form.watch("address") !== "" && (
+                        <p className="text-xs text-destructive">
+                            Busque o CEP novamente para obter as coordenadas.
+                        </p>
+                    )}
                 </div>
             </CardContent>
         </Card>
@@ -502,67 +506,109 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
               )}
             />
 
-            {/* LISTA DE HORÁRIOS COM WRAP AUTOMÁTICO */}
-            <div className={`border rounded-lg divide-y w-full overflow-hidden ${!isOpen ? "opacity-60 pointer-events-none" : ""}`}>
-              {WEEKDAYS.map((day) => (
-                <div
-                  key={day.key}
-                  className="flex flex-wrap items-center justify-between p-3 sm:p-4 hover:bg-slate-50 gap-y-3 w-full"
+            {/* Aplicar horário em massa */}
+            <div className={`border rounded-lg p-3 bg-slate-50 space-y-3 ${!isOpen ? "opacity-60 pointer-events-none" : ""}`}>
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <Clock className="h-4 w-4" />
+                Aplicar horário a todos os dias
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="time"
+                  value={bulkStart}
+                  onChange={(e) => setBulkStart(e.target.value)}
+                  className="w-[110px] text-center text-sm bg-white"
+                />
+                <span className="text-xs text-slate-400">até</span>
+                <Input
+                  type="time"
+                  value={bulkEnd}
+                  onChange={(e) => setBulkEnd(e.target.value)}
+                  className="w-[110px] text-center text-sm bg-white"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    WEEKDAYS.forEach((day) => {
+                      form.setValue(`schedule.${day.key}.active`, true);
+                      form.setValue(`schedule.${day.key}.start`, bulkStart);
+                      form.setValue(`schedule.${day.key}.end`, bulkEnd);
+                    });
+                  }}
                 >
-                  <FormField
-                    control={form.control}
-                    name={`schedule.${day.key}.active`}
-                    render={({ field }) => (
-                      <div className="flex items-center gap-3 mr-4">
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={!isOpen}
-                            className="data-[state=checked]:bg-emerald-500 shrink-0"
-                          />
-                        </FormControl>
-                        <span className={`font-medium text-sm ${field.value ? "text-slate-900" : "text-slate-400"}`}>
-                          {day.label}
-                        </span>
-                      </div>
-                    )}
-                  />
+                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                  Aplicar
+                </Button>
+              </div>
+            </div>
 
-                  <div className="flex items-center gap-2 sm:gap-4 ml-auto">
+            {/* Lista de horários por dia */}
+            <div className={`border rounded-lg divide-y w-full overflow-hidden ${!isOpen ? "opacity-60 pointer-events-none" : ""}`}>
+              {WEEKDAYS.map((day) => {
+                const dayActive = form.watch(`schedule.${day.key}.active`);
+                return (
+                  <div
+                    key={day.key}
+                    className={`flex flex-wrap items-center justify-between p-3 gap-y-2 transition-colors ${dayActive ? "hover:bg-slate-50" : "bg-slate-50/50"}`}
+                  >
                     <FormField
                       control={form.control}
-                      name={`schedule.${day.key}.start`}
+                      name={`schedule.${day.key}.active`}
                       render={({ field }) => (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] uppercase text-slate-500 font-bold">Abre</span>
-                          <Input
-                            type="time"
-                            {...field}
-                            className="w-20 text-center h-9 text-sm px-1"
-                            disabled={!isOpen || !form.watch(`schedule.${day.key}.active`)}
-                          />
+                        <div className="flex items-center gap-3 min-w-[120px]">
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={!isOpen}
+                              className="data-[state=checked]:bg-emerald-500 shrink-0"
+                            />
+                          </FormControl>
+                          <span className={`font-medium text-sm ${field.value ? "text-slate-900" : "text-slate-400 line-through"}`}>
+                            {day.label}
+                          </span>
                         </div>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name={`schedule.${day.key}.end`}
-                      render={({ field }) => (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] uppercase text-slate-500 font-bold">Fecha</span>
-                          <Input
-                            type="time"
-                            {...field}
-                            className="w-20 text-center h-9 text-sm px-1"
-                            disabled={!isOpen || !form.watch(`schedule.${day.key}.active`)}
-                          />
-                        </div>
-                      )}
-                    />
+
+                    <div className={`flex items-center gap-3 ml-auto transition-opacity ${dayActive ? "" : "opacity-40 pointer-events-none"}`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-slate-500 hidden sm:inline">Abre</span>
+                        <FormField
+                          control={form.control}
+                          name={`schedule.${day.key}.start`}
+                          render={({ field }) => (
+                            <Input
+                              type="time"
+                              {...field}
+                              className="w-[100px] text-center text-sm"
+                              disabled={!isOpen || !dayActive}
+                            />
+                          )}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-400">-</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-slate-500 hidden sm:inline">Fecha</span>
+                        <FormField
+                          control={form.control}
+                          name={`schedule.${day.key}.end`}
+                          render={({ field }) => (
+                            <Input
+                              type="time"
+                              {...field}
+                              className="w-[100px] text-center text-sm"
+                              disabled={!isOpen || !dayActive}
+                            />
+                          )}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

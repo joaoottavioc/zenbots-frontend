@@ -6,12 +6,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { BotForm } from './bot-form'; 
 import { useToast } from "@/hooks/use-toast";
+import type { BotFormValues } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export default function NewBotPage() {
   const router = useRouter();
@@ -19,9 +18,9 @@ export default function NewBotPage() {
   const queryClient = useQueryClient();
 
   const createBotMutation = useMutation({
-    mutationFn: async (values: any) => {
+    mutationFn: async (values: BotFormValues) => {
       const cleanNumber = values.whatsapp_number.replace(/\D/g, '');
-      return api.post(`${API_BASE}/bots`, {
+      return api.post('/bots', {
         ...values,
         whatsapp_number: cleanNumber
       });
@@ -31,8 +30,8 @@ export default function NewBotPage() {
       queryClient.invalidateQueries({ queryKey: ['myBots'] });
       router.push('/meus-bots');
     },
-    onError: (error: any) => {
-      const msg = error.response?.data?.detail || "Erro ao criar bot.";
+    onError: (error: unknown) => {
+      const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Erro ao criar bot.";
       toast({ title: "Erro", description: msg, variant: "destructive" });
     }
   });

@@ -27,8 +27,6 @@ import { useRouter } from 'next/navigation';
 // Importa o componente que acabamos de atualizar
 import { PremiumLock } from '@/components/ui/premium-lock';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 interface BestSeller {
   name: string;
   quantity: number;
@@ -43,7 +41,7 @@ export default function BestSellersPage() {
   const { data: pricingData } = useQuery({
     queryKey: ['plan-pricing', 'pro'],
     queryFn: async () => {
-      const res = await api.get(`${API_BASE}/plans/pricing`); 
+      const res = await api.get(`/plans/pricing`); 
       return res.data; 
     },
     staleTime: 1000 * 60 * 60, // Cache de 1 hora
@@ -55,7 +53,7 @@ export default function BestSellersPage() {
     queryFn: async () => {
       if (!selectedBotId) return [];
       try {
-        const res = await api.get(`${API_BASE}/bots/${selectedBotId}/analytics/best-sellers`);
+        const res = await api.get(`/bots/${selectedBotId}/analytics/best-sellers`);
         return res.data;
       } catch (err: any) {
         if (err.response?.status === 403 && err.response?.data?.detail === "SUBSCRIPTION_REQUIRED") {

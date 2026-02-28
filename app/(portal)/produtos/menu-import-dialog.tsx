@@ -27,8 +27,6 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 // CONFIGURAÇÃO: 10MB
 const MAX_SIZE_MB = 10;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
@@ -112,13 +110,13 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
       if (fileToUpload) {
         const formData = new FormData();
         formData.append("file", fileToUpload);
-        return api.post(`${API_BASE}/bots/${botId}/catalog/upload-from-file`, formData, { 
+        return api.post(`/bots/${botId}/catalog/upload-from-file`, formData, { 
           headers: { "Content-Type": "multipart/form-data" },
           timeout: 120000 
         });
       } 
       else if (text) {
-        return api.post(`${API_BASE}/bots/${botId}/catalog/upload`, { catalog_text: text });
+        return api.post(`/bots/${botId}/catalog/upload`, { catalog_text: text });
       }
       throw new Error("Nada para enviar");
     },

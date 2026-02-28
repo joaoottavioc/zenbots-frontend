@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Inter, Outfit, Space_Grotesk } from "next/font/google";
 import Providers from "./providers"; // Importamos o seu arquivo providers
 import "./globals.css";
 
@@ -10,9 +10,15 @@ const inter = Inter({
   display: "swap",
 });
 
-const outfit = Outfit({ 
-  subsets: ["latin"], 
+const outfit = Outfit({
+  subsets: ["latin"],
   variable: "--font-outfit",
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
   display: "swap",
 });
 
@@ -32,7 +38,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className={`${inter.variable} ${outfit.variable} font-sans bg-slate-50 text-slate-900`}>
+      <body className={`${inter.variable} ${outfit.variable} ${spaceGrotesk.variable} font-sans bg-background text-foreground`}>
         {/* O Providers cuida do React Query e do Toaster */}
         <Providers>
           {children}

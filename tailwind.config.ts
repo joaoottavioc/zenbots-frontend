@@ -3,12 +3,10 @@ import type { Config } from "tailwindcss"
 import { fontFamily } from "tailwindcss/defaultTheme";
 
 const config = {
-  darkMode: ["class"],
+
   content: [
-    './pages/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
   ],
   prefix: "",
   theme: {
@@ -48,6 +46,13 @@ const config = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
+  			brand: {
+  				nav: '#0f172a',
+  				whatsapp: '#25D366',
+  				'whatsapp-hover': '#128C7E',
+  				mercadopago: '#009EE3',
+  				'mercadopago-hover': '#008CC9',
+  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -90,11 +95,9 @@ const config = {
   			}
   		},
 		fontFamily: {
-      		// 1. Substitui a fonte padrão (sans) pela Inter
       		sans: ["var(--font-inter)", ...fontFamily.sans],
-      
-      		// 2. Cria uma nova classe 'font-heading' para títulos (Outfit)
       		heading: ["var(--font-outfit)", ...fontFamily.sans],
+      		logo: ["var(--font-space-grotesk)", ...fontFamily.sans],
     	},
   	}
   },

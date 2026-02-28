@@ -1,254 +1,239 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { 
-  Accordion, 
-  AccordionContent, 
-  AccordionItem, 
-  AccordionTrigger 
+import React, { useState } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useToast } from "@/hooks/use-toast";
-import { 
-    LifeBuoy, 
-    Mail, 
-    MessageCircle, 
-    FileText, 
-    ExternalLink, 
-    Youtube, 
-    Activity,
-    CheckCircle2
-} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import {
+  Search,
+  MessageCircle,
+  Mail,
+  HelpCircle,
+  Bot,
+  CreditCard,
+  ShoppingBag,
+  Settings,
+} from "lucide-react";
 
-// Schema de validação
-const supportFormSchema = z.object({
-  subject: z.string().min(5, "O assunto deve ser mais detalhado."),
-  message: z.string().min(20, "Por favor, descreva melhor seu problema (mínimo 20 caracteres)."),
-});
+const faqItems = [
+  {
+    category: "whatsapp",
+    question: "Como conecto meu WhatsApp ao bot?",
+    answer:
+      'Acesse a página "Meus BotZ", clique no bot desejado e selecione "Conectar WhatsApp". Siga o fluxo de login com sua conta Meta/Facebook. Após a autorização, o número será vinculado automaticamente.',
+  },
+  {
+    category: "whatsapp",
+    question: "O bot parou de responder no WhatsApp. O que faço?",
+    answer:
+      'Verifique se a conexão com o WhatsApp está ativa na página do bot. Caso esteja desconectado, reconecte pelo fluxo de login. Se o problema persistir, entre em contato com nosso suporte.',
+  },
+  {
+    category: "pedidos",
+    question: "A taxa de entrega não está aparecendo para o cliente.",
+    answer:
+      'Verifique a configuração do seu Bot. Se o valor estiver como R$ 0,00, o sistema entende como "Entrega Grátis". A taxa só é exibida quando o cliente escolhe a opção "Entrega" no fluxo de conversa.',
+  },
+  {
+    category: "pedidos",
+    question: "Como cancelo um pedido já confirmado?",
+    answer:
+      'Na página "Pedidos", localize o pedido e clique no botão "Cancelar". O cliente será notificado automaticamente via WhatsApp. Se o pagamento já foi realizado via PIX, o estorno deve ser feito manualmente pelo painel do Mercado Pago.',
+  },
+  {
+    category: "pagamentos",
+    question: "Como funciona o estorno de PIX?",
+    answer:
+      "O ZenBotZ processa pagamentos, mas o estorno deve ser feito diretamente no painel do Mercado Pago. O sistema apenas registra se o pagamento foi aprovado ou estornado.",
+  },
+  {
+    category: "pagamentos",
+    question: "Como integro minha conta do Mercado Pago?",
+    answer:
+      'Acesse "Integração Pix" no menu lateral e clique em "Conectar Mercado Pago". Você será redirecionado para autorizar o acesso. Após isso, seus pagamentos PIX serão processados automaticamente.',
+  },
+  {
+    category: "produtos",
+    question: "Posso alterar o cardápio em massa?",
+    answer:
+      'Sim. Na aba "Produtos", utilize a função de importar cardápio para subir um arquivo atualizado. Para ajustes pontuais de preço ou disponibilidade, edite diretamente na listagem de produtos.',
+  },
+  {
+    category: "conta",
+    question: "Como altero minha senha?",
+    answer:
+      'Vá em "Configurações" > "Segurança" e preencha sua senha atual junto com a nova senha. A nova senha precisa ter no mínimo 8 caracteres, incluindo maiúscula, minúscula, número e símbolo.',
+  },
+];
+
+const categories = [
+  { key: "all", label: "Todas", icon: HelpCircle },
+  { key: "whatsapp", label: "WhatsApp", icon: Bot },
+  { key: "pedidos", label: "Pedidos", icon: ShoppingBag },
+  { key: "pagamentos", label: "Pagamentos", icon: CreditCard },
+  { key: "conta", label: "Conta", icon: Settings },
+];
 
 export default function SuportePage() {
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const form = useForm<z.infer<typeof supportFormSchema>>({
-    resolver: zodResolver(supportFormSchema),
-    defaultValues: {
-      subject: "",
-      message: "",
-    },
+  const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("all");
+  const supportWhatsApp = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP;
+
+  const filtered = faqItems.filter((item) => {
+    const matchesCategory =
+      activeCategory === "all" || item.category === activeCategory;
+    const matchesSearch =
+      !search ||
+      item.question.toLowerCase().includes(search.toLowerCase()) ||
+      item.answer.toLowerCase().includes(search.toLowerCase());
+    return matchesCategory && matchesSearch;
   });
 
-  function onSubmit(values: z.infer<typeof supportFormSchema>) {
-    setIsSubmitting(true);
-    // Simulação de delay de rede
-    setTimeout(() => {
-        setIsSubmitting(false);
-        toast({ 
-            title: "Chamado #10234 aberto! 🎫", 
-            description: "Recebemos sua solicitação. Resposta estimada: 4 horas.",
-            className: "bg-emerald-600 text-white border-emerald-500"
-        });
-        form.reset({ subject: "", message: "" });
-    }, 1500);
-  }
-
   return (
-    <div className="flex flex-col h-full space-y-6">
-      
-      {/* --- 1. TOOLBAR DA PÁGINA (Padrão Profissional) --- */}
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0">
-        
-        {/* Lado Esquerdo: Título */}
-        <div className="flex items-center gap-4">
-            <div className="p-2 bg-blue-50 rounded-lg">
-                <LifeBuoy className="h-6 w-6 text-blue-600" />
+    <div className="w-full animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Suporte
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          Encontre respostas rápidas ou fale com nosso time.
+        </p>
+      </div>
+      <Separator className="mb-6" />
+
+      {/* Search */}
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar nas perguntas frequentes..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10 h-11 text-sm"
+        />
+      </div>
+
+      {/* Category filters */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {categories.map((cat) => (
+          <Button
+            key={cat.key}
+            variant={activeCategory === cat.key ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveCategory(cat.key)}
+            className="gap-1.5"
+          >
+            <cat.icon className="h-3.5 w-3.5" />
+            {cat.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* FAQ */}
+      <Card className="shadow-sm border-slate-200 mb-8">
+        <CardHeader className="pb-0">
+          <CardTitle className="text-base font-semibold">
+            Perguntas Frequentes
+          </CardTitle>
+          <CardDescription className="text-xs">
+            {filtered.length === 0
+              ? "Nenhum resultado encontrado."
+              : `${filtered.length} ${filtered.length === 1 ? "resultado" : "resultados"}`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {filtered.length > 0 ? (
+            <Accordion type="single" collapsible className="w-full">
+              {filtered.map((item, i) => (
+                <AccordionItem key={i} value={`item-${i}`}>
+                  <AccordionTrigger className="hover:no-underline text-sm text-slate-700 hover:text-slate-900 text-left">
+                    {item.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
+                    {item.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          ) : (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              Tente buscar por outro termo ou entre em contato conosco.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Contact section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="shadow-sm border-slate-200">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+              <MessageCircle className="h-5 w-5 text-emerald-600" />
             </div>
-            <div>
-                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Central de Ajuda</h2>
-                <p className="text-xs text-slate-500 font-medium">Suporte técnico e documentação</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800">
+                WhatsApp
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Resposta em minutos no horário comercial.
+              </p>
             </div>
-        </div>
-        
-        {/* Lado Direito: Link Externo */}
-        <div className="flex items-center gap-3">
-             <Button variant="outline" size="sm" className="hidden md:flex gap-2 text-slate-600">
-                <FileText className="w-4 h-4" /> 
-                Manual do Usuário
-                <ExternalLink className="w-3 h-3 opacity-50" />
+            {supportWhatsApp ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                asChild
+              >
+                <a
+                  href={`https://wa.me/${supportWhatsApp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Conversar
+                </a>
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0"
+                disabled
+              >
+                Indisponível
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-slate-200">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+              <Mail className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800">E-mail</p>
+              <p className="text-xs text-muted-foreground">
+                Para assuntos detalhados ou documentação.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0"
+              asChild
+            >
+              <a href="mailto:suporte@zenbotz.com.br">Enviar</a>
             </Button>
-        </div>
-      </div>
-
-      {/* --- 2. CARDS DE ACESSO RÁPIDO (Quick Actions) --- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer border-slate-200 bg-white">
-              <CardContent className="p-4 flex items-center gap-4">
-                  <div className="bg-orange-100 p-3 rounded-full">
-                      <Youtube className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <div>
-                      <p className="font-bold text-slate-700">Tutoriais em Vídeo</p>
-                      <p className="text-xs text-slate-500">Aprenda a configurar seu bot</p>
-                  </div>
-              </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer border-slate-200 bg-white">
-              <CardContent className="p-4 flex items-center gap-4">
-                  <div className="bg-emerald-100 p-3 rounded-full">
-                      <Activity className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <div>
-                      <p className="font-bold text-slate-700">Status do Sistema</p>
-                      <p className="text-xs text-slate-500 flex items-center gap-1">
-                          <span className="w-2 h-2 bg-emerald-500 rounded-full inline-block"></span>
-                          Todos serviços operacionais
-                      </p>
-                  </div>
-              </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer border-slate-200 bg-white">
-              <CardContent className="p-4 flex items-center gap-4">
-                  <div className="bg-purple-100 p-3 rounded-full">
-                      <FileText className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                      <p className="font-bold text-slate-700">API Documentation</p>
-                      <p className="text-xs text-slate-500">Para desenvolvedores</p>
-                  </div>
-              </CardContent>
-          </Card>
-      </div>
-
-      {/* --- 3. CONTEÚDO PRINCIPAL (Grid Assimétrico) --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* COLUNA ESQUERDA: FAQ (Ocupa 7 colunas em telas grandes) */}
-        <div className="lg:col-span-7 space-y-4">
-            <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-slate-400" />
-                Dúvidas Comuns
-            </h3>
-            
-            <Card className="border-slate-200 shadow-sm">
-                <CardContent className="p-0">
-                    <Accordion type="single" collapsible className="w-full">
-                        <AccordionItem value="item-1" className="border-b px-4">
-                            <AccordionTrigger className="hover:no-underline hover:text-blue-600 text-slate-700 py-4">
-                                Como conecto meu WhatsApp?
-                            </AccordionTrigger>
-                            <AccordionContent className="text-slate-500 leading-relaxed pb-4">
-                                Vá até a aba <strong>Configurações</strong>, clique em "Conexão WhatsApp" e escaneie o QR Code ou insira o Token da Meta. Se precisar de ajuda com o Embedded Signup, consulte o manual.
-                            </AccordionContent>
-                        </AccordionItem>
-
-                        <AccordionItem value="item-2" className="border-b px-4">
-                            <AccordionTrigger className="hover:no-underline hover:text-blue-600 text-slate-700 py-4">
-                                A taxa de entrega não está aparecendo.
-                            </AccordionTrigger>
-                            <AccordionContent className="text-slate-500 leading-relaxed pb-4">
-                                Verifique a configuração do seu Bot. Se o valor for R$ 0,00, o sistema entende como "Entrega Grátis". Além disso, a taxa só é somada quando o cliente seleciona explicitamente a opção "Entrega" no fluxo de conversa.
-                            </AccordionContent>
-                        </AccordionItem>
-
-                        <AccordionItem value="item-3" className="border-b px-4">
-                            <AccordionTrigger className="hover:no-underline hover:text-blue-600 text-slate-700 py-4">
-                                Como funciona o estorno de PIX?
-                            </AccordionTrigger>
-                            <AccordionContent className="text-slate-500 leading-relaxed pb-4">
-                                O ZenBotZ processa pagamentos, mas o estorno deve ser feito diretamente no painel do seu banco ou Mercado Pago. O sistema apenas registra se o pagamento foi "Approved" ou "Refunded".
-                            </AccordionContent>
-                        </AccordionItem>
-
-                        <AccordionItem value="item-4" className="border-none px-4">
-                            <AccordionTrigger className="hover:no-underline hover:text-blue-600 text-slate-700 py-4">
-                                Posso alterar o cardápio em massa?
-                            </AccordionTrigger>
-                            <AccordionContent className="text-slate-500 leading-relaxed pb-4">
-                                Sim. Utilize a função "Importar Cardápio" para subir um PDF novo. O sistema detectará as mudanças. Para ajustes pontuais de preço, utilize a aba "Produtos".
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                </CardContent>
-            </Card>
-        </div>
-
-        {/* COLUNA DIREITA: FORMULÁRIO (Ocupa 5 colunas) */}
-        <div className="lg:col-span-5">
-            <Card className="border-slate-200 shadow-md sticky top-4">
-                <CardHeader className="bg-slate-50 border-b border-slate-100 pb-4">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                        <Mail className="w-4 h-4 text-blue-600" />
-                        Ticket de Suporte
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                        Problemas técnicos? Nosso time responde rápido.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                            <FormField
-                                control={form.control}
-                                name="subject"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs font-semibold uppercase text-slate-500">Assunto</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Resumo do problema..." {...field} className="bg-slate-50" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            
-                            <FormField
-                                control={form.control}
-                                name="message"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs font-semibold uppercase text-slate-500">Detalhes</FormLabel>
-                                        <FormControl>
-                                            <Textarea 
-                                                placeholder="Descreva o que aconteceu, passos para reproduzir, etc..." 
-                                                className="min-h-[140px] bg-slate-50 resize-none"
-                                                {...field} 
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            
-                            <Button 
-                                type="submit" 
-                                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-lg shadow-slate-200"
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? "Enviando..." : "Abrir Chamado"}
-                            </Button>
-                        </form>
-                    </Form>
-                    
-                    <div className="mt-6 pt-4 border-t border-slate-100 text-center">
-                         <p className="text-xs text-slate-400 mb-2">Precisa de urgência?</p>
-                         <a href="#" className="inline-flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-bold hover:underline transition-colors">
-                            <MessageCircle className="w-4 h-4" />
-                            Chat via WhatsApp
-                         </a>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

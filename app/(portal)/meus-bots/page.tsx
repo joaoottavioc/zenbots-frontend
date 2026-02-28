@@ -10,6 +10,7 @@ import { EditBotSheet } from "./edit-bot-sheet";
 import { BotCard } from "@/components/ui/bot-card"; 
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import type { Bot } from "@/lib/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,31 +22,29 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 export default function MyBotsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  const [selectedBot, setSelectedBot] = useState<any | null>(null);
+  const [selectedBot, setSelectedBot] = useState<Bot | null>(null);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
-  
+
   // Estado para controlar qual bot será deletado
-  const [botToDelete, setBotToDelete] = useState<any | null>(null);
+  const [botToDelete, setBotToDelete] = useState<Bot | null>(null);
 
   // 1. Fetch Bots
-  const { data: bots, isLoading } = useQuery({
+  const { data: bots, isLoading, isError } = useQuery<Bot[]>({
     queryKey: ["myBots"],
     queryFn: async () => {
-      const res = await api.get(`${API_BASE}/bots`);
+      const res = await api.get('/bots');
       return res.data;
     },
   });
 
   // 2. Toggle Status (Correção da cor do Toast aqui)
   const toggleStatusMutation = useMutation({
-    mutationFn: async (bot: any) => {
-      return api.put(`${API_BASE}/bots/${bot.id}`, bot);
+    mutationFn: async (bot: Bot) => {
+      return api.put(`/bots/${bot.id}`, bot);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["myBots"] });
@@ -66,7 +65,7 @@ export default function MyBotsPage() {
   // 3. Delete Bot Mutation
   const deleteBotMutation = useMutation({
     mutationFn: async (botId: number) => {
-      return api.delete(`${API_BASE}/bots/${botId}`);
+      return api.delete(`/bots/${botId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["myBots"] });
@@ -79,13 +78,14 @@ export default function MyBotsPage() {
     }
   });
 
-  // 4. Disconnect Bot Mutation (NOVO: Limpa as credenciais)
+  // 4. Disconnect Bot Mutation (Limpa as credenciais)
   const disconnectBotMutation = useMutation({
-    mutationFn: async (bot: any) => {
-      // Enviamos strings vazias para limpar as credenciais no banco
-      return api.put(`${API_BASE}/bots/${bot.id}`, {
-        ...bot,
-        phone_number_id: "", 
+    mutationFn: async (bot: Bot) => {
+      // Only send the fields needed to clear credentials — never spread the full bot object
+      return api.put(`/bots/${bot.id}`, {
+        restaurant_name: bot.restaurant_name,
+        is_open: bot.is_open,
+        phone_number_id: "",
         whatsapp_token: ""
       });
     },
@@ -99,13 +99,13 @@ export default function MyBotsPage() {
   });
 
   // Handlers
-  const handleEdit = (bot: any) => {
+  const handleEdit = (bot: Bot) => {
     setSelectedBot(bot);
     setIsEditSheetOpen(true);
   };
 
   const handleToggleStatus = (id: number, newStatus: boolean) => {
-    const botToUpdate = bots.find((b: any) => b.id === id);
+    const botToUpdate = bots?.find((b) => b.id === id);
     if (!botToUpdate) return;
     const updatedBot = { ...botToUpdate, is_open: newStatus };
     toggleStatusMutation.mutate(updatedBot);
@@ -138,6 +138,14 @@ export default function MyBotsPage() {
             <Skeleton key={i} className="h-[280px] w-full rounded-xl bg-slate-200" />
           ))}
         </div>
+      ) : isError ? (
+        <div className="text-center py-20 bg-white rounded-2xl border border-red-200">
+          <h3 className="text-lg font-medium text-slate-900">Erro ao carregar bots</h3>
+          <p className="text-slate-500 mb-4">Não foi possível carregar seus bots.</p>
+          <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['myBots'] })}>
+            Tentar novamente
+          </Button>
+        </div>
       ) : bots?.length === 0 ? (
         <div className="text-center py-20 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
           <div className="bg-white p-4 rounded-full shadow-sm inline-flex mb-4">
@@ -153,15 +161,14 @@ export default function MyBotsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {bots.map((bot: any) => (
-            <BotCard 
-                key={bot.id} 
-                bot={bot} 
-                onEdit={handleEdit}
+          {bots?.map((bot) => (
+            <BotCard
+                key={bot.id}
+                bot={bot as { id: number; restaurant_name: string; whatsapp_number: string; is_open: boolean; phone_number_id?: string }}
+                onEdit={(b) => handleEdit(b as Bot)}
                 onToggleStatus={handleToggleStatus}
-                onDelete={(b) => setBotToDelete(b)}
-                // Passamos a função de desconectar aqui
-                onDisconnect={(b) => disconnectBotMutation.mutate(b)} 
+                onDelete={(b) => setBotToDelete(b as Bot)}
+                onDisconnect={(b) => disconnectBotMutation.mutate(b as Bot)}
             />
           ))}
         </div>

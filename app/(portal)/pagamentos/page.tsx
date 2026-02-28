@@ -1,117 +1,123 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation'; // <--- Importante para ler o ?code=
+import React, { Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from "@/components/ui/separator";
-import { 
-  Loader2, 
-  CheckCircle2, 
+import {
+  Loader2,
+  CheckCircle2,
   AlertCircle,
   Wallet,
   QrCode
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { api } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Componente interno que usa useSearchParams
 function PagamentosContent() {
   const { toast } = useToast();
-  const searchParams = useSearchParams(); // Hook para ler a URL
+  const searchParams = useSearchParams();
   const router = useRouter();
-  
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
-  const [isConnected, setIsConnected] = useState(false);
+  const queryClient = useQueryClient();
 
-  // 1. Ao carregar: Verifica se voltou do MP com código OU verifica status atual
-  useEffect(() => {
-    const code = searchParams.get('code'); // <--- Pega o código que o Mercado Pago mandou
+  const code = searchParams.get('code');
+  const returnedState = searchParams.get('state');
 
-    if (code) {
-      // Cenário A: Voltou do Mercado Pago com autorização
-      handleCallback(code);
-    } else {
-      // Cenário B: Acesso normal, verifica se já está conectado
-      checkConnectionStatus();
-    }
-  }, [searchParams]); // Dependência adicionada para segurança
+  // Query: verifica status de conexão
+  const { data: statusData, isLoading: isCheckingStatus } = useQuery<{ is_active: boolean }>({
+    queryKey: ['paymentStatus'],
+    queryFn: async () => (await api.get('/payments/status')).data,
+    enabled: !code,
+  });
 
-  const handleCallback = async (code: string) => {
-    setIsLoading(true);
-    try {
-        // Envia o código para o backend trocar pelo token definitivo
-        await api.post('/payments/callback', { code });
-        
-        toast({ 
-            title: "Conectado!", 
-            description: "Sua conta Mercado Pago foi vinculada com sucesso.",
-            className: "bg-emerald-50 border-emerald-200"
+  const isConnected = code ? false : (statusData?.is_active ?? false);
+
+  // Mutation: processa callback do MP
+  const callbackMutation = useMutation({
+    mutationFn: async (authCode: string) => {
+      await api.post('/payments/callback', { code: authCode });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Conectado!",
+        description: "Sua conta Mercado Pago foi vinculada com sucesso.",
+        className: "bg-emerald-50 border-emerald-200"
+      });
+      queryClient.invalidateQueries({ queryKey: ['paymentStatus'] });
+      router.replace('/pagamentos');
+    },
+    onError: () => {
+      toast({ title: "Erro na conexão", description: "Não foi possível finalizar a integração.", variant: "destructive" });
+    },
+  });
+
+  // Mutation: conectar ao Mercado Pago
+  const connectMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.get('/payments/auth-url');
+      return res.data.url as string;
+    },
+    onSuccess: (url) => {
+      // CSRF protection: generate a random state and append it to the OAuth URL
+      const state = crypto.randomUUID();
+      sessionStorage.setItem('mp_oauth_state', state);
+      const separator = url.includes('?') ? '&' : '?';
+      toast({ title: "Redirecionando...", description: "Aguarde enquanto levamos você ao Mercado Pago." });
+      window.location.href = `${url}${separator}state=${encodeURIComponent(state)}`;
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível iniciar a conexão.", variant: "destructive" });
+    },
+  });
+
+  // Mutation: desconectar
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      await api.post('/payments/disconnect');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paymentStatus'] });
+      toast({ title: "Desconectado", description: "Integração removida." });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao desconectar." });
+    },
+  });
+
+  // Processar callback automaticamente se code presente, with CSRF state validation
+  React.useEffect(() => {
+    if (code && !callbackMutation.isPending && !callbackMutation.isSuccess) {
+      const storedState = sessionStorage.getItem('mp_oauth_state');
+      if (!storedState || storedState !== returnedState) {
+        toast({
+          title: "Erro de segurança",
+          description: "O parâmetro de estado OAuth não corresponde. Tente novamente.",
+          variant: "destructive",
         });
-        
-        setIsConnected(true);
-        // Limpa a URL para tirar o ?code=... (Fica mais bonito)
         router.replace('/pagamentos');
-        
-    } catch (error) {
-        toast({ title: "Erro na conexão", description: "Não foi possível finalizar a integração.", variant: "destructive" });
-    } finally {
-        setIsLoading(false);
-        setIsCheckingStatus(false);
-    }
-  };
-
-  const checkConnectionStatus = async () => {
-    try {
-      // Chama a rota real do backend para ver se o bot já tem token
-      const res = await api.get('/payments/status');
-      setIsConnected(res.data.is_active);
-    } catch (error) {
-      console.error("Erro ao verificar status", error);
-    } finally {
-      setIsCheckingStatus(false);
-    }
-  };
-
-  const handleConnectMercadoPago = async () => {
-    setIsLoading(true);
-    try {
-        // 1. Pede a URL de login do Mercado Pago ao backend
-        const res = await api.get('/payments/auth-url');
-        
-        toast({ title: "Redirecionando...", description: "Aguarde enquanto levamos você ao Mercado Pago." });
-        
-        // 2. Redireciona o navegador de verdade
-        window.location.href = res.data.url;
-        
-    } catch (error) {
-        toast({ title: "Erro", description: "Não foi possível iniciar a conexão.", variant: "destructive" });
-        setIsLoading(false);
-    }
-  };
-  
-  const handleDisconnect = async () => {
-      try {
-          await api.post('/payments/disconnect'); // Você precisará criar essa rota opcional depois, ou apenas limpar o banco
-          setIsConnected(false);
-          toast({ title: "Desconectado", description: "Integração removida." });
-      } catch (error) {
-          toast({ title: "Erro", description: "Falha ao desconectar." });
+        return;
       }
-  };
+      sessionStorage.removeItem('mp_oauth_state');
+      callbackMutation.mutate(code);
+    }
+  }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isLoading = callbackMutation.isPending || connectMutation.isPending;
 
   return (
     <div className="w-full p-6 space-y-8 animate-in fade-in duration-500">
-      
+
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
           <Wallet className="h-8 w-8 text-slate-700" />
@@ -125,12 +131,12 @@ function PagamentosContent() {
       <Separator />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        
+
         {/* CARD DO MERCADO PAGO */}
         <Card className={`border-2 transition-all hover:shadow-md ${isConnected ? "border-emerald-100 bg-emerald-50/30" : "border-slate-100"}`}>
           <CardHeader className="pb-4">
             <div className="flex justify-between items-start">
-                <div className="h-12 w-12 bg-[#009EE3] rounded-lg flex items-center justify-center text-white font-bold shadow-sm">
+                <div className="h-12 w-12 bg-brand-mercadopago rounded-lg flex items-center justify-center text-white font-bold shadow-sm">
                     <QrCode className="h-7 w-7" />
                 </div>
                 {isCheckingStatus ? (
@@ -150,7 +156,7 @@ function PagamentosContent() {
               Pix Automático nativo no WhatsApp com confirmação instantânea.
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="pb-2">
             <div className="text-sm text-slate-600 space-y-2">
                 <div className="flex items-center gap-2">
@@ -166,13 +172,13 @@ function PagamentosContent() {
 
           <CardFooter className="pt-6">
             {isConnected ? (
-                <Button variant="outline" onClick={handleDisconnect} className="w-full border-red-200 text-red-600 hover:bg-red-50">
+                <Button variant="outline" onClick={() => disconnectMutation.mutate()} className="w-full border-red-200 text-red-600 hover:bg-red-50">
                     Desconectar
                 </Button>
             ) : (
-                <Button 
-                    className="w-full bg-[#009EE3] hover:bg-[#008CC9] text-white font-medium" 
-                    onClick={handleConnectMercadoPago}
+                <Button
+                    className="w-full bg-brand-mercadopago hover:bg-brand-mercadopago-hover text-white font-medium"
+                    onClick={() => connectMutation.mutate()}
                     disabled={isLoading || isCheckingStatus}
                 >
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -202,7 +208,7 @@ function PagamentosContent() {
         <div className="space-y-2">
             <h3 className="font-semibold text-blue-900">Como funciona?</h3>
             <p className="text-sm text-blue-800/80 leading-relaxed">
-                Ao clicar em conectar, você autoriza o <strong>ZenBots</strong> a gerar QR Codes. 
+                Ao clicar em conectar, você autoriza o <strong>ZenBots</strong> a gerar QR Codes.
                 O dinheiro vai direto para sua conta Mercado Pago.
             </p>
         </div>

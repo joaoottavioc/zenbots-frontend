@@ -1,5 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getToken } from "@/lib/auth";
+import { useSessionGuard } from "@/hooks/use-session-guard";
 import { Sidebar } from "@/components/ui/sidebar";
 import { TopHeader } from "@/components/layout/top-header";
 
@@ -8,32 +12,62 @@ export default function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
+  useSessionGuard();
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      router.replace("/login");
+    } else {
+      setIsAuthed(true);
+    }
+  }, [router]);
+
+  // Cross-tab auth sync: redirect if another tab removes the token
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'zenbots_token' && !event.newValue) {
+        router.replace('/login');
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [router]);
+
+  if (!isAuthed) {
+    return null;
+  }
+
   return (
     // Flex container principal
-    <div className="flex min-h-screen bg-slate-50">
-      
+    <div className="flex min-h-screen bg-background">
+
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:p-4 focus:bg-white focus:text-slate-900 focus:underline"
+      >
+        Ir para o conteúdo principal
+      </a>
+
       {/* 1. SIDEBAR FIXO (STICKY) */}
-      {/* sticky top-0 h-screen: Faz o menu grudar no topo e ter SEMPRE a altura da janela.
-          z-50: Garante que fique acima de outros elementos se houver sobreposição.
-      */}
       <div className="sticky top-0 h-screen hidden md:block z-50 shrink-0">
         <Sidebar />
       </div>
-      
+
       {/* 2. ÁREA DE CONTEÚDO (COLUNA DA DIREITA) */}
-      {/* flex-1: Ocupa o resto da largura */}
       <div className="flex-1 flex flex-col min-w-0">
-        
-        {/* Header também pode ser sticky se você quiser que ele acompanhe */}
+
         <div className="sticky top-0 z-40 w-full">
            <TopHeader />
         </div>
-        
+
         {/* Conteúdo Principal */}
-        <main className="p-6 md:p-8 w-full max-w-[100vw]">
+        <main id="main-content" className="p-6 md:p-8 w-full max-w-[100vw]">
           {children}
         </main>
-        
+
       </div>
     </div>
   );

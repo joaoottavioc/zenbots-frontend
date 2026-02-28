@@ -29,14 +29,18 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="space-y-4 py-4 flex flex-col h-full bg-[#0f172a] text-white border-r border-slate-800"> 
-      {/* ^^^ MUDANÇA: bg-[#0f172a] é um azul muito escuro (Slate 900) */}
+    <nav aria-label="Menu principal" className="space-y-4 py-4 flex flex-col h-full bg-brand-nav text-white border-r border-slate-800">
       
       <div className="px-3 py-2 flex-1 flex flex-col">
         
         {/* LOGO (Mantive simples pois já temos o icone no Header Global) */}
-        <div className="h-24 flex items-center justify-center border-b border-slate-100/80 mb-8">
+        <div className="relative h-24 flex items-start justify-center pt-3 mb-8">
           <Logo />
+          {/* Cyan glow divider — matches topbar circuit aesthetic */}
+          <div
+            className="absolute bottom-0 left-3 right-3 h-px"
+            style={{ background: "linear-gradient(90deg, transparent 0%, #0e7490 30%, #06b6d4 50%, #0e7490 70%, transparent 100%)" }}
+          />
         </div>
 
         {/* MENU DE NAVEGAÇÃO */}
@@ -58,6 +62,6 @@ export function Sidebar() {
           ))}
         </div>
       </div>
-    </div>
+    </nav>
   );
 }

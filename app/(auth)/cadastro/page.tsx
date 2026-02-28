@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Check, X, Command, Loader2 } from "lucide-react"; 
+import { Check, X, Command, Loader2 } from "lucide-react";
+import { PasswordReq } from "@/components/ui/password-req";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api"; 
+import { useSubmitThrottle } from "@/hooks/use-submit-throttle";
+import { api } from "@/lib/api";
 
 // Schema mantido (Política Forte)
 const registerSchema = z.object({
@@ -42,9 +44,8 @@ type RegisterValues = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const throttle = useSubmitThrottle();
   const [isLoading, setIsLoading] = useState(false);
-
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
@@ -62,13 +63,15 @@ export default function RegisterPage() {
   const hasSpecial = /[^A-Za-z0-9]/.test(passwordValue || "");
 
   async function onSubmit(values: RegisterValues) {
+    if (!throttle.recordSubmit()) return;
     setIsLoading(true);
     try {
-      await api.post(`${API_BASE}/auth/register`, {
+      await api.post('/auth/register', {
         email: values.email,
         password: values.password,
       });
 
+      throttle.reset();
       toast({
         title: "Conta criada! 🎉",
         description: "Redirecionando para o login...",
@@ -81,8 +84,8 @@ export default function RegisterPage() {
       console.error("Erro cadastro:", error);
       let msg = "Falha ao criar conta.";
       if (error.response?.data?.detail) {
-        msg = typeof error.response.data.detail === 'string' 
-            ? error.response.data.detail 
+        msg = typeof error.response.data.detail === 'string'
+            ? error.response.data.detail
             : "Dados inválidos.";
       }
       toast({ title: "Erro", description: msg, variant: "destructive" });
@@ -91,12 +94,6 @@ export default function RegisterPage() {
     }
   }
 
-  const PasswordReq = ({ met, text }: { met: boolean; text: string }) => (
-    <div className={`flex items-center gap-1.5 text-[11px] ${met ? "text-emerald-600" : "text-muted-foreground/60"}`}>
-      {met ? <Check className="h-3 w-3" /> : <div className="h-1.5 w-1.5 rounded-full bg-slate-200" />}
-      <span className={met ? "font-medium" : ""}>{text}</span>
-    </div>
-  );
 
   return (
     <div className="w-full h-screen lg:grid lg:grid-cols-2">
@@ -185,9 +182,13 @@ export default function RegisterPage() {
                 )}
               />
 
-              <Button type="submit" className="w-full h-10 font-bold" disabled={isLoading}>
+              <Button type="submit" className="w-full h-10 font-bold" disabled={isLoading || throttle.isThrottled}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isLoading ? "Criando..." : "Cadastrar Gratuitamente"}
+                {throttle.isThrottled
+                  ? `Aguarde ${throttle.remainingSeconds}s...`
+                  : isLoading
+                    ? "Criando..."
+                    : "Cadastrar Gratuitamente"}
               </Button>
             </form>
           </Form>

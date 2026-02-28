@@ -108,7 +108,7 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700" aria-label="Menu de ações">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -153,13 +153,14 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
             <div className="flex items-center gap-2">
                 <span className={cn(
                   "text-xs font-bold uppercase tracking-wider transition-colors",
-                  isOpen ? "text-emerald-600" : "text-slate-500" // AGORA: Texto "FECHADA" em cinza
+                  isOpen ? "text-emerald-600" : "text-slate-500"
                 )}>
                     {isOpen ? "Aberta" : "Fechada"}
                 </span>
-                <Switch 
-                    checked={isOpen} 
+                <Switch
+                    checked={isOpen}
                     onCheckedChange={(val) => onToggleStatus(bot.id, val)}
+                    aria-label="Alterar status da loja"
                     className={cn(
                       "scale-75 transition-all",
                       "data-[state=checked]:bg-emerald-500",

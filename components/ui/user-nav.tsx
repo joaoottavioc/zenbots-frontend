@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,57 +11,48 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { api } from "@/lib/api";
+import { clearToken } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { User, Settings, LogOut } from "lucide-react";
 
 export function UserNav() {
   const router = useRouter();
-  
-  // Estado inicial vazio ou com placeholder
-  const [userData, setUserData] = useState({ 
-    name: "", 
-    email: "", 
-    initials: "" 
+  const queryClient = useQueryClient();
+
+  const { data: rawUser } = useQuery<{ email: string; name?: string }>({
+    queryKey: ['currentUser'],
+    queryFn: async () => (await api.get("/auth/me")).data,
   });
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const { data } = await api.get("/auth/me");
-        
-        // Lógica para formatar o nome se o campo 'name' estiver vazio no banco
-        const email = data.email || "";
-        let displayName = data.name;
-        
-        if (!displayName && email) {
-             const namePart = email.split("@")[0];
-             displayName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-        }
+  const userData = useMemo(() => {
+    const email = rawUser?.email || "";
+    let displayName = rawUser?.name || "";
 
-        // Gera iniciais (Ex: Teste User -> TU)
-        const initials = displayName
-            ? displayName.substring(0, 2).toUpperCase()
-            : "U";
+    if (!displayName && email) {
+      const namePart = email.split("@")[0];
+      displayName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+    }
 
-        setUserData({
-            name: displayName || "Usuário",
-            email: email,
-            initials: initials
-        });
-      } catch (error) {
-        console.error("Erro ao carregar usuário no header", error);
-      }
+    const initials = displayName
+      ? displayName.substring(0, 2).toUpperCase()
+      : "U";
+
+    return {
+      name: displayName || "Usuário",
+      email,
+      initials,
     };
-
-    fetchUser();
-  }, []);
+  }, [rawUser]);
 
   const handleLogout = () => {
-      // Ajuste conforme sua lógica de logout (limpar cookies/localStorage)
-      localStorage.removeItem("token");
-      router.push("/login"); 
+      // Fire-and-forget server-side token revocation
+      api.post('/auth/logout').catch(() => {});
+      queryClient.clear();
+      clearToken();
+      router.push("/login");
   };
 
   return (
@@ -69,8 +60,6 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border border-slate-200">
-            {/* Se você tiver URL de foto no banco, pode colocar aqui no src */}
-            <AvatarImage src="" alt={userData.name} />
             <AvatarFallback className="bg-sky-100 text-sky-700 font-bold">
                 {userData.initials}
             </AvatarFallback>
