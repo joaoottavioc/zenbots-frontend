@@ -9,10 +9,10 @@ export function getToken(): string | null {
 
 export function setToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
-  document.cookie = `${AUTH_COOKIE}=1; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+  document.cookie = `${AUTH_COOKIE}=1; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Strict`;
 }
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
-  document.cookie = `${AUTH_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+  document.cookie = `${AUTH_COOKIE}=; path=/; max-age=0; SameSite=Strict`;
 }

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { api } from '@/lib/api';
+import { isTrustedRedirectUrl } from '@/lib/url-validation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Componente interno que usa useSearchParams
@@ -69,6 +70,10 @@ function PagamentosContent() {
       return res.data.url as string;
     },
     onSuccess: (url) => {
+      if (!isTrustedRedirectUrl(url)) {
+        toast({ title: "URL não confiável", description: "O endereço de redirecionamento não é válido.", variant: "destructive" });
+        return;
+      }
       // CSRF protection: generate a random state and append it to the OAuth URL
       const state = crypto.randomUUID();
       sessionStorage.setItem('mp_oauth_state', state);

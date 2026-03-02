@@ -56,7 +56,11 @@ export function BotSelector({ selectedBotId, onBotChange, className }: BotSelect
 
   return (
     <div className={className}>
-      <Select onValueChange={onBotChange} value={selectedBotId ?? undefined}>
+      <Select onValueChange={(val) => {
+        if (bots.some(bot => String(bot.id) === val)) {
+          onBotChange(val);
+        }
+      }} value={selectedBotId ?? undefined}>
         <SelectTrigger className="w-[240px] bg-background">
           {/* O ÍCONE PADRÃO AQUI: */}
           <Store className="mr-2 h-4 w-4 text-muted-foreground" />

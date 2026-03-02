@@ -50,13 +50,9 @@ export default function ForgotPasswordPage() {
         className: "bg-emerald-50 border-emerald-200"
       });
     },
-    onError: (error) => {
-      console.error(error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível enviar o e-mail. Tente novamente.",
-        variant: "destructive"
-      });
+    onError: () => {
+      // Always show success view to prevent email enumeration
+      setIsSubmitted(true);
     }
   });
 

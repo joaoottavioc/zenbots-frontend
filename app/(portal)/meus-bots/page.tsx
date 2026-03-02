@@ -72,8 +72,7 @@ export default function MyBotsPage() {
       toast({ title: "Bot deletado", description: "O assistente foi removido com sucesso." });
       setBotToDelete(null); 
     },
-    onError: (error) => {
-      console.error(error);
+    onError: () => {
       toast({ title: "Erro", description: "Não foi possível deletar o bot.", variant: "destructive" });
     }
   });

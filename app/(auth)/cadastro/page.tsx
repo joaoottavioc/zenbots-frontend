@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useSubmitThrottle } from "@/hooks/use-submit-throttle";
 import { api } from "@/lib/api";
+import { getSafeErrorMessage } from "@/lib/error-messages";
 
 // Schema mantido (Política Forte)
 const registerSchema = z.object({
@@ -80,14 +81,8 @@ export default function RegisterPage() {
 
       setTimeout(() => router.push("/login"), 1500);
 
-    } catch (error: any) {
-      console.error("Erro cadastro:", error);
-      let msg = "Falha ao criar conta.";
-      if (error.response?.data?.detail) {
-        msg = typeof error.response.data.detail === 'string'
-            ? error.response.data.detail
-            : "Dados inválidos.";
-      }
+    } catch (error: unknown) {
+      const msg = getSafeErrorMessage(error, "Falha ao criar conta.");
       toast({ title: "Erro", description: msg, variant: "destructive" });
     } finally {
       setIsLoading(false);

@@ -21,6 +21,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { api } from '@/lib/api';
+import { isTrustedRedirectUrl } from '@/lib/url-validation';
+import { getSafeErrorMessage } from '@/lib/error-messages';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -138,6 +140,10 @@ export default function ConfiguracoesPage() {
         });
 
         if (response.data.checkout_url) {
+            if (!isTrustedRedirectUrl(response.data.checkout_url)) {
+                toast({ title: "URL não confiável", description: "O endereço de checkout não é válido.", variant: "destructive" });
+                return;
+            }
             window.open(response.data.checkout_url, '_blank');
         }
     } catch (error) {
@@ -168,8 +174,7 @@ export default function ConfiguracoesPage() {
         toast({ title: "Senha alterada!", className: "bg-emerald-50 border-emerald-200 text-emerald-800" });
         passwordForm.reset();
     } catch (error: unknown) {
-        let msg = "Erro ao alterar senha.";
-        if ((error as { response?: { data?: { detail?: string } } })?.response?.data?.detail) msg = (error as { response: { data: { detail: string } } }).response.data.detail;
+        const msg = getSafeErrorMessage(error, "Erro ao alterar senha.");
         toast({ title: "Erro", description: msg, variant: "destructive" });
     } finally {
         setIsLoadingSecurity(false);

@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from "@/hooks/use-toast";
+import { getSafeErrorMessage } from "@/lib/error-messages";
 import { 
   Wand2, 
   UploadCloud, 
@@ -50,8 +51,6 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
       const rejection = fileRejections[0];
       const error = rejection.errors[0];
       
-      console.error("❌ Arquivo rejeitado:", rejection); 
-
       if (error.code === "file-too-large") {
           toast({ 
             title: "Arquivo muito grande", 
@@ -136,9 +135,8 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
       setFileName(null); 
       setFileToUpload(null);
     },
-    onError: (error: any) => {
-        console.error("Erro importação:", error);
-        const msg = error.response?.data?.detail || "Erro ao processar.";
+    onError: (error: unknown) => {
+        const msg = getSafeErrorMessage(error, "Erro ao processar.");
         toast({ title: "Erro", description: msg, variant: "destructive" });
     }
   });

@@ -6,6 +6,7 @@ import { MessageCircle, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { getSafeErrorMessage } from "@/lib/error-messages";
 
 // Tipagem global para o SDK do Facebook
 interface FBLoginResponse {
@@ -57,6 +58,17 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
   const authResponseRef = useRef<FBLoginResponse['authResponse'] | null>(null);
   // CSRF state for OAuth callback validation
   const oauthStateRef = useRef<string | null>(null);
+  // Ref for the fallback timer so it can be cleared
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup fallback timer on unmount
+  useEffect(() => {
+    return () => {
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+      }
+    };
+  }, []);
 
   // Variáveis de Ambiente
   const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
@@ -71,7 +83,6 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
     window.fbAsyncInit = function() {
       window.FB.init({ appId: appId, cookie: true, xfbml: true, version: 'v19.0' });
       setIsSdkLoaded(true);
-      console.log("✅ Facebook SDK Initialized");
     };
 
     const script = document.createElement('script');
@@ -88,8 +99,11 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
       if (!isAllowedOrigin(event.origin, window.location.origin)) return;
 
       if (event.data?.type === 'WA_EMBEDDED_SIGNUP') {
-          console.log("✨ Evento Happy Path Recebido!", event.data);
           eventReceivedRef.current = true;
+          if (fallbackTimerRef.current) {
+            clearTimeout(fallbackTimerRef.current);
+            fallbackTimerRef.current = null;
+          }
 
           const { business_id, waba_id, phone_number_id, display_phone_number } = event.data.data || event.data;
 
@@ -104,7 +118,6 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
       if (event.data?.type === 'WA_OAUTH_CODE') {
           const receivedState = event.data.data?.state;
           if (!oauthStateRef.current || receivedState !== oauthStateRef.current) {
-            console.warn("⚠️ OAuth state mismatch — ignoring message");
             return;
           }
           oauthStateRef.current = null;
@@ -141,8 +154,7 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
           queryClient.invalidateQueries({ queryKey: ['myBots'] });
 
       } catch (error: unknown) {
-          console.error(error);
-          const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Não foi possível concluir a conexão.";
+              const msg = getSafeErrorMessage(error, "Não foi possível concluir a conexão.");
           toast({ title: "Erro na Conexão", description: msg, variant: "destructive" });
           setIsLoading(false);
       }
@@ -168,13 +180,10 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
     window.FB.login((response: FBLoginResponse) => {
         if (response.authResponse) {
             const authData = response.authResponse;
-            console.log("✅ authResponse:", authData);
             authResponseRef.current = authData;
 
-            setTimeout(() => {
+            fallbackTimerRef.current = setTimeout(() => {
                 if (!eventReceivedRef.current) {
-                    console.warn("⚠️ Fallback: sending access_token from authResponse");
-
                     finishOnboarding({
                         business_id: null,
                         waba_id: null,
@@ -187,7 +196,6 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
             }, 5000);
 
         } else {
-            console.log('Login cancelado pelo usuário.');
             setIsLoading(false);
         }
     }, {

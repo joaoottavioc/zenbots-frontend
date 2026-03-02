@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from "@/components/ui/switch"; 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
+import { getSafeErrorMessage } from "@/lib/error-messages";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Search, MapPin, Copy, Clock } from "lucide-react";
@@ -30,18 +31,33 @@ const dayScheduleSchema = z.object({
 });
 
 // --- SCHEMA ATUALIZADO ---
-const formSchema = z.object({
-  restaurant_name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
-  whatsapp_number: z.string().min(10, { message: "Digite o número completo com DDD." }),
-  pix_key: z.string().min(5, { message: "A chave PIX é necessária para receber pagamentos." }),
-  
-  delivery_fee: z.coerce.number().min(0).optional(),
-  min_order_value: z.coerce.number().min(0).optional(),
+export const formSchema = z.object({
+  restaurant_name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }).max(100, { message: "Máximo de 100 caracteres." }),
+  whatsapp_number: z.string().regex(/^\d{10,11}$/, { message: "Número inválido. Use DDD + número (10 ou 11 dígitos)." }),
+  pix_key: z.string().min(5, { message: "A chave PIX é necessária para receber pagamentos." }).refine(
+    (val) => {
+      // CPF: 11 digits
+      if (/^\d{11}$/.test(val)) return true;
+      // CNPJ: 14 digits
+      if (/^\d{14}$/.test(val)) return true;
+      // Email
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return true;
+      // Phone: +55 followed by 10-11 digits
+      if (/^\+?\d{10,13}$/.test(val)) return true;
+      // UUID (EVP)
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)) return true;
+      return false;
+    },
+    { message: "Chave PIX inválida. Use CPF, CNPJ, e-mail, telefone ou chave aleatória." }
+  ),
+
+  delivery_fee: z.coerce.number().min(0).max(500, { message: "Taxa máxima de R$ 500." }).optional(),
+  min_order_value: z.coerce.number().min(0).max(10000, { message: "Valor máximo de R$ 10.000." }).optional(),
 
   // Novos Campos de Localização
-  cep: z.string().min(8, "CEP inválido"),
-  address: z.string().min(5, "Endereço obrigatório"),
-  max_delivery_radius: z.coerce.number().min(1, "Mínimo 1km").default(10),
+  cep: z.string().transform((val) => val.replace(/\D/g, "")).pipe(z.string().regex(/^\d{8}$/, "CEP deve ter 8 dígitos.")),
+  address: z.string().min(5, "Endereço obrigatório").max(200, { message: "Máximo de 200 caracteres." }),
+  max_delivery_radius: z.coerce.number().min(1, "Mínimo 1km").max(100, { message: "Máximo de 100km." }).default(10),
   
   // Coordenadas (Opcionais pois são preenchidas pelo sistema)
   latitude: z.coerce.number().optional(),
@@ -173,12 +189,11 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
       }
 
     } catch (error: any) {
-      console.error("Erro CEP:", error);
       // Tratamento para quando o CEP não existe na API
-      const msg = error.response?.status === 404 
-        ? "CEP não encontrado na base de dados." 
-        : (error.response?.data?.detail || "Falha ao buscar CEP.");
-        
+      const msg = error.response?.status === 404
+        ? "CEP não encontrado na base de dados."
+        : getSafeErrorMessage(error, "Falha ao buscar CEP.");
+
       toast({ title: "Erro na busca", description: msg, variant: "destructive" });
       
       // Opcional: Limpar campos se der erro

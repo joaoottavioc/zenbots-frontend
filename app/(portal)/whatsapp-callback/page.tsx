@@ -24,8 +24,6 @@ function WhatsappCallbackContent() {
 
     // Se tiver code e tiver quem abriu a janela (opener)
     if (code && window.opener) {
-      console.log("✅ Callback recebido. Enviando para a janela principal...");
-
       // Envia o código + state para a janela pai (Dashboard) for CSRF validation
       window.opener.postMessage({
         type: "WA_OAUTH_CODE",

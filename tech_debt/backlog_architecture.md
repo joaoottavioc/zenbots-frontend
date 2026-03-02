@@ -1,6 +1,6 @@
 # Architectural Debt Backlog — ZenBots Frontend
 
-> **Audit date:** 2026-02-26
+> **Audit date:** 2026-02-26 | **Updated:** 2026-02-28
 > **Scope:** Full codebase architectural review of `zenbots-frontend` (Next.js 16 App Router)
 > **Related:** Security-specific issues are tracked in `tech_debt/backlog_vulnerabilities.md`
 
@@ -188,6 +188,42 @@ Three page files are monolithic components that combine data fetching, business 
 
 ---
 
+### [ ] P1-8: No Error Monitoring / Observability *(NEW — 2026-02-28 scan)*
+
+**Impact:** Production errors are completely invisible. Error boundaries catch exceptions but silently discard them. No alerting, no dashboards, no ability to correlate user-reported issues.
+
+- **Files:** `app/global-error.tsx`, `app/(portal)/error.tsx`, `app/(auth)/error.tsx`
+- **Problem:** All three error boundary files receive an `error` parameter but never log, report, or display its digest. The `global-error.tsx` reset button is the only recovery mechanism.
+- **Consequence:** Without monitoring, the team cannot:
+  - Know that errors are occurring in production
+  - Measure error frequency or impact
+  - Correlate frontend errors with backend issues
+  - Provide users with actionable error IDs for support
+- **Fix:** Integrate Sentry (or equivalent). Add `Sentry.captureException(error)` in all error boundaries. Display `error.digest` to users for support correlation. Configure alerting for error spike detection.
+
+---
+
+### [ ] P1-9: React Query Retries on Auth Errors (401/403) *(NEW — 2026-02-28 scan)*
+
+**Impact:** `providers.tsx` configures `retry: 1` unconditionally. This means 401 (unauthorized) and 403 (forbidden) errors are retried once before failing, wasting network requests and confusing the session expiry flow.
+
+- **File:** `app/providers.tsx`, line 13 — `retry: 1`
+- **Problem:** When a token expires mid-session:
+  1. Query fails with 401
+  2. React Query retries the same request (still 401)
+  3. Response interceptor fires twice, emitting two session-expired events
+  4. User may see double redirect or double toast
+- **Fix:** Use a conditional retry function:
+  ```typescript
+  retry: (failureCount, error) => {
+    const status = (error as any)?.response?.status;
+    if (status === 401 || status === 403) return false;
+    return failureCount < 1;
+  }
+  ```
+
+---
+
 ## P2 — Medium (Inconsistency / DX / Performance)
 
 ### [x] P2-1: Inconsistent Form Patterns — Some RHF+Zod, Some Raw `useState` *(Fixed 2026-02-27)*
@@ -334,6 +370,34 @@ Several components used hex values instead of Tailwind config or CSS variables:
 
 ---
 
+### [ ] P2-12: Toast Auto-Dismiss Effectively Disabled *(NEW — 2026-02-28 scan)*
+
+**Impact:** `TOAST_REMOVE_DELAY` in `hooks/use-toast.ts` is set to `1000000` ms (~16 minutes). Toasts never auto-dismiss in practice, accumulating on screen and cluttering the UI.
+
+- **File:** `hooks/use-toast.ts`
+- **Fix:** Set `TOAST_REMOVE_DELAY` to a reasonable duration (5000-8000ms). For destructive/error toasts, use a longer delay or require manual dismiss.
+
+---
+
+### [ ] P2-13: No Pagination for Large Datasets *(NEW — 2026-02-28 scan)*
+
+**Impact:** `produtos/page.tsx` and `meus-bots/page.tsx` fetch and render ALL items from the API without pagination, virtualization, or infinite scroll. Performance will degrade significantly for users with 100+ products or bots.
+
+- **Files:** `app/(portal)/produtos/page.tsx` (line 310-407 iterates all products), `app/(portal)/meus-bots/page.tsx`
+- **Consequence:** DOM size grows linearly. React re-renders become expensive. Network payload increases.
+- **Fix:** Implement server-side pagination (`?page=1&limit=50`) or add client-side virtualization (e.g., `@tanstack/react-virtual`). This requires backend support for paginated endpoints.
+
+---
+
+### [ ] P2-14: Hardcoded Subscription Prices in Settings UI *(NEW — 2026-02-28 scan)*
+
+**Impact:** `settings/page.tsx` displays "R$ 5,00" and "R$ 10,00" as static strings even though it queries the billing API. Price changes require a code deployment.
+
+- **File:** `app/(portal)/settings/page.tsx`, lines 325, 340
+- **Fix:** Use the pricing data from the billing API query response to populate price labels dynamically.
+
+---
+
 ## P3 — Low (Cleanup / Polish / Minor Performance)
 
 ### [x] P3-1: Missing Accessibility Basics *(Fixed 2026-02-27)*
@@ -452,18 +516,47 @@ The `/api/v1/*` rewrite to `http://127.0.0.1:8000/api/v1/:path*` is never used b
 
 ---
 
+### [ ] P3-12: No Custom `loading.tsx` or `not-found.tsx` Pages *(NEW — 2026-02-28 scan)*
+
+**Impact:** Users see default Next.js loading spinners and 404 pages instead of branded experiences. Breaks visual consistency.
+
+- **Files:** Missing in `app/(portal)/` and `app/(auth)/` route groups
+- **Fix:** Add `loading.tsx` with skeleton UI matching each route group's design language. Add `not-found.tsx` with branded 404 page and navigation back to home.
+
+---
+
+### [ ] P3-13: No `prefers-reduced-motion` Support *(NEW — 2026-02-28 scan)*
+
+**Impact:** Animations in auth pages (`animate-in fade-in zoom-in` on success views), toasts, and accordion transitions play regardless of user motion preferences. Can cause discomfort for users with vestibular disorders.
+
+- **Files:** `app/(auth)/esqueci-senha/page.tsx`, `app/(auth)/redefinir-senha/page.tsx`, `tailwind.config.ts`
+- **Fix:** Use Tailwind's `motion-safe:` and `motion-reduce:` modifiers: `motion-safe:animate-in motion-reduce:animate-none`.
+
+---
+
+### [ ] P3-14: Auth Layout Uses `h-screen` Instead of `min-h-screen` *(NEW — 2026-02-28 scan)*
+
+**Impact:** On very small screens or when content overflows (e.g., password requirements list on mobile), the auth page content gets clipped instead of scrolling.
+
+- **File:** `app/(auth)/layout.tsx`, line 8 — `h-screen`
+- **Fix:** Change to `min-h-screen` to allow vertical scrolling when content exceeds viewport height.
+
+---
+
 ## Summary
+
+> **Updated:** 2026-02-28 (deep codebase scan — 8 new issues added)
 
 | Priority | Open | Fixed | Theme |
 |----------|------|-------|-------|
 | **P0** | 0 | 5 | ~~Broken env vars, missing mobile nav, Suspense, dead route, fake save~~ — **All resolved 2026-02-27** |
-| **P1** | 0 | 7 | ~~God components, bypassed React Query, no 401 handler, no auth guard, no logout cleanup, missing error UX~~ — **All resolved 2026-02-27** |
-| **P2** | 1 | 10 | ~~Form inconsistency, duplicate components, `any` types, stale renders, dead dark mode, hardcoded colors, cache invalidation, background colors, infinite loop, cross-tab auth~~ — **9 resolved 2026-02-27**. 1 intentionally deferred (P2-4: client boundary) |
-| **P3** | 1 | 10 | ~~Accessibility, dead code, chart vars, stale config, empty avatar, placeholder number, dead proxy, responsive gaps, inline SVGs~~ — **9 resolved 2026-02-27**. 1 intentionally deferred (P3-5: code splitting) |
-| **Total** | **2** | **32** | |
+| **P1** | 2 | 7 | ~~God components, bypassed React Query, no 401 handler, no auth guard, no logout cleanup, missing error UX~~ — **7 resolved 2026-02-27**. **2 open:** no error monitoring (P1-8), retry on auth errors (P1-9) |
+| **P2** | 4 | 10 | ~~Form inconsistency, duplicate components, `any` types, stale renders, dead dark mode, hardcoded colors, cache invalidation, background colors, infinite loop, cross-tab auth~~ — **10 resolved 2026-02-27**. **4 open:** client boundary (P2-4, deferred), toast dismiss (P2-12), no pagination (P2-13), hardcoded prices (P2-14) |
+| **P3** | 4 | 10 | ~~Accessibility, dead code, chart vars, stale config, empty avatar, placeholder number, dead proxy, responsive gaps, inline SVGs~~ — **10 resolved 2026-02-27**. **4 open:** code splitting (P3-5, deferred), loading/404 pages (P3-12), reduced-motion (P3-13), h-screen clip (P3-14) |
+| **Total** | **10** | **32** | **42 total** (8 new items from 2026-02-28 scan) |
 
 ---
 
-> **Cross-reference:** 39 security-specific issues are tracked in `tech_debt/backlog_vulnerabilities.md`. Some items overlap (e.g., env var inconsistency, missing auth guard, incomplete logout) — those are listed here from the architectural perspective and in the security backlog from the security perspective.
+> **Cross-reference:** 44 security-specific issues are tracked in `tech_debt/backlog_vulnerabilities.md`. Some items overlap (e.g., error monitoring is both an architecture and security concern) — listed in both backlogs from their respective perspectives.
 
-> **Recommended approach:** Address P0 items immediately. Tackle P1 items in a dedicated refactoring sprint. P2/P3 items can be addressed incrementally alongside feature work.
+> **Recommended approach:** P1-8 (error monitoring) is the highest-impact open item — production without observability is flying blind. P1-9 (retry on auth) is a quick 5-line fix. P2 items should be addressed in the next sprint. P3 items are polish for post-launch.

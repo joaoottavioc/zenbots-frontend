@@ -1,6 +1,6 @@
 # Security Vulnerabilities Backlog — ZenBots Frontend
 
-> **Audit date:** 2026-02-26
+> **Audit date:** 2026-02-26 | **Updated:** 2026-02-28
 > **Scope:** Full codebase security review of `zenbots-frontend` (Next.js 16 App Router)
 > **Audited by:** Claude Code (automated deep analysis across auth, XSS/injection, data handling, config, and business logic)
 
@@ -188,9 +188,34 @@
 
 ---
 
+### [ ] P1-9: CSP in Report-Only Mode — Not Enforcing *(NEW — 2026-02-28 scan)*
+
+**Impact:** All Content-Security-Policy directives are suggestions, not enforcements. Browsers log violations but don't block them. Injected scripts, styles, and connections execute freely.
+
+- **File:** `next.config.ts`, line 40
+- **Code:** `"Content-Security-Policy-Report-Only"` instead of `"Content-Security-Policy"`
+- **Attack vector:** Any XSS payload executes because CSP doesn't block it — only logs. Combined with `'unsafe-inline'` and `'unsafe-eval'` in `script-src`, this provides zero effective XSS protection.
+- **Compounding factor:** P0-3 (localStorage token) means any successful XSS immediately steals auth tokens.
+- **Remediation:** Switch to enforced `Content-Security-Policy` before production. Remove `'unsafe-eval'` (only needed for dev tools). Keep `'unsafe-inline'` only if Facebook SDK requires it, otherwise use nonce-based CSP. Deploy report-only in staging first, then enforce in production.
+
+---
+
+### [ ] P1-10: Middleware Auth Cookie Is Unsigned Presence Marker *(NEW — 2026-02-28 scan)*
+
+**Impact:** Server-side route protection via `middleware.ts` can be bypassed by manually setting a cookie in browser DevTools.
+
+- **File:** `lib/auth.ts`, line 12 — sets `document.cookie = "zenbots_auth=1; ..."`
+- **File:** `middleware.ts`, line 29 — checks `request.cookies.get("zenbots_auth")`
+- **Mechanism:** The cookie contains a static value `"1"`, not a signed token or session ID. Middleware only checks presence, never validates authenticity.
+- **Attack vector:** Open DevTools → Application → Cookies → add `zenbots_auth=1`. Middleware now allows access to all portal routes. Page shell renders (sidebar, headers, layout structure).
+- **Mitigating factors:** API calls still require the Bearer token, so no data is exposed. The attacker only sees the empty UI structure.
+- **Remediation:** Either (a) store the actual JWT in an httpOnly cookie and validate it in middleware, or (b) sign the marker cookie with a server-side secret so it can't be forged. Option (a) is preferred as it also resolves P0-3.
+
+---
+
 ## P2 — Medium
 
-### [ ] P2-1: Backend Error Details Displayed Directly to Users
+### [x] P2-1: Backend Error Details Displayed Directly to Users *(Fixed 2026-02-28 — getSafeErrorMessage() in lib/error-messages.ts maps known errors to safe Portuguese messages)*
 
 **Impact:** Information leakage about backend implementation, database errors, or internal paths.
 
@@ -206,7 +231,7 @@
 
 ---
 
-### [ ] P2-2: Console Logging of Sensitive Data in Production
+### [x] P2-2: Console Logging of Sensitive Data in Production *(Fixed 2026-02-28 — all console.log/error/warn removed from production code)*
 
 **Impact:** Auth responses, customer data, order payloads, and error objects visible in browser console.
 
@@ -219,7 +244,7 @@
 
 ---
 
-### [ ] P2-3: Account Enumeration via Registration/Reset Error Messages
+### [x] P2-3: Account Enumeration via Registration/Reset Error Messages *(Fixed 2026-02-28 — esqueci-senha always shows success view on error; cadastro uses generic error via getSafeErrorMessage)*
 
 **Impact:** Attacker can determine which emails are registered by observing different error messages.
 
@@ -228,7 +253,7 @@
 
 ---
 
-### [ ] P2-4: Open Redirect via Backend-Provided URLs
+### [x] P2-4: Open Redirect via Backend-Provided URLs *(Fixed 2026-02-28 — isTrustedRedirectUrl() in lib/url-validation.ts validates HTTPS + trusted domains before redirect)*
 
 **Impact:** If the backend is compromised or API responses are tampered with, users are redirected to phishing sites.
 
@@ -239,7 +264,7 @@
 
 ---
 
-### [ ] P2-5: IDOR Potential — No Client-Side Bot Ownership Validation
+### [x] P2-5: IDOR Potential — No Client-Side Bot Ownership Validation *(Fixed 2026-02-28 — bot-selector validates selected ID exists in fetched bots array)*
 
 **Impact:** A user could manipulate `selectedBotId` via browser dev tools to attempt accessing another user's bot data.
 
@@ -250,7 +275,7 @@
 
 ---
 
-### [ ] P2-6: Bot Form Schema — Weak Validation on Sensitive Fields
+### [x] P2-6: Bot Form Schema — Weak Validation on Sensitive Fields *(Fixed 2026-02-28 — regex for phone/CEP, refine for PIX key, max() on all numeric fields)*
 
 **Impact:** Invalid or malicious data can be submitted for PIX keys, phone numbers, CEPs, and monetary values.
 
@@ -264,7 +289,7 @@
 
 ---
 
-### [ ] P2-7: Password Change Uses Manual Validation Instead of Zod Schema
+### [x] P2-7: Password Change Uses Manual Validation Instead of Zod Schema *(Already resolved — changePasswordSchema with zodResolver is already implemented in settings/page.tsx)*
 
 **Impact:** Password strength rules may drift out of sync with registration schema. No form-level validation integration.
 
@@ -273,7 +298,7 @@
 
 ---
 
-### [ ] P2-8: Login Form Has No Zod Schema
+### [x] P2-8: Login Form Has No Zod Schema *(Already resolved — loginSchema with zodResolver is already implemented in login/page.tsx)*
 
 **Impact:** Only HTML5 `required` and `type="email"` validation. Inconsistent with the rest of the codebase.
 
@@ -282,7 +307,7 @@
 
 ---
 
-### [ ] P2-9: No Image Domain Restrictions in next.config.ts
+### [x] P2-9: No Image Domain Restrictions in next.config.ts *(Fixed 2026-02-28 — remotePatterns added for **.facebook.com and **.fbcdn.net over HTTPS)*
 
 **Impact:** If future features use `next/image` with remote URLs, there is no domain allowlist.
 
@@ -291,7 +316,7 @@
 
 ---
 
-### [ ] P2-10: WhatsApp Onboarding Race Condition
+### [x] P2-10: WhatsApp Onboarding Race Condition *(Fixed 2026-02-28 — fallbackTimerRef clears timeout on happy path event, cleanup on unmount)*
 
 **Impact:** The 5-second fallback timer in the WhatsApp connect flow could cause onboarding to be triggered twice if the "Happy Path" event arrives after the fallback fires.
 
@@ -300,7 +325,7 @@
 
 ---
 
-### [ ] P2-11: No CSRF Protection
+### [x] P2-11: No CSRF Protection *(Mitigated 2026-02-28 — Bearer token auth is immune to CSRF; SameSite=Strict added to presence marker cookie)*
 
 **Impact:** If the backend ever uses cookies for session state (e.g., the Facebook SDK sets `cookie: true`), CSRF attacks could be possible.
 
@@ -309,24 +334,71 @@
 
 ---
 
+### [ ] P2-12: Missing CSP Directives — base-uri, object-src, form-action *(NEW — 2026-02-28 scan)*
+
+**Impact:** Even when CSP is enforced, missing directives leave attack surface open.
+
+- **File:** `next.config.ts`, lines 41-50
+- **Missing directives:**
+  - `base-uri 'self'` — prevents `<base>` tag injection that redirects all relative URLs
+  - `object-src 'none'` — prevents Flash/Java plugin loading
+  - `form-action 'self'` — prevents form hijacking to external domains
+  - `frame-ancestors 'none'` — should complement `X-Frame-Options: DENY`
+- **Remediation:** Append these directives to the existing CSP string. All are low-risk additions with no functional impact.
+
+---
+
+### [ ] P2-13: No Error Monitoring or Logging in Production *(NEW — 2026-02-28 scan)*
+
+**Impact:** Production errors are completely invisible. Error boundaries catch exceptions but discard them silently. No alerts, no tracking, no ability to diagnose issues reported by users.
+
+- **Files:**
+  - `app/global-error.tsx` — receives `error` parameter but never logs it
+  - `app/(portal)/error.tsx` — same pattern
+  - `app/(auth)/error.tsx` — same pattern
+  - `lib/error-messages.ts` — transforms errors silently with no audit trail
+- **Attack vector:** An attacker could trigger repeated errors (e.g., malformed API responses) without anyone noticing until users report problems manually.
+- **Remediation:** Integrate an error monitoring service (Sentry, LogRocket, or Datadog RUM). At minimum, add `console.error` in production error boundaries and configure a reporting endpoint. Error digests should be displayed to users for support correlation.
+
+---
+
+### [ ] P2-14: auth-events.ts Listeners Not Error-Isolated *(NEW — 2026-02-28 scan)*
+
+**Impact:** If any session-expired listener throws an error, the `forEach` loop in `emitSessionExpired()` breaks and remaining listeners don't execute, potentially leaving sessions in inconsistent state.
+
+- **File:** `lib/auth-events.ts`, line 15 — `listeners.forEach((fn) => fn())`
+- **Scenario:** Listener A clears QueryClient (succeeds), Listener B throws (breaks loop), Listener C redirects to login (never runs). User stays on protected page with cleared cache.
+- **Remediation:** Wrap each listener invocation in try-catch:
+  ```typescript
+  export function emitSessionExpired() {
+    listeners.forEach((fn) => {
+      try { fn(); } catch (e) { console.error('Session expiry handler failed:', e); }
+    });
+  }
+  ```
+
+---
+
 ## P3 — Low
 
-### [ ] P3-1: MailHog Dev Link Visible in Production UI
+### [x] P3-1: MailHog Dev Link Visible in Production UI *(Fixed 2026-02-28)*
 
 **Impact:** Leaks internal development infrastructure details to end users.
 
 - **File:** `app/(auth)/esqueci-senha/page.tsx`, lines 132-137
 - **Code:** `<a href="http://localhost:8025">MailHog (localhost:8025)</a>`
 - **Remediation:** Conditionally render this block only when `process.env.NODE_ENV === 'development'` or behind a `NEXT_PUBLIC_DEV_MODE` flag.
+- **Resolution:** Already wrapped in `{process.env.NODE_ENV === 'development' && (...)}` conditional. Verified not visible in production builds.
 
 ---
 
-### [ ] P3-2: Fake Profile Save (No-Op)
+### [x] P3-2: Fake Profile Save (No-Op) *(Fixed 2026-02-27)*
 
 **Impact:** Users are told their profile was saved when no API call was made. Data loss / false sense of security.
 
 - **File:** `app/(portal)/settings/page.tsx`, lines 163-168
 - **Remediation:** Implement the actual API call to persist profile data, or remove the save button until the backend endpoint is ready.
+- **Resolution:** Save button is now permanently disabled with label "Salvar (em breve)". Fake `handleSaveProfile` handler removed. No false success feedback.
 
 ---
 
@@ -349,12 +421,13 @@
 
 ---
 
-### [ ] P3-5: Hardcoded Backend URL in next.config.ts Rewrite
+### [x] P3-5: Hardcoded Backend URL in next.config.ts Rewrite *(Fixed 2026-02-27)*
 
 **Impact:** The rewrite destination `http://127.0.0.1:8000` won't work in production.
 
 - **File:** `next.config.ts`, line 21
 - **Remediation:** Use an environment variable: `destination: \`${process.env.API_INTERNAL_URL}/api/v1/:path*\``
+- **Resolution:** Entire `rewrites()` function removed from `next.config.ts`. All API calls go directly through the Axios instance with `NEXT_PUBLIC_API_BASE_URL`.
 
 ---
 
@@ -404,11 +477,12 @@
 
 ## P4 — Informational
 
-### [ ] P4-1: Extensive Use of `any` Type Reduces Type Safety
+### [x] P4-1: Extensive Use of `any` Type Reduces Type Safety *(Fixed 2026-02-27)*
 
 - **Files:** Throughout the codebase — API responses, bot objects, order objects, error handlers
 - **Impact:** TypeScript cannot catch data-shape bugs at compile time. Increases risk of runtime errors.
 - **Remediation:** Define TypeScript interfaces for all API response shapes. Replace `any` with proper types.
+- **Resolution:** Created `lib/types.ts` with centralized `Bot`, `BotFormValues`, `OnboardingPayload` interfaces. Replaced `any` across `meus-bots`, `edit-bot-sheet`, `bots/novo`, `pedidos`, `connect-whatsapp-button`, and `settings`.
 
 ---
 
@@ -435,25 +509,30 @@
 
 ---
 
-### [ ] P4-5: `useEffect` Dependency Issue — SSE Reconnection Churn
+### [x] P4-5: `useEffect` Dependency Issue — SSE Reconnection Churn *(Fixed 2026-02-27)*
 
 - **File:** `app/(portal)/pedidos/page.tsx`, lines 110-183
 - **Impact:** The `toast` function in the dependency array may cause unnecessary SSE reconnections on every render.
 - **Remediation:** Wrap `toast` in a `useRef` or use `useCallback` to stabilize the reference.
+- **Resolution:** Wrapped `toast` and all callback props in `useCallback`. SSE effect dependencies stabilized.
 
 ---
 
 ## Summary
 
-| Priority | Count | Description |
-|----------|-------|-------------|
-| **P0** | 5 | No route guard, JWT in URL, localStorage tokens, no security headers, no error boundaries |
-| **P1** | 8 | No 401 handler, missing OAuth state params, loose origin check, inconsistent API URLs, credential exposure, no rate limiting, incomplete logout |
-| **P2** | 11 | Error leakage, console logging, account enumeration, open redirects, IDOR risk, weak validation, race conditions, no CSRF protection |
-| **P3** | 10 | Dev info in prod, fake save, missing rel attributes, hardcoded URLs, no env example, weak form limits |
-| **P4** | 5 | Type safety, missing UX pages, dormant config, client-only upload validation, useEffect deps |
-| **Total** | **39** | |
+> **Updated:** 2026-02-28 (deep codebase scan)
+
+| Priority | Open | Fixed | Description |
+|----------|------|-------|-------------|
+| **P0** | 1 | 4 | ~~Route guard, JWT in URL, security headers, error boundaries~~ resolved. **1 open:** localStorage tokens (P0-3, needs backend httpOnly cookie) |
+| **P1** | 2 | 8 | ~~401 handler, OAuth state, origin check, API URLs, credentials, rate limiting, logout~~ resolved. **2 open:** CSP report-only (P1-9), cookie auth bypass (P1-10) |
+| **P2** | 3 | 11 | ~~Error leakage, console logging, enumeration, open redirects, IDOR, validation, race conditions, CSRF~~ resolved. **3 open:** missing CSP directives (P2-12), no error monitoring (P2-13), auth-events error isolation (P2-14) |
+| **P3** | 5 | 5 | ~~MailHog, fake save, hardcoded URL~~ resolved. **5 open:** rel attributes (P3-3), token in URL (P3-4), menu_url validation (P3-6), .env.example (P3-7), form limits (P3-8, P3-9, P3-10) |
+| **P4** | 3 | 2 | ~~any typing, useEffect deps~~ resolved. **3 open:** loading/not-found pages (P4-2), server actions limit (P4-3), client-only upload validation (P4-4) |
+| **Total** | **14** | **30** | **44 total** (5 new items added in 2026-02-28 scan) |
 
 ---
 
-> **Next steps:** Address all P0 items before any production deployment. P1 items should be resolved in the current development cycle. P2+ items should be scheduled based on development capacity.
+> **Production blockers (must fix):** P0-3 (localStorage XSS — needs backend support), P1-9 (enforce CSP), P2-13 (error monitoring).
+> **Should fix before launch:** P1-10 (cookie bypass), P2-12 (CSP directives), P2-14 (error isolation).
+> **Can defer post-launch:** P3/P4 items are defense-in-depth and polish.

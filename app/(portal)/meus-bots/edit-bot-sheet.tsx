@@ -41,8 +41,7 @@ export function EditBotSheet({ bot, isOpen, onClose }: EditBotSheetProps) {
       queryClient.invalidateQueries({ queryKey: ["myBots"] }); // Atualiza a lista no fundo
       onClose(); // Fecha a gaveta
     },
-    onError: (error: unknown) => {
-      console.error(error);
+    onError: () => {
       toast({
         title: "Erro ao atualizar",
         description: "Verifique os dados e tente novamente.",

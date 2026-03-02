@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Command, Lock, CheckCircle2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { getSafeErrorMessage } from "@/lib/error-messages";
 import { PasswordReq } from "@/components/ui/password-req";
 import {
   Form,
@@ -76,11 +77,7 @@ function ResetForm() {
       setTimeout(() => router.push("/login"), 2000);
     },
     onError: (error: unknown) => {
-      let msg = "Erro ao redefinir senha.";
-      const err = error as { response?: { data?: { detail?: string } }; message?: string };
-      if (err.response?.data?.detail) msg = err.response.data.detail;
-      else if (err.message) msg = err.message;
-
+      const msg = getSafeErrorMessage(error, "Erro ao redefinir senha.");
       toast({ title: "Erro", description: msg, variant: "destructive" });
     }
   });

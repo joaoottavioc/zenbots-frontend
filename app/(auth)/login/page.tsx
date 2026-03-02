@@ -59,8 +59,7 @@ export default function LoginPage() {
 
       router.push('/meus-bots');
     },
-    onError: (error) => {
-      console.error("Erro no login:", error);
+    onError: () => {
       form.setError("root", { message: "Email ou senha incorretos." });
       toast({
         title: "Falha ao entrar",
