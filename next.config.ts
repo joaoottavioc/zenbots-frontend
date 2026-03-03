@@ -1,9 +1,24 @@
 import type { NextConfig } from "next";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// Validate required env vars at build time (not in dev mode)
+if (process.env.NODE_ENV === 'production') {
+  const required = [
+    'NEXT_PUBLIC_API_BASE_URL',
+    'NEXT_PUBLIC_FB_APP_ID',
+    'NEXT_PUBLIC_FB_CONFIG_ID',
+    'NEXT_PUBLIC_FB_LOGIN_CONFIG_ID',
+  ];
+  const missing = required.filter(key => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
 
 const nextConfig: NextConfig = {
+  output: 'export',
+
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
@@ -15,43 +30,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '5mb',
-    },
-  },
-  async headers() {
-    return [
-      {
-        source: "/(.*)",
-        headers: [
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
-          },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains",
-          },
-          {
-            key: "Content-Security-Policy-Report-Only",
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net",
-              "style-src 'self' 'unsafe-inline'",
-              `connect-src 'self' ${API_BASE_URL} https://*.facebook.com`,
-              "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob:",
-              "frame-src https://www.facebook.com",
-            ].join("; "),
-          },
-        ],
-      },
-    ];
-  },
+
+  // headers() removed — security headers served by CloudFront Response Headers Policy
+  // experimental.serverActions removed — incompatible with static export and unused
 };
 
 export default nextConfig;

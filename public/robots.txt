@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /meus-bots
+Disallow: /pedidos
+Disallow: /produtos
+Disallow: /settings
+Disallow: /pagamentos
+Disallow: /analytics
+Allow: /login
+Allow: /cadastro

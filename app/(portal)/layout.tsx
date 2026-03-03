@@ -19,7 +19,7 @@ export default function PortalLayout({
   useEffect(() => {
     const token = getToken();
     if (!token) {
-      router.replace("/login");
+      router.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
     } else {
       setIsAuthed(true);
     }

@@ -36,7 +36,9 @@ describe('PortalLayout', () => {
     );
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/login');
+      expect(mockReplace).toHaveBeenCalledWith(
+        expect.stringContaining('/login')
+      );
     });
 
     expect(screen.queryByText('Child Content')).not.toBeInTheDocument();

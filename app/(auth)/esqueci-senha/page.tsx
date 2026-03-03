@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
       setIsSubmitted(true);
       toast({
         title: "E-mail enviado!",
-        description: "Verifique sua caixa de entrada (ou o MailHog).",
+        description: "Verifique sua caixa de entrada.",
         className: "bg-emerald-50 border-emerald-200"
       });
     },
@@ -155,12 +155,14 @@ export default function ForgotPasswordPage() {
                   Tentar outro e-mail
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground pt-4">
-                Dica de Dev: Como estamos em ambiente de teste, verifique o
-                <a href="http://localhost:8025" target="_blank" className="text-primary hover:underline ml-1 font-bold">
-                  MailHog (localhost:8025)
-                </a>.
-              </p>
+              {process.env.NODE_ENV === 'development' && (
+                <p className="text-xs text-muted-foreground pt-4">
+                  Dica de Dev: Verifique o
+                  <a href="http://localhost:8025" target="_blank" className="text-primary hover:underline ml-1 font-bold">
+                    MailHog (localhost:8025)
+                  </a>.
+                </p>
+              )}
             </div>
           )}
         </div>

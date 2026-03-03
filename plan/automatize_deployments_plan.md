@@ -3,7 +3,7 @@
 Comprehensive plan for automating ZenBots **frontend** deployments with **dev** and **production** environments, cost-optimized AWS infrastructure (S3 + CloudFront), and a robust GitHub Actions CI/CD pipeline.
 
 **Created:** 2026-03-02
-**Last updated:** 2026-03-02 (v1)
+**Last updated:** 2026-03-03 (v2 — aligned with actual backend AWS architecture)
 **Source backlogs:** `tech_debt/backlog_production.md`, `tech_debt/backlog_vulnerabilities.md`
 **Companion plan:** Backend deployment plan (separate repo — ECS Fargate + RDS + ElastiCache)
 
@@ -33,9 +33,9 @@ Zero deployment infrastructure. Everything is manual.
 |-----------|--------|
 | GitHub Actions | None |
 | Terraform | None |
-| Dockerfile | Missing |
-| `.dockerignore` | Missing |
-| `.env.local` in git | Dev credentials exposed (BLK-1) |
+| Dockerfile | Not needed (static export — S3 hosting, no containers) |
+| `.dockerignore` | Not needed (static export — S3 hosting, no containers) |
+| `.env.local` in git | ~~Dev credentials exposed~~ — **RESOLVED** (already gitignored, not tracked) |
 | Env var validation | None (BLK-5) |
 | CSP | Report-only, not enforcing (CRT-1) |
 | Error monitoring | None (CRT-4) |
@@ -100,26 +100,26 @@ feature/* ──→ PR to develop ──→ dev auto-deploy (S3 + CloudFront)
 | **Auth redirect** | Next.js middleware | CloudFront Function | CloudFront Function |
 | **Security headers** | `next.config.ts` headers() | CloudFront response headers policy | CloudFront response headers policy |
 | **Image optimization** | Next.js built-in | `unoptimized: true` (CSS/lazy load) | `unoptimized: true` (CSS/lazy load) |
-| **Domain** | `localhost:3000` | `dev.zenbots.com.br` | `app.zenbots.com.br` |
+| **Domain** | `localhost:3000` | `dev.zenbotz.com.br` | `app.zenbotz.com.br` |
 | **SSL** | None | ACM certificate (free) | ACM certificate (free) |
 | **WAF** | None | None | AWS WAF (rate limiting) |
 | **Error monitoring** | Console | Sentry (free tier) | Sentry |
 | **Cache TTL (static)** | None | 1 year (hashed filenames) | 1 year (hashed filenames) |
 | **Cache TTL (HTML)** | None | 5 min | 5 min |
-| **Backend API** | `http://localhost:8000` | `https://dev-api.zenbots.com.br` | `https://api.zenbots.com.br` |
+| **Backend API** | `http://localhost:8000` | `https://dev-api.zenbotz.com.br` | `https://api.zenbotz.com.br` |
 
 ### High-Level AWS Diagram
 
 ```
                     ┌──────────────────────────────────────────┐
                     │              Route 53 (DNS)                │
-                    │  app.zenbots.com.br                        │
+                    │  app.zenbotz.com.br                        │
                     │  + health check → failover to maintenance  │
                     └────────────────┬─────────────────────────┘
                                      │
                     ┌────────────────▼─────────────────────────┐
                     │         CloudFront Distribution            │
-                    │  + ACM TLS Certificate (*.zenbots.com.br)  │
+                    │  + ACM TLS Certificate (*.zenbotz.com.br)  │
                     │  + WAF (prod only — rate limiting)         │
                     │  + Shield Standard (free DDoS protection)  │
                     │  + Response Headers Policy (CSP, HSTS...)  │
@@ -289,7 +289,7 @@ Since static export doesn't run `next.config.ts` headers at runtime, we move sec
 default-src 'self';
 script-src 'self' 'unsafe-inline' https://connect.facebook.net;
 style-src 'self' 'unsafe-inline';
-connect-src 'self' https://api.zenbots.com.br https://*.facebook.com https://*.sentry.io;
+connect-src 'self' https://api.zenbotz.com.br https://*.facebook.com https://*.sentry.io;
 font-src 'self';
 img-src 'self' data: blob: https://*.facebook.com https://*.fbcdn.net;
 frame-src https://www.facebook.com;
@@ -324,7 +324,7 @@ Cost: ~$5–10/month (1 Web ACL + 2-3 rules + request volume).
 
 ```
 Route 53 Health Check:
-  Endpoint: https://app.zenbots.com.br/health.html
+  Endpoint: https://app.zenbotz.com.br/health.html
   Interval: 30s
   Failure threshold: 3
 
@@ -382,14 +382,15 @@ This means:
 
 Manual one-time steps. Some resources are shared with the backend (Route 53 zone, OIDC provider, Terraform state bucket).
 
-### 4.1 — Shared Resources (Already Created by Backend Plan)
+### 4.1 — Shared Resources (ALREADY EXIST — Created by Backend)
 
-These exist if the backend plan has been executed. If not, create them:
+These resources already exist from the backend deployment. **Do not recreate.**
 
-- AWS account in `us-east-1`
-- S3 bucket `zenbots-terraform-state` + DynamoDB lock table
-- GitHub OIDC Identity Provider
-- Route 53 hosted zone for `zenbots.com.br`
+- AWS account `578761488332` in `us-east-1`
+- S3 bucket `zenbots-terraform-state` + DynamoDB lock table `zenbots-terraform-locks`
+- GitHub OIDC Identity Provider (already configured for `token.actions.githubusercontent.com`)
+- Route 53 hosted zone for `zenbotz.com.br` (Zone ID: `Z0672127E335XW159Q8N`)
+- ACM wildcard certificate `*.zenbotz.com.br` (ARN: `arn:aws:acm:us-east-1:578761488332:certificate/c91277cb-e5c1-463a-a8b2-75d7b613b4b1`)
 
 ### 4.2 — Frontend-Specific IAM Roles (2 Roles)
 
@@ -406,7 +407,7 @@ Trust policy pattern (same OIDC approach as backend):
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+      "Federated": "arn:aws:iam::578761488332:oidc-provider/token.actions.githubusercontent.com"
     },
     "Action": "sts:AssumeRoleWithWebIdentity",
     "Condition": {
@@ -440,7 +441,7 @@ Trust policy pattern (same OIDC approach as backend):
       "Sid": "CloudFrontInvalidation",
       "Effect": "Allow",
       "Action": "cloudfront:CreateInvalidation",
-      "Resource": "arn:aws:cloudfront::<ACCOUNT_ID>:distribution/<DEV_DIST_ID>"
+      "Resource": "arn:aws:cloudfront::578761488332:distribution/<DEV_DIST_ID>"
     }
   ]
 }
@@ -449,11 +450,13 @@ Trust policy pattern (same OIDC approach as backend):
 ### 4.3 — GitHub Repository Secrets
 
 ```
-AWS_ACCOUNT_ID                    = 123456789012
+AWS_ACCOUNT_ID                    = 578761488332
 AWS_REGION                        = us-east-1
-AWS_FRONTEND_DEV_ROLE_ARN         = arn:aws:iam::<id>:role/github-actions-frontend-dev
-AWS_FRONTEND_PROD_ROLE_ARN        = arn:aws:iam::<id>:role/github-actions-frontend-prod
-SENTRY_AUTH_TOKEN                 = <token>   (for source map upload)
+AWS_FRONTEND_DEV_ROLE_ARN         = arn:aws:iam::578761488332:role/github-actions-frontend-dev
+AWS_FRONTEND_PROD_ROLE_ARN        = arn:aws:iam::578761488332:role/github-actions-frontend-prod
+SENTRY_AUTH_TOKEN                 = <token>   (for source map upload — defer to Phase 5)
+CLOUDFRONT_DEV_DIST_ID            = <from terraform output after Phase 2>
+CLOUDFRONT_PROD_DIST_ID           = <from terraform output after Phase 4>
 ```
 
 ### 4.4 — GitHub Environments
@@ -463,19 +466,16 @@ SENTRY_AUTH_TOKEN                 = <token>   (for source map upload)
 | `dev` | Dev AWS credentials | None (auto-deploy) |
 | `production` | Prod AWS credentials | 1 required reviewer, 5 min wait |
 
-### 4.5 — ACM Certificate
+### 4.5 — ACM Certificate — ALREADY EXISTS
 
-Request a wildcard certificate for `*.zenbots.com.br` in `us-east-1` (required for CloudFront):
+The backend already created a wildcard certificate. **Reuse it.**
 
-```bash
-aws acm request-certificate \
-  --domain-name "*.zenbots.com.br" \
-  --subject-alternative-names "zenbots.com.br" \
-  --validation-method DNS \
-  --region us-east-1
-```
+- **ARN:** `arn:aws:acm:us-east-1:578761488332:certificate/c91277cb-e5c1-463a-a8b2-75d7b613b4b1`
+- **Domains:** `*.zenbotz.com.br` + `zenbotz.com.br`
+- **Validation:** DNS (auto-renewing)
+- **Region:** `us-east-1` (required for CloudFront)
 
-**Important:** CloudFront requires the ACM certificate to be in `us-east-1`, regardless of where other resources live. If the backend plan already created this wildcard cert, reuse it.
+No action needed. Reference this ARN in Terraform `var.acm_certificate_arn`.
 
 ---
 
@@ -544,16 +544,9 @@ export function useAuthGuard() {
 
 Then call `useAuthGuard()` in the portal layout. This provides auth redirect in both local dev and production (as a fallback to the CloudFront Function).
 
-### 5.3 — Remove `.env.local` from Git (BLK-1)
+### 5.3 — Create `.env.example` (BLK-1 — ALREADY PARTIALLY RESOLVED)
 
-```bash
-# Remove from tracking (keeps local file)
-git rm --cached .env.local
-
-# Verify .gitignore already has .env* (it does)
-```
-
-Create `.env.example`:
+`.env.local` is already NOT tracked in git (`.gitignore` has `.env*`). Only need to create `.env.example`:
 
 ```
 # ZenBots Frontend — Environment Variables
@@ -566,8 +559,8 @@ NEXT_PUBLIC_FB_LOGIN_CONFIG_ID=your_facebook_login_config_id
 NEXT_PUBLIC_WHATSAPP_DEV_MODE=true
 ```
 
-**Rotate credentials after removal:**
-- Facebook App ID and Config IDs (treat as compromised since they were in git)
+**Note on credential rotation:**
+- Facebook App ID and Config IDs were previously exposed in git history. Consider rotation, but since they are `NEXT_PUBLIC_*` vars (visible in client bundle anyway), risk is low.
 
 ### 5.4 — Build-Time Environment Validation (BLK-5)
 
@@ -772,15 +765,15 @@ infra/
 | Parameter | Dev | Prod |
 |-----------|-----|------|
 | `s3_bucket_name` | `zenbots-frontend-dev` | `zenbots-frontend-prod` |
-| `domain_name` | `dev.zenbots.com.br` | `app.zenbots.com.br` |
-| `api_base_url` | `https://dev-api.zenbots.com.br` | `https://api.zenbots.com.br` |
+| `domain_name` | `dev.zenbotz.com.br` | `app.zenbotz.com.br` |
+| `api_base_url` | `https://dev-api.zenbotz.com.br` | `https://api.zenbotz.com.br` |
 | `cloudfront_price_class` | `PriceClass_100` (US, Canada, Europe) | `PriceClass_200` (+ South America, Asia) |
 | `enable_waf` | `false` | `true` |
 | `enable_route53_failover` | `false` | `true` |
 | `cloudfront_function_auth` | `true` | `true` |
 | `html_cache_ttl` | `300` (5 min) | `300` (5 min) |
 | `static_cache_ttl` | `31536000` (1 year) | `31536000` (1 year) |
-| `csp_connect_src_api` | `https://dev-api.zenbots.com.br` | `https://api.zenbots.com.br` |
+| `csp_connect_src_api` | `https://dev-api.zenbotz.com.br` | `https://api.zenbotz.com.br` |
 | `enable_logging` | `false` | `true` (S3 access logs) |
 
 ### CloudFront Price Classes (Cost vs Latency)
@@ -965,9 +958,10 @@ resource "aws_cloudfront_response_headers_policy" "security" {
 
 ### Terraform State
 
-- Remote backend: S3 bucket `zenbots-terraform-state` (shared with backend)
+- Remote backend: S3 bucket `zenbots-terraform-state` (shared with backend) — **ALREADY EXISTS**
+- DynamoDB lock table: `zenbots-terraform-locks` — **ALREADY EXISTS**
 - Separate state files: `frontend-dev/terraform.tfstate`, `frontend-prod/terraform.tfstate`
-- Encrypted at rest via S3 SSE-KMS
+- Encrypted at rest via S3 SSE-KMS, versioning enabled
 
 ---
 
@@ -1080,7 +1074,7 @@ jobs:
 
       - name: Build static export
         env:
-          NEXT_PUBLIC_API_BASE_URL: https://dev-api.zenbots.com.br
+          NEXT_PUBLIC_API_BASE_URL: https://dev-api.zenbotz.com.br
           NEXT_PUBLIC_FB_APP_ID: ${{ secrets.DEV_FB_APP_ID }}
           NEXT_PUBLIC_FB_CONFIG_ID: ${{ secrets.DEV_FB_CONFIG_ID }}
           NEXT_PUBLIC_FB_LOGIN_CONFIG_ID: ${{ secrets.DEV_FB_LOGIN_CONFIG_ID }}
@@ -1146,7 +1140,7 @@ jobs:
       - name: Health check
         run: |
           for i in {1..10}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://dev.zenbots.com.br/health.html)
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://dev.zenbotz.com.br/health.html)
             if [ "$STATUS" = "200" ]; then
               echo "Health check passed"
               exit 0
@@ -1159,7 +1153,7 @@ jobs:
 
       - name: Verify login page loads
         run: |
-          BODY=$(curl -s https://dev.zenbots.com.br/login)
+          BODY=$(curl -s https://dev.zenbotz.com.br/login)
           if echo "$BODY" | grep -q "ZenBotZ"; then
             echo "Login page renders correctly"
           else
@@ -1207,7 +1201,7 @@ jobs:
 
       - name: Build static export
         env:
-          NEXT_PUBLIC_API_BASE_URL: https://api.zenbots.com.br
+          NEXT_PUBLIC_API_BASE_URL: https://api.zenbotz.com.br
           NEXT_PUBLIC_FB_APP_ID: ${{ secrets.PROD_FB_APP_ID }}
           NEXT_PUBLIC_FB_CONFIG_ID: ${{ secrets.PROD_FB_CONFIG_ID }}
           NEXT_PUBLIC_FB_LOGIN_CONFIG_ID: ${{ secrets.PROD_FB_LOGIN_CONFIG_ID }}
@@ -1320,7 +1314,7 @@ jobs:
       - name: Health check
         run: |
           for i in {1..10}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://app.zenbots.com.br/health.html)
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://app.zenbotz.com.br/health.html)
             if [ "$STATUS" = "200" ]; then
               echo "Health check passed"
               exit 0
@@ -1333,7 +1327,7 @@ jobs:
 
       - name: Verify login page loads
         run: |
-          BODY=$(curl -s https://app.zenbots.com.br/login)
+          BODY=$(curl -s https://app.zenbotz.com.br/login)
           if echo "$BODY" | grep -q "ZenBotZ"; then
             echo "Login page content verified"
           else
@@ -1343,7 +1337,7 @@ jobs:
 
       - name: Verify security headers
         run: |
-          HEADERS=$(curl -sI https://app.zenbots.com.br/login)
+          HEADERS=$(curl -sI https://app.zenbotz.com.br/login)
           echo "$HEADERS"
           echo "$HEADERS" | grep -qi "strict-transport-security" || { echo "Missing HSTS header"; exit 1; }
           echo "$HEADERS" | grep -qi "x-frame-options" || { echo "Missing X-Frame-Options"; exit 1; }
@@ -1454,7 +1448,7 @@ Unlike the backend (which stores DB passwords, API keys, encryption keys), the f
 
 | Variable | Dev Build | Prod Build |
 |----------|-----------|------------|
-| `NEXT_PUBLIC_API_BASE_URL` | `https://dev-api.zenbots.com.br` | `https://api.zenbots.com.br` |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://dev-api.zenbotz.com.br` | `https://api.zenbotz.com.br` |
 | `NEXT_PUBLIC_FB_APP_ID` | `${{ secrets.DEV_FB_APP_ID }}` | `${{ secrets.PROD_FB_APP_ID }}` |
 | `NEXT_PUBLIC_WHATSAPP_DEV_MODE` | `"true"` | `"false"` |
 | `NEXT_PUBLIC_SENTRY_DSN` | `${{ secrets.SENTRY_DSN }}` | `${{ secrets.SENTRY_DSN }}` |
@@ -1505,7 +1499,7 @@ Month 2: Add production ($12/month)
 | 1.4 | Remove `experimental.serverActions` (incompatible with export) | 1.1 | 5 min |
 | 1.5 | Remove `middleware.ts` (replaced by CloudFront Function) | 1.1 | 10 min |
 | 1.6 | Add client-side auth guard hook (local dev parity) | 1.5 | 30 min |
-| 1.7 | Remove `.env.local` from git + create `.env.example` (BLK-1) | Nothing | 30 min |
+| 1.7 | ~~Remove `.env.local` from git~~ (done) + create `.env.example` (BLK-1) | Nothing | 10 min |
 | 1.8 | Add build-time env var validation (BLK-5) | Nothing | 15 min |
 | 1.9 | Fix MailHog references (BLK-2, BLK-3) | Nothing | 15 min |
 | 1.10 | Fix SSE localhost fallback (BLK-4) | Nothing | 10 min |
@@ -1516,7 +1510,7 @@ Month 2: Add production ($12/month)
 | 1.15 | Add `app/not-found.tsx` (404 page) | Nothing | 30 min |
 | 1.16 | Add `public/robots.txt` + `favicon.ico` | Nothing | 30 min |
 | 1.17 | Verify `npm run build` produces `out/` directory with all routes | 1.1-1.6 | 30 min |
-| 1.18 | Create GitHub OIDC provider in AWS (if not done by backend) | AWS account | 30 min |
+| 1.18 | ~~Create GitHub OIDC provider~~ (already exists from backend) | — | 0 min |
 | 1.19 | Create IAM role: `github-actions-frontend-dev` | 1.18 | 30 min |
 | 1.20 | Set GitHub repo secrets + create `dev` environment | 1.19 | 15 min |
 | 1.21 | Write `.github/workflows/pr-checks.yml` | Nothing | 1 hour |
@@ -1531,7 +1525,7 @@ Month 2: Add production ($12/month)
 | 2.4 | Write CloudFront Response Headers Policy (security headers) | 2.2 | 1 hour |
 | 2.5 | Wire up `environments/dev/main.tf` | 2.1-2.4 | 1 hour |
 | 2.6 | `terraform apply` for dev | 2.5 | 30 min |
-| 2.7 | Configure Route 53 → CloudFront (`dev.zenbots.com.br`) | 2.6 | 15 min |
+| 2.7 | Configure Route 53 → CloudFront (`dev.zenbotz.com.br`) | 2.6 | 15 min |
 | 2.8 | Attach ACM certificate to dev CloudFront distribution | 2.6 | 15 min |
 | 2.9 | Manual test: upload build to S3, verify via CloudFront | 2.6 | 30 min |
 
@@ -1558,7 +1552,7 @@ Month 2: Add production ($12/month)
 | 4.2 | Add `AWS_FRONTEND_PROD_ROLE_ARN` to GitHub secrets + create `production` environment (1 reviewer) | 4.1 | 15 min |
 | 4.3 | Wire up `environments/prod/main.tf` (PriceClass_200, WAF, Route 53 failover) | Modules from Phase 2 | 1 hour |
 | 4.4 | `terraform apply` for prod | 4.3 | 30 min |
-| 4.5 | Configure Route 53 → CloudFront (`app.zenbots.com.br`) | 4.4 | 15 min |
+| 4.5 | Configure Route 53 → CloudFront (`app.zenbotz.com.br`) | 4.4 | 15 min |
 | 4.6 | Write `.github/workflows/deploy-prod.yml` (approval gate) | 3.1, 4.4 | 1.5 hours |
 | 4.7 | Test: merge to main → approval gate → prod deploy | 4.6 | 1 hour |
 | 4.8 | Rotate Facebook App ID / Config IDs (since they were in git) | 4.7 | 30 min |
@@ -1573,7 +1567,7 @@ Month 2: Add production ($12/month)
 | 5.4 | Switch CSP from report-only to enforcing (CRT-1) — test thoroughly | 4.7 | 2 hours |
 | 5.5 | Add CloudWatch alarm: CloudFront 5xx error rate > 1% | 4.4 | 30 min |
 | 5.6 | Verify zero-downtime deploy (deploy while browsing — no errors) | 4.7 | 30 min |
-| 5.7 | Update backend CORS_ORIGINS with `https://app.zenbots.com.br` | 4.7 | 15 min |
+| 5.7 | Update backend CORS_ORIGINS with `https://app.zenbotz.com.br` | 4.7 | 15 min |
 
 ---
 
@@ -1635,14 +1629,15 @@ S3 + CloudFront is simultaneously **the cheapest, fastest, and most available** 
 
 ### Frontend + Backend Combined Cost
 
+(Backend costs from actual deployed infra)
+
 | | Frontend | Backend | Combined |
 |---|---|---|---|
-| **Dev** | $2/month | $57/month | $59/month |
-| **Prod** | $12/month | $215/month | $227/month |
-| **Total (Month 2+)** | $14/month | $272/month | **$286/month** |
-| **Year 1** | $180 | $3,049 | **$3,229** |
+| **Dev** | $2/month | $48/month | $50/month |
+| **Prod** | $12/month | ~$223/month | ~$235/month |
+| **Total (Month 2+)** | $14/month | ~$271/month | **~$285/month** |
 
-The frontend adds only **5% to the total infrastructure cost** — practically a rounding error compared to the backend.
+The frontend adds only **~5% to the total infrastructure cost** — practically a rounding error compared to the backend.
 
 ---
 
@@ -1658,7 +1653,7 @@ The frontend adds only **5% to the total infrastructure cost** — practically a
 - [ ] `middleware.ts` deleted (replaced by CloudFront Function)
 - [ ] Client-side auth guard hook added (local dev parity)
 - [ ] `npm run build` produces `out/` directory with all 13 route HTML files
-- [ ] `.env.local` removed from git
+- [x] `.env.local` removed from git (already done)
 - [ ] `.env.example` created with placeholder values
 - [ ] Build-time env var validation in `next.config.ts`
 - [ ] MailHog references wrapped in dev-only conditional
@@ -1697,7 +1692,7 @@ The frontend adds only **5% to the total infrastructure cost** — practically a
 - [ ] Sentry integrated with error boundaries
 - [ ] Route 53 failover configured (health check on /health.html)
 - [ ] Maintenance page in separate S3 bucket (failover target)
-- [ ] Backend `CORS_ORIGINS` updated with `https://app.zenbots.com.br`
+- [ ] Backend `CORS_ORIGINS` updated with `https://app.zenbotz.com.br`
 - [ ] Backend WhatsApp webhook callback URLs updated
 - [ ] Backend Mercado Pago redirect URIs updated
 - [ ] `deploy-prod.yml` has manual approval gate

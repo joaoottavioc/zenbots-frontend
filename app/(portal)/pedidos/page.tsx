@@ -29,7 +29,11 @@ import { calculateTimeElapsed } from "./utils";
 import { OrderColumn } from "./order-column";
 import { TicketImpressao } from "./ticket-impressao";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+function getApiBase() {
+  const url = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!url) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured");
+  return url;
+}
 
 export default function PedidosPage() {
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
@@ -83,7 +87,7 @@ export default function PedidosPage() {
       controller = new AbortController();
 
       try {
-        const response = await fetch(`${API_BASE}/stream`, {
+        const response = await fetch(`${getApiBase()}/stream`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'text/event-stream',

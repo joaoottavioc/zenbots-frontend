@@ -77,7 +77,7 @@ describe('ForgotPasswordPage', () => {
     });
   });
 
-  it('shows error toast on failure', async () => {
+  it('shows success view on failure to prevent email enumeration', async () => {
     vi.mocked(api.post).mockRejectedValueOnce(new Error('Server error'));
 
     const user = userEvent.setup();
@@ -87,9 +87,7 @@ describe('ForgotPasswordPage', () => {
     await user.click(screen.getByRole('button', { name: /enviar link de recuperação/i }));
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'destructive' })
-      );
+      expect(screen.getByText(/verifique seu e-mail/i)).toBeInTheDocument();
     });
   });
 });

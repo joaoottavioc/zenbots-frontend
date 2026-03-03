@@ -9,7 +9,8 @@ export function getToken(): string | null {
 
 export function setToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
-  document.cookie = `${AUTH_COOKIE}=1; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Strict`;
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${AUTH_COOKIE}=1; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Strict${secure}`;
 }
 
 export function clearToken(): void {

@@ -1,0 +1,133 @@
+name: Deploy to Dev
+
+on:
+  push:
+    branches: [develop]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'tech_debt/**'
+      - 'plan/**'
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+  S3_BUCKET: zenbots-dev-frontend
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run test
+
+  build-and-deploy:
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build static export
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://dev-api.zenbotz.com.br
+          NEXT_PUBLIC_FB_APP_ID: ${{ secrets.DEV_FB_APP_ID }}
+          NEXT_PUBLIC_FB_CONFIG_ID: ${{ secrets.DEV_FB_CONFIG_ID }}
+          NEXT_PUBLIC_FB_LOGIN_CONFIG_ID: ${{ secrets.DEV_FB_LOGIN_CONFIG_ID }}
+          NEXT_PUBLIC_WHATSAPP_DEV_MODE: "true"
+          NEXT_PUBLIC_ENVIRONMENT: dev
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          test -d out || { echo "Build output directory 'out' not found"; exit 1; }
+          test -f out/login.html || { echo "login.html not found in build output"; exit 1; }
+          echo "Build output size: $(du -sh out | cut -f1)"
+          echo "File count: $(find out -type f | wc -l)"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_FRONTEND_DEV_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync static assets to S3 (immutable, 1 year cache)
+        run: |
+          aws s3 sync out/_next/static s3://${{ env.S3_BUCKET }}/_next/static \
+            --cache-control "public, max-age=31536000, immutable" \
+            --delete
+
+      - name: Sync HTML and public assets to S3 (short cache)
+        run: |
+          aws s3 sync out s3://${{ env.S3_BUCKET }} \
+            --exclude "_next/static/*" \
+            --cache-control "public, max-age=0, must-revalidate" \
+            --delete
+
+      - name: Set cache headers for images and fonts
+        run: |
+          aws s3 cp s3://${{ env.S3_BUCKET }}/ s3://${{ env.S3_BUCKET }}/ \
+            --recursive \
+            --exclude "*" \
+            --include "*.png" \
+            --include "*.svg" \
+            --include "*.ico" \
+            --include "*.woff2" \
+            --cache-control "public, max-age=86400" \
+            --metadata-directive REPLACE
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DEV_DIST_ID }} \
+            --paths "/*.html" "/404.html" "/health.html"
+
+  smoke-test:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for CloudFront propagation
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          for i in {1..10}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://dev.zenbotz.com.br/health.html)
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 10 attempts"
+          exit 1
+
+      - name: Verify login page loads
+        run: |
+          BODY=$(curl -s https://dev.zenbotz.com.br/login)
+          if echo "$BODY" | grep -q "ZenBotZ"; then
+            echo "Login page renders correctly"
+          else
+            echo "Login page content check failed"
+            exit 1
+          fi
