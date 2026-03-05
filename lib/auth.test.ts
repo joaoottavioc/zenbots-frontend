@@ -1,5 +1,5 @@
 import { vi, beforeEach } from 'vitest';
-import { isAuthenticated, setAuthPresence, clearAuth, getCsrfToken, cleanupLegacyAuth, AUTH_CHANNEL_NAME } from './auth';
+import { isAuthenticated, setAuthPresence, clearAuth, getCsrfToken, setCsrfToken, cleanupLegacyAuth, AUTH_CHANNEL_NAME } from './auth';
 
 describe('lib/auth', () => {
   beforeEach(() => {
@@ -49,14 +49,31 @@ describe('lib/auth', () => {
     });
   });
 
-  describe('getCsrfToken', () => {
-    it('returns null when no csrf cookie exists', () => {
+  describe('getCsrfToken / setCsrfToken', () => {
+    it('returns null when no csrf cookie or in-memory token exists', () => {
       expect(getCsrfToken()).toBeNull();
     });
 
-    it('returns the csrf token value', () => {
+    it('returns the csrf token from cookie', () => {
       document.cookie = 'csrf_token=abc123; path=/';
       expect(getCsrfToken()).toBe('abc123');
+    });
+
+    it('returns in-memory token when set', () => {
+      setCsrfToken('memory-token');
+      expect(getCsrfToken()).toBe('memory-token');
+    });
+
+    it('prefers in-memory token over cookie', () => {
+      document.cookie = 'csrf_token=cookie-token; path=/';
+      setCsrfToken('memory-token');
+      expect(getCsrfToken()).toBe('memory-token');
+    });
+
+    it('clearAuth clears the in-memory token', () => {
+      setCsrfToken('memory-token');
+      clearAuth();
+      expect(getCsrfToken()).toBeNull();
     });
   });
 

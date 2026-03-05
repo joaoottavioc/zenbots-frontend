@@ -4,6 +4,9 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 export const AUTH_CHANNEL_NAME = "zenbots-auth";
 
+// In-memory CSRF token storage (cookie is on API domain, not readable from frontend domain)
+let csrfTokenInMemory: string | null = null;
+
 /** Check if user is authenticated by looking for the presence cookie */
 export function isAuthenticated(): boolean {
   if (typeof window === "undefined") return false;
@@ -18,6 +21,7 @@ export function setAuthPresence(): void {
 
 /** Clear auth state: expire presence cookie and broadcast logout to other tabs */
 export function clearAuth(): void {
+  csrfTokenInMemory = null;
   document.cookie = `${AUTH_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
   try {
     const channel = new BroadcastChannel(AUTH_CHANNEL_NAME);
@@ -28,9 +32,14 @@ export function clearAuth(): void {
   }
 }
 
-/** Read the CSRF token from the non-httpOnly cookie set by the backend */
+/** Store the CSRF token in memory (called after login) */
+export function setCsrfToken(token: string): void {
+  csrfTokenInMemory = token;
+}
+
+/** Get the CSRF token: in-memory first, then fall back to cookie */
 export function getCsrfToken(): string | null {
-  return getCookie(CSRF_COOKIE);
+  return csrfTokenInMemory || getCookie(CSRF_COOKIE);
 }
 
 /** One-time removal of legacy localStorage keys from the old auth system */

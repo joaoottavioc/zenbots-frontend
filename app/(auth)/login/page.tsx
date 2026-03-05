@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { api } from '@/lib/api';
-import { setAuthPresence } from '@/lib/auth';
+import { setAuthPresence, setCsrfToken } from '@/lib/auth';
 import { getSafeErrorMessage } from '@/lib/error-messages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,8 +68,11 @@ function LoginContent() {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       throttle.reset();
+      if (response.data?.csrf_token) {
+        setCsrfToken(response.data.csrf_token);
+      }
       setAuthPresence();
       setUnverifiedEmail(null);
 

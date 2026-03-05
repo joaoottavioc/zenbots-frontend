@@ -323,11 +323,12 @@
 
 ---
 
-### [x] P2-11: No CSRF Protection *(Fixed 2026-03-04 — CSRF double-submit pattern with X-CSRF-Token header on all mutating requests)*
+### [x] P2-11: No CSRF Protection *(Fixed 2026-03-04, updated 2026-03-05 — CSRF double-submit pattern with X-CSRF-Token header on all mutating requests)*
 
 **Impact:** Cookie-based auth requires CSRF protection to prevent cross-site request forgery.
 
-- **Resolution:** Axios request interceptor reads `csrf_token` cookie and attaches `X-CSRF-Token` header on POST/PUT/PATCH/DELETE requests. Public auth paths are exempt. `SameSite=Lax` on all cookies provides additional protection.
+- **Resolution:** Axios request interceptor attaches `X-CSRF-Token` header on POST/PUT/PATCH/DELETE requests. Public auth paths are exempt. `SameSite=Lax` on all cookies provides additional protection. The `csrf_token` cookie is set by the backend on `dev-api.zenbotz.com.br`, which is not readable by frontend JS on `dev.zenbotz.com.br`. To work around this, the frontend captures the CSRF token from the login response body (`response.data.csrf_token`) and stores it in memory via `setCsrfToken()` in `lib/auth.ts`. `getCsrfToken()` checks in-memory first, then falls back to cookie. `clearAuth()` clears the in-memory token on logout.
+- **Remaining:** Backend should set the `csrf_token` cookie with `Domain=.zenbotz.com.br` so the cookie fallback works across subdomains (currently only in-memory works). After a page refresh, the CSRF token is lost until the user logs in again.
 
 ---
 
