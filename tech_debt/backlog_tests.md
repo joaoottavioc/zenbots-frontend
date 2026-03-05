@@ -6,6 +6,21 @@
 > **Stack:** Vitest 4 + React Testing Library + jsdom + @vitest/coverage-v8
 > **Related:** Architecture debt in `tech_debt/backlog_architecture.md`, security issues in `tech_debt/backlog_vulnerabilities.md`
 
+---
+
+## Resolution Summary
+
+| Priority | Total | Resolved | Open | % Resolved |
+|----------|-------|----------|------|------------|
+| **P0** | 5 | 0 | 5 | 0% |
+| **P1** | 8 | 0 | 8 | 0% |
+| **P2** | 7 | 0 | 7 | 0% |
+| **P3** | 7 | 1 | 6 | 14.3% |
+| **Infra** | 4 | 0 | 4 | 0% |
+| **Total** | **31** | **1** | **30** | **3.2%** |
+
+---
+
 ### Change log (2026-02-28)
 
 | Metric | Before | After | Delta |

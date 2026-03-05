@@ -27,10 +27,10 @@ vi.mock('@/components/layout/top-header', () => ({
 describe('PortalLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
+    document.cookie = 'zenbots_auth=; path=/; max-age=0';
   });
 
-  it('redirects to /login when no token exists', async () => {
+  it('redirects to /login when no presence cookie exists', async () => {
     renderWithProviders(
       <PortalLayout><div>Child Content</div></PortalLayout>
     );
@@ -44,8 +44,8 @@ describe('PortalLayout', () => {
     expect(screen.queryByText('Child Content')).not.toBeInTheDocument();
   });
 
-  it('redirects to /login when zenbots_token is removed in another tab', async () => {
-    localStorage.setItem('zenbots_token', 'valid-token');
+  it('redirects to /login when another tab broadcasts logout', async () => {
+    document.cookie = 'zenbots_auth=1; path=/';
 
     renderWithProviders(
       <PortalLayout><div>Child Content</div></PortalLayout>
@@ -55,19 +55,18 @@ describe('PortalLayout', () => {
       expect(screen.getByText('Child Content')).toBeInTheDocument();
     });
 
-    // Simulate another tab removing the token
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'zenbots_token',
-      newValue: null,
-    }));
+    // Simulate another tab broadcasting logout via BroadcastChannel
+    const sender = new BroadcastChannel('zenbots-auth');
+    sender.postMessage({ type: 'logout' });
+    sender.close();
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/login');
     });
   });
 
-  it('does NOT redirect when a different storage key changes', async () => {
-    localStorage.setItem('zenbots_token', 'valid-token');
+  it('does NOT redirect on non-logout broadcast messages', async () => {
+    document.cookie = 'zenbots_auth=1; path=/';
 
     renderWithProviders(
       <PortalLayout><div>Child Content</div></PortalLayout>
@@ -77,18 +76,16 @@ describe('PortalLayout', () => {
       expect(screen.getByText('Child Content')).toBeInTheDocument();
     });
 
-    // Simulate a different key being removed
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'some_other_key',
-      newValue: null,
-    }));
+    const sender = new BroadcastChannel('zenbots-auth');
+    sender.postMessage({ type: 'other' });
+    sender.close();
 
     // Should NOT redirect
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it('renders children when token is present', async () => {
-    localStorage.setItem('zenbots_token', 'valid-token');
+  it('renders children when presence cookie is set', async () => {
+    document.cookie = 'zenbots_auth=1; path=/';
 
     renderWithProviders(
       <PortalLayout><div>Child Content</div></PortalLayout>
@@ -104,7 +101,7 @@ describe('PortalLayout', () => {
   });
 
   it('renders a skip-to-content link', async () => {
-    localStorage.setItem('zenbots_token', 'valid-token');
+    document.cookie = 'zenbots_auth=1; path=/';
 
     renderWithProviders(
       <PortalLayout><div>Child Content</div></PortalLayout>
@@ -120,7 +117,7 @@ describe('PortalLayout', () => {
   });
 
   it('has id="main-content" on the main element', async () => {
-    localStorage.setItem('zenbots_token', 'valid-token');
+    document.cookie = 'zenbots_auth=1; path=/';
 
     renderWithProviders(
       <PortalLayout><div>Child Content</div></PortalLayout>

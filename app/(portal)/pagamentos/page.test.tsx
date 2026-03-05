@@ -18,6 +18,12 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
+vi.mock('@/components/ui/bot-selector', () => ({
+  BotSelector: ({ onBotChange }: any) => (
+    <button onClick={() => onBotChange('1')} data-testid="bot-selector">Select Bot</button>
+  ),
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -89,6 +95,9 @@ describe('PagamentosPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<PagamentosPage />);
 
+    // Select a bot first (required for connect)
+    await user.click(screen.getByTestId('bot-selector'));
+
     await waitFor(() => {
       expect(screen.getByText(/conectar conta/i)).toBeInTheDocument();
     });
@@ -100,6 +109,8 @@ describe('PagamentosPage', () => {
     });
 
     expect(sessionStorage.setItem).toHaveBeenCalledWith('mp_oauth_state', mockUUID);
+    // Verify bot_id is passed to the API
+    expect(api.get).toHaveBeenCalledWith(expect.stringContaining('bot_id=1'));
   });
 
   it('renders Mercado Pago card with features', async () => {

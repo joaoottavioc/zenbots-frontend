@@ -6,6 +6,18 @@
 
 ---
 
+## Resolution Summary
+
+| Priority | Total | Fixed | Open | % Resolved |
+|----------|-------|-------|------|------------|
+| **P0** | 5 | 5 | 0 | 100% |
+| **P1** | 9 | 9 | 0 | 100% |
+| **P2** | 14 | 13 | 1 | 92.9% |
+| **P3** | 14 | 10 | 4 | 71.4% |
+| **Total** | **42** | **37** | **5** | **88.1%** |
+
+---
+
 ## Priority Definitions
 
 | Priority | Meaning | Guidance |
@@ -188,7 +200,7 @@ Three page files are monolithic components that combine data fetching, business 
 
 ---
 
-### [ ] P1-8: No Error Monitoring / Observability *(NEW — 2026-02-28 scan)*
+### [x] P1-8: No Error Monitoring / Observability *(Fixed 2026-03-04)*
 
 **Impact:** Production errors are completely invisible. Error boundaries catch exceptions but silently discard them. No alerting, no dashboards, no ability to correlate user-reported issues.
 
@@ -200,27 +212,22 @@ Three page files are monolithic components that combine data fetching, business 
   - Correlate frontend errors with backend issues
   - Provide users with actionable error IDs for support
 - **Fix:** Integrate Sentry (or equivalent). Add `Sentry.captureException(error)` in all error boundaries. Display `error.digest` to users for support correlation. Configure alerting for error spike detection.
+- **Resolution:** Installed `@sentry/react`. Created `lib/error-reporting.ts` with `initErrorReporting()` (guards behind `NEXT_PUBLIC_SENTRY_DSN` env var) and `reportError(error, context?)` (always logs to console, sends to Sentry when initialized). Called `initErrorReporting()` in `app/providers.tsx`. Updated all 3 error boundaries to call `reportError(error, { boundary })` via `useEffect` and display `error.digest` when available ("Código do erro: ..."). 7 new tests in `lib/error-reporting.test.ts`, 3 new tests across error boundary files. All 174 tests pass.
 
 ---
 
-### [ ] P1-9: React Query Retries on Auth Errors (401/403) *(NEW — 2026-02-28 scan)*
+### [x] P1-9: React Query Retries on Auth Errors (401/403) *(Fixed 2026-03-04)*
 
 **Impact:** `providers.tsx` configures `retry: 1` unconditionally. This means 401 (unauthorized) and 403 (forbidden) errors are retried once before failing, wasting network requests and confusing the session expiry flow.
 
-- **File:** `app/providers.tsx`, line 13 — `retry: 1`
+- **File:** `app/providers.tsx`, line 13
 - **Problem:** When a token expires mid-session:
   1. Query fails with 401
   2. React Query retries the same request (still 401)
   3. Response interceptor fires twice, emitting two session-expired events
   4. User may see double redirect or double toast
-- **Fix:** Use a conditional retry function:
-  ```typescript
-  retry: (failureCount, error) => {
-    const status = (error as any)?.response?.status;
-    if (status === 401 || status === 403) return false;
-    return failureCount < 1;
-  }
-  ```
+- **Fix:** Use a conditional retry function.
+- **Resolution:** Already fixed in a prior session — `providers.tsx` uses a conditional retry function that returns `false` for 401/403 responses and `failureCount < 1` otherwise. Confirmed working during 2026-03-04 review.
 
 ---
 
@@ -370,31 +377,34 @@ Several components used hex values instead of Tailwind config or CSS variables:
 
 ---
 
-### [ ] P2-12: Toast Auto-Dismiss Effectively Disabled *(NEW — 2026-02-28 scan)*
+### [x] P2-12: Toast Auto-Dismiss Effectively Disabled *(Fixed 2026-03-04)*
 
 **Impact:** `TOAST_REMOVE_DELAY` in `hooks/use-toast.ts` is set to `1000000` ms (~16 minutes). Toasts never auto-dismiss in practice, accumulating on screen and cluttering the UI.
 
 - **File:** `hooks/use-toast.ts`
 - **Fix:** Set `TOAST_REMOVE_DELAY` to a reasonable duration (5000-8000ms). For destructive/error toasts, use a longer delay or require manual dismiss.
+- **Resolution:** Changed `TOAST_REMOVE_DELAY` from `1000000` to `5000` (5 seconds). Existing test file `hooks/use-toast.test.ts` covers reducer behavior.
 
 ---
 
-### [ ] P2-13: No Pagination for Large Datasets *(NEW — 2026-02-28 scan)*
+### [x] P2-13: No Pagination for Large Datasets *(Fixed 2026-03-04)*
 
 **Impact:** `produtos/page.tsx` and `meus-bots/page.tsx` fetch and render ALL items from the API without pagination, virtualization, or infinite scroll. Performance will degrade significantly for users with 100+ products or bots.
 
 - **Files:** `app/(portal)/produtos/page.tsx` (line 310-407 iterates all products), `app/(portal)/meus-bots/page.tsx`
 - **Consequence:** DOM size grows linearly. React re-renders become expensive. Network payload increases.
 - **Fix:** Implement server-side pagination (`?page=1&limit=50`) or add client-side virtualization (e.g., `@tanstack/react-virtual`). This requires backend support for paginated endpoints.
+- **Resolution:** Added client-side pagination to `produtos/page.tsx` with `ITEMS_PER_PAGE = 20`. Products are sliced before grouping into categories. Pagination controls (Previous/Next + "Página X de Y") appear when `totalPages > 1`. Page resets to 1 on bot change. 4 new tests added. `meus-bots` deferred (typically <10 bots per user).
 
 ---
 
-### [ ] P2-14: Hardcoded Subscription Prices in Settings UI *(NEW — 2026-02-28 scan)*
+### [x] P2-14: Hardcoded Subscription Prices in Settings UI *(Fixed 2026-03-04)*
 
 **Impact:** `settings/page.tsx` displays "R$ 5,00" and "R$ 10,00" as static strings even though it queries the billing API. Price changes require a code deployment.
 
 - **File:** `app/(portal)/settings/page.tsx`, lines 325, 340
 - **Fix:** Use the pricing data from the billing API query response to populate price labels dynamically.
+- **Resolution:** Added `Plan` interface to `lib/types.ts`. Settings page now fetches plans from `GET /billing/plans` via `useQuery`. Hardcoded plan cards replaced with `plans.map()` loop using `PLAN_FEATURES` and `PLAN_STYLES` maps. Prices formatted with `Intl.NumberFormat`. Loading spinner and "Nenhum plano disponível" empty state added. 2 new tests added.
 
 ---
 
@@ -545,18 +555,18 @@ The `/api/v1/*` rewrite to `http://127.0.0.1:8000/api/v1/:path*` is never used b
 
 ## Summary
 
-> **Updated:** 2026-02-28 (deep codebase scan — 8 new issues added)
+> **Updated:** 2026-03-04 (P1-8 fixed, P1-9 confirmed fixed, P2-12/P2-13/P2-14 fixed)
 
 | Priority | Open | Fixed | Theme |
 |----------|------|-------|-------|
 | **P0** | 0 | 5 | ~~Broken env vars, missing mobile nav, Suspense, dead route, fake save~~ — **All resolved 2026-02-27** |
-| **P1** | 2 | 7 | ~~God components, bypassed React Query, no 401 handler, no auth guard, no logout cleanup, missing error UX~~ — **7 resolved 2026-02-27**. **2 open:** no error monitoring (P1-8), retry on auth errors (P1-9) |
-| **P2** | 4 | 10 | ~~Form inconsistency, duplicate components, `any` types, stale renders, dead dark mode, hardcoded colors, cache invalidation, background colors, infinite loop, cross-tab auth~~ — **10 resolved 2026-02-27**. **4 open:** client boundary (P2-4, deferred), toast dismiss (P2-12), no pagination (P2-13), hardcoded prices (P2-14) |
+| **P1** | 0 | 9 | ~~God components, bypassed React Query, no 401 handler, no auth guard, no logout cleanup, missing error UX, error monitoring, retry on auth errors~~ — **All resolved** (7 on 2026-02-27, 2 on 2026-03-04) |
+| **P2** | 1 | 13 | ~~Form inconsistency, duplicate components, `any` types, stale renders, dead dark mode, hardcoded colors, cache invalidation, background colors, infinite loop, cross-tab auth, toast dismiss, pagination, dynamic prices~~ — **13 resolved** (10 on 2026-02-27, 3 on 2026-03-04). **1 open:** client boundary (P2-4, intentionally deferred) |
 | **P3** | 4 | 10 | ~~Accessibility, dead code, chart vars, stale config, empty avatar, placeholder number, dead proxy, responsive gaps, inline SVGs~~ — **10 resolved 2026-02-27**. **4 open:** code splitting (P3-5, deferred), loading/404 pages (P3-12), reduced-motion (P3-13), h-screen clip (P3-14) |
-| **Total** | **10** | **32** | **42 total** (8 new items from 2026-02-28 scan) |
+| **Total** | **5** | **37** | **42 total** (8 new items from 2026-02-28 scan) |
 
 ---
 
 > **Cross-reference:** 44 security-specific issues are tracked in `tech_debt/backlog_vulnerabilities.md`. Some items overlap (e.g., error monitoring is both an architecture and security concern) — listed in both backlogs from their respective perspectives.
 
-> **Recommended approach:** P1-8 (error monitoring) is the highest-impact open item — production without observability is flying blind. P1-9 (retry on auth) is a quick 5-line fix. P2 items should be addressed in the next sprint. P3 items are polish for post-launch.
+> **Recommended approach:** All P0, P1, and actionable P2 items are resolved. Only P2-4 (client boundary) remains intentionally deferred. P3 items are polish for post-launch. To activate Sentry in production, set `NEXT_PUBLIC_SENTRY_DSN` environment variable.

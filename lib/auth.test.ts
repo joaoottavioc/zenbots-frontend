@@ -1,47 +1,78 @@
 import { vi, beforeEach } from 'vitest';
-import { getToken, setToken, clearToken } from './auth';
+import { isAuthenticated, setAuthPresence, clearAuth, getCsrfToken, cleanupLegacyAuth, AUTH_CHANNEL_NAME } from './auth';
 
 describe('lib/auth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
     document.cookie = 'zenbots_auth=; path=/; max-age=0';
+    document.cookie = 'csrf_token=; path=/; max-age=0';
+    localStorage.clear();
   });
 
-  describe('getToken', () => {
-    it('returns null when no token is stored', () => {
-      expect(getToken()).toBeNull();
+  describe('isAuthenticated', () => {
+    it('returns false when no presence cookie exists', () => {
+      expect(isAuthenticated()).toBe(false);
     });
 
-    it('returns the stored token', () => {
-      localStorage.setItem('zenbots_token', 'my-jwt');
-      expect(getToken()).toBe('my-jwt');
+    it('returns true when presence cookie is set', () => {
+      document.cookie = 'zenbots_auth=1; path=/';
+      expect(isAuthenticated()).toBe(true);
     });
   });
 
-  describe('setToken', () => {
-    it('stores token in localStorage', () => {
-      setToken('new-token');
-      expect(localStorage.setItem).toHaveBeenCalledWith('zenbots_token', 'new-token');
-    });
-
-    it('sets auth presence cookie', () => {
-      setToken('new-token');
+  describe('setAuthPresence', () => {
+    it('sets the presence cookie', () => {
+      setAuthPresence();
       expect(document.cookie).toContain('zenbots_auth=1');
     });
   });
 
-  describe('clearToken', () => {
-    it('removes token from localStorage', () => {
-      localStorage.setItem('zenbots_token', 'old-token');
-      clearToken();
-      expect(localStorage.removeItem).toHaveBeenCalledWith('zenbots_token');
+  describe('clearAuth', () => {
+    it('expires the presence cookie', () => {
+      setAuthPresence();
+      expect(isAuthenticated()).toBe(true);
+      clearAuth();
+      expect(isAuthenticated()).toBe(false);
     });
 
-    it('expires the auth cookie', () => {
-      setToken('token');
-      clearToken();
-      expect(document.cookie).not.toContain('zenbots_auth=1');
+    it('broadcasts logout via BroadcastChannel', () => {
+      const receivedMessages: unknown[] = [];
+      const listener = new BroadcastChannel(AUTH_CHANNEL_NAME);
+      listener.onmessage = (event: { data: unknown }) => {
+        receivedMessages.push(event.data);
+      };
+
+      clearAuth();
+
+      expect(receivedMessages).toEqual([{ type: 'logout' }]);
+      listener.close();
+    });
+  });
+
+  describe('getCsrfToken', () => {
+    it('returns null when no csrf cookie exists', () => {
+      expect(getCsrfToken()).toBeNull();
+    });
+
+    it('returns the csrf token value', () => {
+      document.cookie = 'csrf_token=abc123; path=/';
+      expect(getCsrfToken()).toBe('abc123');
+    });
+  });
+
+  describe('cleanupLegacyAuth', () => {
+    it('removes old localStorage keys', () => {
+      localStorage.setItem('zenbots_token', 'old-jwt');
+      localStorage.setItem('zenbots_token_set_at', '1234567890');
+
+      cleanupLegacyAuth();
+
+      expect(localStorage.removeItem).toHaveBeenCalledWith('zenbots_token');
+      expect(localStorage.removeItem).toHaveBeenCalledWith('zenbots_token_set_at');
+    });
+
+    it('does not throw when localStorage is empty', () => {
+      expect(() => cleanupLegacyAuth()).not.toThrow();
     });
   });
 });

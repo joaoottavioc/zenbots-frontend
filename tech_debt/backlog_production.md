@@ -6,6 +6,17 @@
 
 ---
 
+## Resolution Summary
+
+| Severity | Total | Resolved | Open | % Resolved |
+|----------|-------|----------|------|------------|
+| **BLOCKER** | 7 | 0 | 7 | 0% |
+| **CRITICAL** | 7 | 0 | 7 | 0% |
+| **IMPORTANT** | 11 | 0 | 11 | 0% |
+| **Total** | **25** | **0** | **25** | **0%** |
+
+---
+
 ## Readiness Score: 6.5 / 10
 
 The application is **well-built architecturally** — modern stack, good patterns, solid test infrastructure, 32 architectural issues already fixed. However, it is **not yet safe to go live**. The codebase has the engineering quality of a production app but the **configuration and operational posture of a development environment**. The blockers below are mostly configuration, secrets management, and missing operational infrastructure — not deep code problems.

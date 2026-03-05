@@ -35,6 +35,11 @@ vi.mock('@/components/layout/dashboard-header', () => ({
           Select Bot
         </button>
       )}
+      {selectedBotId && (
+        <button onClick={() => onBotChange('2')} data-testid="change-bot">
+          Change Bot
+        </button>
+      )}
       {children}
     </div>
   ),
@@ -137,6 +142,106 @@ describe('ProdutosPage', () => {
     });
 
     expect(screen.getByText(/tentar novamente/i)).toBeInTheDocument();
+  });
+
+  it('does not show pagination when items < 20', async () => {
+    const products = [
+      createMockProduct({ id: 1, name: 'X-Bacon', category: 'Lanches', price: 25.9 }),
+      createMockProduct({ id: 2, name: 'X-Tudo', category: 'Lanches', price: 32.0 }),
+    ];
+
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url.includes('/products')) return Promise.resolve({ data: products }) as any;
+      if (url.includes('/bots')) return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Test', menu_url: null }] }) as any;
+      return Promise.resolve({ data: [] }) as any;
+    });
+
+    renderWithProviders(<ProdutosPage />);
+    screen.getByTestId('select-bot').click();
+
+    await waitFor(() => {
+      expect(screen.getByText('X-Bacon')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/página/i)).not.toBeInTheDocument();
+  });
+
+  it('shows pagination when items > 20', async () => {
+    const products = Array.from({ length: 25 }, (_, i) =>
+      createMockProduct({ id: i + 1, name: `Produto ${i + 1}`, category: 'Lanches', price: 10.0 })
+    );
+
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url.includes('/products')) return Promise.resolve({ data: products }) as any;
+      if (url.includes('/bots')) return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Test', menu_url: null }] }) as any;
+      return Promise.resolve({ data: [] }) as any;
+    });
+
+    renderWithProviders(<ProdutosPage />);
+    screen.getByTestId('select-bot').click();
+
+    await waitFor(() => {
+      expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
+    });
+  });
+
+  it('navigates between pages with Próxima/Anterior', async () => {
+    const products = Array.from({ length: 25 }, (_, i) =>
+      createMockProduct({ id: i + 1, name: `Produto ${i + 1}`, category: 'Lanches', price: 10.0 })
+    );
+
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url.includes('/products')) return Promise.resolve({ data: products }) as any;
+      if (url.includes('/bots')) return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Test', menu_url: null }] }) as any;
+      return Promise.resolve({ data: [] }) as any;
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ProdutosPage />);
+    screen.getByTestId('select-bot').click();
+
+    await waitFor(() => {
+      expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
+    });
+
+    // Go to page 2
+    await user.click(screen.getByRole('button', { name: /próxima/i }));
+    expect(screen.getByText('Página 2 de 2')).toBeInTheDocument();
+
+    // Go back to page 1
+    await user.click(screen.getByRole('button', { name: /anterior/i }));
+    expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
+  });
+
+  it('resets page to 1 on bot change', async () => {
+    const products = Array.from({ length: 25 }, (_, i) =>
+      createMockProduct({ id: i + 1, name: `Produto ${i + 1}`, category: 'Lanches', price: 10.0 })
+    );
+
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url.includes('/products')) return Promise.resolve({ data: products }) as any;
+      if (url.includes('/bots')) return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Test', menu_url: null }, { id: 2, restaurant_name: 'Test 2', menu_url: null }] }) as any;
+      return Promise.resolve({ data: [] }) as any;
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ProdutosPage />);
+    screen.getByTestId('select-bot').click();
+
+    await waitFor(() => {
+      expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
+    });
+
+    // Go to page 2
+    await user.click(screen.getByRole('button', { name: /próxima/i }));
+    expect(screen.getByText('Página 2 de 2')).toBeInTheDocument();
+
+    // Change to a different bot — this triggers handleBotChange which resets page
+    await user.click(screen.getByTestId('change-bot'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
+    });
   });
 
   it('shows error toast when delete mutation fails', async () => {

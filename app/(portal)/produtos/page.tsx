@@ -5,10 +5,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input'; 
-import { 
-  Plus, Trash2, Pencil, Check, X, Package, 
-  FileText, Image as ImageIcon, ExternalLink, Eye 
-} from 'lucide-react'; 
+import {
+  Plus, Trash2, Pencil, Check, X, Package,
+  FileText, Image as ImageIcon, ExternalLink, Eye,
+  ChevronLeft, ChevronRight
+} from 'lucide-react';
 import * as z from 'zod'; 
 
 // --- Imports de Componentes Locais ---
@@ -77,6 +78,7 @@ const formSchema = z.object({
 type ProductFormValues = z.infer<typeof formSchema>;
 
 const BOTTOM_KEYWORDS = ["bebida", "cerveja", "drink", "refrigerante", "suco", "água", "agua", "vinho", "dose", "adicionais"];
+const ITEMS_PER_PAGE = 20;
 
 export default function ProdutosPage() {
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
@@ -86,6 +88,7 @@ export default function ProdutosPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<EditData>({ name: "", description: "", price: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -108,16 +111,28 @@ export default function ProdutosPage() {
     enabled: !!selectedBotId
   });
 
+  // --- Pagination ---
+  const totalPages = useMemo(() => {
+    if (!products) return 0;
+    return Math.ceil(products.length / ITEMS_PER_PAGE);
+  }, [products]);
+
+  const paginatedProducts = useMemo(() => {
+    if (!products) return [];
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return products.slice(start, start + ITEMS_PER_PAGE);
+  }, [products, currentPage]);
+
   // --- Computed & Sorting ---
   const groupedProducts = useMemo(() => {
-    if (!products) return {};
-    return products.reduce((acc, product) => {
+    if (!paginatedProducts.length) return {};
+    return paginatedProducts.reduce((acc, product) => {
       const cat = product.category || "Sem Categoria";
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(product);
       return acc;
     }, {} as Record<string, Product[]>);
-  }, [products]);
+  }, [paginatedProducts]);
 
   const sortedCategories = useMemo(() => {
     return Object.keys(groupedProducts).sort((a, b) => {
@@ -178,7 +193,7 @@ export default function ProdutosPage() {
   });
 
   const startEditing = (p: Product) => { setEditingId(p.id); setEditData({ name: p.name, description: p.description || "", price: p.price }); };
-  const handleBotChange = useCallback((id: string) => { setSelectedBotId(id); setSelectedProductIds([]); }, []);
+  const handleBotChange = useCallback((id: string) => { setSelectedBotId(id); setSelectedProductIds([]); setCurrentPage(1); }, []);
 
   const handleSelectCategory = (category: string) => {
     const categoryProducts = groupedProducts[category];
@@ -314,7 +329,7 @@ export default function ProdutosPage() {
                  <div className="flex items-center gap-3">
                     <h2 className="font-bold text-slate-800 text-lg">{category}</h2>
                     <Badge variant="secondary" className="bg-white border border-slate-200 text-slate-500 shadow-sm">
-                        {groupedProducts[category].length}
+                        {groupedProducts[category]?.length}
                     </Badge>
                  </div>
               </CardHeader>
@@ -403,6 +418,31 @@ export default function ProdutosPage() {
               </div>
             </Card>
           ))}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 pt-2 pb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+              </Button>
+              <span className="text-sm text-slate-600">
+                Página {currentPage} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Próxima <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

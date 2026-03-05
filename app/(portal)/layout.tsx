@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getToken } from "@/lib/auth";
+import { isAuthenticated, AUTH_CHANNEL_NAME } from "@/lib/auth";
 import { useSessionGuard } from "@/hooks/use-session-guard";
 import { Sidebar } from "@/components/ui/sidebar";
 import { TopHeader } from "@/components/layout/top-header";
@@ -17,23 +17,28 @@ export default function PortalLayout({
   useSessionGuard();
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
+    if (!isAuthenticated()) {
       router.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
     } else {
       setIsAuthed(true);
     }
   }, [router]);
 
-  // Cross-tab auth sync: redirect if another tab removes the token
+  // Cross-tab auth sync: redirect if another tab broadcasts logout
   useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'zenbots_token' && !event.newValue) {
-        router.replace('/login');
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    let channel: BroadcastChannel;
+    try {
+      channel = new BroadcastChannel(AUTH_CHANNEL_NAME);
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'logout') {
+          router.replace('/login');
+        }
+      };
+    } catch {
+      // BroadcastChannel not supported
+      return;
+    }
+    return () => channel.close();
   }, [router]);
 
   if (!isAuthed) {

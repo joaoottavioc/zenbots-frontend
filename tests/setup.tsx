@@ -150,3 +150,38 @@ class MockEventSource {
 }
 
 (globalThis as any).EventSource = MockEventSource;
+
+// --- BroadcastChannel mock ---
+const broadcastChannels = new Map<string, Set<MockBroadcastChannel>>();
+
+class MockBroadcastChannel {
+  name: string;
+  onmessage: ((event: { data: unknown }) => void) | null = null;
+  close = vi.fn(() => {
+    broadcastChannels.get(this.name)?.delete(this);
+  });
+
+  constructor(name: string) {
+    this.name = name;
+    if (!broadcastChannels.has(name)) {
+      broadcastChannels.set(name, new Set());
+    }
+    broadcastChannels.get(name)!.add(this);
+  }
+
+  postMessage(data: unknown) {
+    const channels = broadcastChannels.get(this.name);
+    if (!channels) return;
+    for (const ch of channels) {
+      if (ch !== this && ch.onmessage) {
+        ch.onmessage({ data });
+      }
+    }
+  }
+}
+
+(globalThis as any).BroadcastChannel = MockBroadcastChannel;
+
+afterEach(() => {
+  broadcastChannels.clear();
+});

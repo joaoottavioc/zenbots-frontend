@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { api } from '@/lib/api';
-import { setToken } from '@/lib/auth';
+import { setAuthPresence } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Command } from 'lucide-react';
@@ -46,10 +46,9 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
     },
-    onSuccess: (response) => {
+    onSuccess: () => {
       throttle.reset();
-      const token = response.data.access_token;
-      setToken(token);
+      setAuthPresence();
 
       toast({
         title: "Login realizado!",

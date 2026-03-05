@@ -37,7 +37,7 @@ vi.mock('next/navigation', () => ({
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
+    document.cookie = 'zenbots_auth=; path=/; max-age=0';
   });
 
   it('renders the login form with email and password fields', () => {
@@ -58,7 +58,7 @@ describe('LoginPage', () => {
     expect(screen.getByText(/esqueceu a senha/i)).toBeInTheDocument();
   });
 
-  it('stores token and redirects on successful login', async () => {
+  it('sets presence cookie and redirects on successful login', async () => {
     vi.mocked(api.post).mockResolvedValueOnce({
       data: { access_token: 'fake-jwt-token' },
     } as any);
@@ -71,7 +71,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /entrar na conta/i }));
 
     await waitFor(() => {
-      expect(localStorage.setItem).toHaveBeenCalledWith('zenbots_token', 'fake-jwt-token');
+      expect(document.cookie).toContain('zenbots_auth=1');
     });
 
     await waitFor(() => {

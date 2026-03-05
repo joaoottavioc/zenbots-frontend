@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { api } from "@/lib/api";
-import { clearToken } from "@/lib/auth";
+import { clearAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { User, Settings, LogOut } from "lucide-react";
@@ -47,11 +47,14 @@ export function UserNav() {
     };
   }, [rawUser]);
 
-  const handleLogout = () => {
-      // Fire-and-forget server-side token revocation
-      api.post('/auth/logout').catch(() => {});
+  const handleLogout = async () => {
+      try {
+        await api.post('/auth/logout');
+      } catch {
+        // server-side revocation failed — proceed with local cleanup
+      }
       queryClient.clear();
-      clearToken();
+      clearAuth();
       router.push("/login");
   };
 

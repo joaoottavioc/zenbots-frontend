@@ -47,5 +47,15 @@ export interface OnboardingPayload {
   access_token: string | null;
 }
 
+export interface Plan {
+  id: number;
+  key: string;
+  title: string;
+  description: string;
+  price: number;
+  currency: string;
+  frequency: number;
+}
+
 // Re-export pedidos types for convenience
 export type { Order, OrderStatus, OrderItem } from '@/app/(portal)/pedidos/types';

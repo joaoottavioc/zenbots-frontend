@@ -29,7 +29,7 @@ vi.mock('next/navigation', () => ({
 describe('UserNav', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
+    document.cookie = 'zenbots_auth=; path=/; max-age=0';
   });
 
   it('fetches user data from /auth/me and displays initials', async () => {
@@ -40,7 +40,6 @@ describe('UserNav', () => {
     renderWithProviders(<UserNav />);
 
     await waitFor(() => {
-      // When name is empty, it derives from email: "joao" -> "Jo" (first 2 chars uppercase)
       expect(screen.getByText('JO')).toBeInTheDocument();
     });
   });
@@ -73,17 +72,16 @@ describe('UserNav', () => {
     expect(img).toBeNull();
   });
 
-  it('logout calls backend, clears cache, token and redirects to login', async () => {
+  it('logout calls backend, clears cache, presence cookie and redirects to login', async () => {
     vi.mocked(api.get).mockResolvedValueOnce({
       data: { email: 'user@test.com', name: 'User' },
     } as any);
-    localStorage.setItem('zenbots_token', 'test-token');
+    document.cookie = 'zenbots_auth=1; path=/';
 
     const user = userEvent.setup();
     const { queryClient } = renderWithProviders(<UserNav />);
     const clearSpy = vi.spyOn(queryClient, 'clear');
 
-    // Wait for user data to load
     await waitFor(() => {
       expect(screen.getByText('US')).toBeInTheDocument();
     });
@@ -98,10 +96,13 @@ describe('UserNav', () => {
     });
     await user.click(screen.getByText(/sair/i));
 
-    // Verify backend logout call
-    expect(api.post).toHaveBeenCalledWith('/auth/logout');
-    expect(clearSpy).toHaveBeenCalled();
-    expect(localStorage.removeItem).toHaveBeenCalledWith('zenbots_token');
-    expect(mockPush).toHaveBeenCalledWith('/login');
+    await waitFor(() => {
+      // Verify backend logout call
+      expect(api.post).toHaveBeenCalledWith('/auth/logout');
+      expect(clearSpy).toHaveBeenCalled();
+      // Presence cookie should be cleared
+      expect(document.cookie).not.toContain('zenbots_auth=1');
+      expect(mockPush).toHaveBeenCalledWith('/login');
+    });
   });
 });

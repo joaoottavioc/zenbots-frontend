@@ -43,6 +43,14 @@ describe('ConfiguracoesPage', () => {
           data: { status: 'active', is_active: true, days_remaining: 25, next_payment: '2026-03-25', plan_type: 'basic' },
         }) as any;
       }
+      if (url === '/billing/plans') {
+        return Promise.resolve({
+          data: [
+            { id: 1, key: 'basic', title: 'ZenBotZ Básico', description: 'Para iniciar sua operação.', price: 5.0, currency: 'BRL', frequency: 1 },
+            { id: 2, key: 'pro', title: 'ZenBotZ Pro', description: 'Pizzaria Dominadora', price: 10.0, currency: 'BRL', frequency: 1 },
+          ],
+        }) as any;
+      }
       return Promise.resolve({ data: {} }) as any;
     });
   });
@@ -124,6 +132,48 @@ describe('ConfiguracoesPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/ativo/i)).toBeInTheDocument();
+    });
+  });
+
+  it('renders dynamic plan prices from API', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ConfiguracoesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/assinatura/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/assinatura/i));
+
+    await waitFor(() => {
+      // Prices are split across elements (price + "/mês" span), so use getAllByText with function matcher
+      const price5 = screen.getAllByText((_, el) => el?.tagName === 'DIV' && /R\$\s*5,00/.test(el.textContent || ''));
+      expect(price5.length).toBeGreaterThan(0);
+      const price10 = screen.getAllByText((_, el) => el?.tagName === 'DIV' && /R\$\s*10,00/.test(el.textContent || ''));
+      expect(price10.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('shows empty state when no plans returned', async () => {
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/auth/me') return Promise.resolve({ data: { email: 'test@example.com', name: '' } }) as any;
+      if (url === '/bots') return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Bot Test', whatsapp_number: '111' }] }) as any;
+      if (url.includes('/billing/status')) return Promise.resolve({ data: { status: 'inactive', is_active: false, days_remaining: 0, next_payment: '', plan_type: null } }) as any;
+      if (url === '/billing/plans') return Promise.resolve({ data: [] }) as any;
+      return Promise.resolve({ data: {} }) as any;
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ConfiguracoesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/assinatura/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/assinatura/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/nenhum plano disponível/i)).toBeInTheDocument();
     });
   });
 });

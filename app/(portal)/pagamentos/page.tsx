@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from '@/lib/api';
 import { isTrustedRedirectUrl } from '@/lib/url-validation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { BotSelector } from '@/components/ui/bot-selector';
 
 // Componente interno que usa useSearchParams
 function PagamentosContent() {
@@ -31,6 +32,8 @@ function PagamentosContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
 
   const code = searchParams.get('code');
   const returnedState = searchParams.get('state');
@@ -66,7 +69,7 @@ function PagamentosContent() {
   // Mutation: conectar ao Mercado Pago
   const connectMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.get('/payments/auth-url');
+      const res = await api.get(`/payments/auth-url?bot_id=${selectedBotId}`);
       return res.data.url as string;
     },
     onSuccess: (url) => {
@@ -89,7 +92,7 @@ function PagamentosContent() {
   // Mutation: desconectar
   const disconnectMutation = useMutation({
     mutationFn: async () => {
-      await api.post('/payments/disconnect');
+      await api.post(`/payments/disconnect?bot_id=${selectedBotId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['paymentStatus'] });
@@ -132,6 +135,8 @@ function PagamentosContent() {
           Configure como seus bots recebem pagamentos via WhatsApp.
         </p>
       </div>
+
+      <BotSelector selectedBotId={selectedBotId} onBotChange={setSelectedBotId} />
 
       <Separator />
 
@@ -177,14 +182,14 @@ function PagamentosContent() {
 
           <CardFooter className="pt-6">
             {isConnected ? (
-                <Button variant="outline" onClick={() => disconnectMutation.mutate()} className="w-full border-red-200 text-red-600 hover:bg-red-50">
+                <Button variant="outline" onClick={() => disconnectMutation.mutate()} disabled={!selectedBotId} className="w-full border-red-200 text-red-600 hover:bg-red-50">
                     Desconectar
                 </Button>
             ) : (
                 <Button
                     className="w-full bg-brand-mercadopago hover:bg-brand-mercadopago-hover text-white font-medium"
                     onClick={() => connectMutation.mutate()}
-                    disabled={isLoading || isCheckingStatus}
+                    disabled={isLoading || isCheckingStatus || !selectedBotId}
                 >
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Conectar Conta

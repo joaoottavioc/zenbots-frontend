@@ -18,7 +18,9 @@ function handler(event) {
         }
     }
 
-    if (isProtected && (!cookies['zenbots_auth'] || !cookies['zenbots_auth'].value)) {
+    var hasPresenceCookie = cookies['zenbots_auth'] && cookies['zenbots_auth'].value;
+    var hasAccessToken = cookies['access_token'] && cookies['access_token'].value;
+    if (isProtected && (!hasPresenceCookie || !hasAccessToken)) {
         return {
             statusCode: 302,
             statusDescription: 'Found',

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { isAuthenticated } from "@/lib/auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardHeader } from '@/components/layout/dashboard-header';
 import {
@@ -68,10 +68,9 @@ export default function PedidosPage() {
 
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
 
-  // 2. SSE (TEMPO REAL) — Autenticado via Authorization header
+  // 2. SSE (TEMPO REAL) — Autenticado via httpOnly cookie
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
+    if (!isAuthenticated()) {
       setIsConnected(false);
       return;
     }
@@ -89,9 +88,9 @@ export default function PedidosPage() {
       try {
         const response = await fetch(`${getApiBase()}/stream`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Accept': 'text/event-stream',
           },
+          credentials: 'include',
           signal: controller.signal,
         });
 

@@ -44,6 +44,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+import type { Plan } from '@/lib/types';
+
 // --- Tipos ---
 interface Bot {
     id: number;
@@ -58,6 +60,43 @@ interface SubscriptionStatus {
   next_payment: string;
   plan_type?: string;
 }
+
+const PLAN_FEATURES: Record<string, string[]> = {
+  basic: ['Bot de Atendimento 24h', 'Cardápio Digital Simples'],
+  pro: ['Tudo do Básico', 'Leitura de Cardápio por Foto (IA)', 'Relatório de Mais Vendidos'],
+};
+
+const PLAN_STYLES: Record<string, { border: string; activeBorder: string; activeBg: string; badgeBg: string; badgeText: string; badgeBorder: string; checkColor: string; buttonClass: string; activeButtonClass: string; titleColor: string; recommended: boolean }> = {
+  basic: {
+    border: 'hover:border-slate-300 border-slate-100',
+    activeBorder: 'border-emerald-500 bg-emerald-50/10',
+    activeBg: 'bg-emerald-500',
+    badgeBg: 'bg-emerald-100',
+    badgeText: 'text-emerald-800',
+    badgeBorder: 'border-emerald-200',
+    checkColor: 'text-emerald-500',
+    buttonClass: '',
+    activeButtonClass: '',
+    titleColor: '',
+    recommended: false,
+  },
+  pro: {
+    border: 'border-sky-100 shadow-sm hover:shadow-md',
+    activeBorder: 'border-sky-500 bg-sky-50/10',
+    activeBg: 'bg-sky-500',
+    badgeBg: 'bg-sky-100',
+    badgeText: 'text-sky-700',
+    badgeBorder: 'border-sky-200',
+    checkColor: 'text-sky-500',
+    buttonClass: 'bg-sky-500 hover:bg-sky-600 text-white',
+    activeButtonClass: 'bg-sky-100 text-sky-700 hover:bg-sky-200 border-none',
+    titleColor: 'text-sky-700',
+    recommended: true,
+  },
+};
+
+const formatPrice = (price: number, currency: string) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(price);
 
 const changePasswordSchema = z.object({
   current: z.string().min(1, { message: "Senha atual é obrigatória." }),
@@ -122,6 +161,12 @@ export default function ConfiguracoesPage() {
     queryKey: ['billingStatus', selectedBotId],
     queryFn: async () => (await api.get(`/billing/status?bot_id=${selectedBotId}`)).data,
     enabled: !!selectedBotId,
+  });
+
+  // 4. Busca Planos Disponíveis (React Query)
+  const { data: plans = [], isLoading: loadingPlans } = useQuery<Plan[]>({
+    queryKey: ['plans'],
+    queryFn: async () => (await api.get('/billing/plans')).data,
   });
 
   // --- Ação de Checkout (Nova Aba) ---
@@ -315,38 +360,45 @@ export default function ConfiguracoesPage() {
                     {selectedBotId && (
                         <>
                         <h3 className="text-lg font-bold text-slate-800 mb-4 px-1">Planos Disponíveis</h3>
+                        {loadingPlans ? (
+                            <div className="flex items-center justify-center h-40 border rounded-lg border-dashed"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+                        ) : plans.length === 0 ? (
+                            <div className="text-center py-10 text-sm text-muted-foreground">Nenhum plano disponível</div>
+                        ) : (
                         <div className="grid md:grid-cols-2 gap-6 pb-10">
+                            {plans.map((plan) => {
+                                const style = PLAN_STYLES[plan.key] || PLAN_STYLES.basic;
+                                const features = PLAN_FEATURES[plan.key] || [];
+                                const isCurrent = isCurrentPlan(plan.key);
 
-                            {/* === PLANO BÁSICO === */}
-                            <Card className={`flex flex-col border-2 transition-all relative ${isCurrentPlan('basic') ? 'border-emerald-500 bg-emerald-50/10' : 'hover:border-slate-300 border-slate-100'}`}>
-                                {isCurrentPlan('basic') && (<div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wide shadow-sm">Plano Atual</div>)}
-                                <CardHeader><CardTitle className="text-xl">ZenBotZ Básico</CardTitle><CardDescription>Para iniciar sua operação.</CardDescription></CardHeader>
-                                <CardContent className="space-y-4 flex-1">
-                                    <div className="text-3xl font-bold">R$ 5,00<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
-                                    <ul className="space-y-2 text-sm text-slate-600"><li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500"/> Bot de Atendimento 24h</li><li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500"/> Cardápio Digital Simples</li></ul>
-                                </CardContent>
-                                <CardFooter>
-                                    <Button onClick={() => handleSubscribe('basic')} disabled={!!processingPlan || isCurrentPlan('basic')} variant="outline" className="w-full">
-                                        {isCurrentPlan('basic') ? "Plano Atual" : processingPlan === 'basic' ? <Loader2 className="animate-spin h-4 w-4"/> : "Assinar Básico"}
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-
-                            {/* === PLANO PRO === */}
-                            <Card className={`flex flex-col border-2 transition-all relative ${isCurrentPlan('pro') ? 'border-sky-500 bg-sky-50/10' : 'border-sky-100 shadow-sm hover:shadow-md'}`}>
-                                {isCurrentPlan('pro') ? (<div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wide shadow-sm">Plano Atual</div>) : (<div className="absolute top-0 right-0 bg-sky-500 text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold uppercase tracking-wide">Recomendado</div>)}
-                                <CardHeader><CardTitle className="text-xl text-sky-700">ZenBotZ Pro</CardTitle><CardDescription>Pizzaria Dominadora</CardDescription></CardHeader>
-                                <CardContent className="space-y-4 flex-1">
-                                    <div className="text-3xl font-bold">R$ 10,00<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
-                                    <ul className="space-y-2 text-sm text-slate-600"><li className="flex gap-2"><Check className="h-4 w-4 text-sky-500"/> <strong>Tudo do Básico</strong></li><li className="flex gap-2"><Check className="h-4 w-4 text-sky-500"/> Leitura de Cardápio por Foto (IA)</li><li className="flex gap-2"><Check className="h-4 w-4 text-sky-500"/> Relatório de Mais Vendidos</li></ul>
-                                </CardContent>
-                                <CardFooter>
-                                    <Button onClick={() => handleSubscribe('pro')} disabled={!!processingPlan || isCurrentPlan('pro')} className={`w-full ${isCurrentPlan('pro') ? 'bg-sky-100 text-sky-700 hover:bg-sky-200 border-none' : 'bg-sky-500 hover:bg-sky-600 text-white'}`}>
-                                        {isCurrentPlan('pro') ? "Plano Atual" : processingPlan === 'pro' ? <Loader2 className="animate-spin h-4 w-4"/> : "Assinar Pro"}
-                                    </Button>
-                                </CardFooter>
-                            </Card>
+                                return (
+                                    <Card key={plan.id} className={`flex flex-col border-2 transition-all relative ${isCurrent ? style.activeBorder : style.border}`}>
+                                        {isCurrent && (<div className={`absolute -top-3 left-1/2 -translate-x-1/2 ${style.activeBg} text-white text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wide shadow-sm`}>Plano Atual</div>)}
+                                        {!isCurrent && style.recommended && (<div className={`absolute top-0 right-0 ${style.activeBg} text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold uppercase tracking-wide`}>Recomendado</div>)}
+                                        <CardHeader><CardTitle className={`text-xl ${style.titleColor}`}>{plan.title}</CardTitle><CardDescription>{plan.description}</CardDescription></CardHeader>
+                                        <CardContent className="space-y-4 flex-1">
+                                            <div className="text-3xl font-bold">{formatPrice(plan.price, plan.currency)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
+                                            <ul className="space-y-2 text-sm text-slate-600">
+                                                {features.map((feature) => (
+                                                    <li key={feature} className="flex gap-2"><Check className={`h-4 w-4 ${style.checkColor}`}/> {feature.startsWith('Tudo') ? <strong>{feature}</strong> : feature}</li>
+                                                ))}
+                                            </ul>
+                                        </CardContent>
+                                        <CardFooter>
+                                            <Button
+                                                onClick={() => handleSubscribe(plan.key)}
+                                                disabled={!!processingPlan || isCurrent}
+                                                variant={style.buttonClass ? undefined : "outline"}
+                                                className={`w-full ${isCurrent ? style.activeButtonClass : style.buttonClass}`}
+                                            >
+                                                {isCurrent ? "Plano Atual" : processingPlan === plan.key ? <Loader2 className="animate-spin h-4 w-4"/> : `Assinar ${plan.title.replace('ZenBotZ ', '')}`}
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                );
+                            })}
                         </div>
+                        )}
                         </>
                     )}
                     </>
