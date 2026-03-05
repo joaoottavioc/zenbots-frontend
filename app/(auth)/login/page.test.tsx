@@ -22,21 +22,25 @@ vi.mock('@/hooks/use-toast', () => ({
 
 // Mock useRouter
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
+let mockSearchParams = new URLSearchParams();
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
-    replace: vi.fn(),
+    replace: mockReplace,
     refresh: vi.fn(),
     back: vi.fn(),
     prefetch: vi.fn(),
   }),
   usePathname: () => '/login',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
 }));
 
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSearchParams = new URLSearchParams();
     document.cookie = 'zenbots_auth=; path=/; max-age=0';
   });
 
@@ -130,5 +134,57 @@ describe('LoginPage', () => {
         expect.objectContaining({ variant: 'destructive' })
       );
     });
+  });
+
+  it('shows unverified email banner on 403 response', async () => {
+    vi.mocked(api.post).mockRejectedValueOnce({
+      response: { status: 403, data: { detail: 'Email não verificado.' } },
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />);
+
+    await user.type(screen.getByLabelText(/email/i), 'unverified@example.com');
+    await user.type(screen.getByLabelText(/senha/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /entrar na conta/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/e-mail ainda nao foi verificado/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /reenviar e-mail/i })).toBeInTheDocument();
+  });
+
+  it('calls resend verification API from unverified banner', async () => {
+    vi.mocked(api.post).mockRejectedValueOnce({
+      response: { status: 403, data: { detail: 'Email não verificado.' } },
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />);
+
+    await user.type(screen.getByLabelText(/email/i), 'unverified@example.com');
+    await user.type(screen.getByLabelText(/senha/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /entrar na conta/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/e-mail ainda nao foi verificado/i)).toBeInTheDocument();
+    });
+
+    vi.mocked(api.post).mockResolvedValueOnce({ data: {} } as any);
+    await user.click(screen.getByRole('button', { name: /reenviar e-mail/i }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith('/auth/resend-verification', { email: 'unverified@example.com' });
+    });
+  });
+
+  it('shows verified toast when redirected with verified param', () => {
+    mockSearchParams = new URLSearchParams('verified=true');
+    renderWithProviders(<LoginPage />);
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'E-mail verificado!' })
+    );
   });
 });

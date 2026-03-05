@@ -20,6 +20,12 @@ const ERROR_MAP: Record<string, string> = {
   "catalog processing failed": "Erro ao processar o cardápio. Tente novamente.",
   "file too large": "Arquivo muito grande.",
   "whatsapp connection failed": "Não foi possível concluir a conexão com o WhatsApp.",
+  "email não verificado": "Seu e-mail ainda não foi verificado.",
+  "email not verified": "Seu e-mail ainda não foi verificado.",
+  "token inválido ou expirado": "O link expirou ou é inválido. Solicite um novo.",
+  "muitas tentativas": "Muitas tentativas. Aguarde antes de tentar novamente.",
+  "too many requests": "Muitas tentativas. Aguarde antes de tentar novamente.",
+  "falha ao enviar e-mail": "Não foi possível enviar o e-mail. Tente novamente.",
 };
 
 export function getSafeErrorMessage(error: unknown, fallback: string): string {

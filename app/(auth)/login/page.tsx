@@ -1,14 +1,15 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { api } from '@/lib/api';
 import { setAuthPresence } from '@/lib/auth';
+import { getSafeErrorMessage } from '@/lib/error-messages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Command } from 'lucide-react';
@@ -24,16 +25,37 @@ import {
 } from "@/components/ui/form";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Digite um email válido." }),
-  password: z.string().min(1, { message: "Senha é obrigatória." }),
+  email: z.string().email({ message: "Digite um email valido." }),
+  password: z.string().min(1, { message: "Senha e obrigatoria." }),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const throttle = useSubmitThrottle();
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      toast({
+        title: "E-mail verificado!",
+        description: "Faca login para continuar.",
+        className: "bg-emerald-50 border-emerald-200",
+      });
+      router.replace("/login");
+    }
+  }, [searchParams, toast, router]);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -49,6 +71,7 @@ export default function LoginPage() {
     onSuccess: () => {
       throttle.reset();
       setAuthPresence();
+      setUnverifiedEmail(null);
 
       toast({
         title: "Login realizado!",
@@ -58,7 +81,15 @@ export default function LoginPage() {
 
       router.push('/meus-bots');
     },
-    onError: () => {
+    onError: (error: unknown) => {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+
+      if (status === 403) {
+        setUnverifiedEmail(form.getValues("email"));
+        return;
+      }
+
+      setUnverifiedEmail(null);
       form.setError("root", { message: "Email ou senha incorretos." });
       toast({
         title: "Falha ao entrar",
@@ -70,16 +101,36 @@ export default function LoginPage() {
 
   const onSubmit = (values: LoginValues) => {
     if (!throttle.recordSubmit()) return;
+    setUnverifiedEmail(null);
     const formData = new URLSearchParams();
     formData.append('username', values.email);
     formData.append('password', values.password);
     loginMutation.mutate(formData);
   };
 
+  async function handleResendVerification() {
+    if (!unverifiedEmail || resendCooldown > 0) return;
+    setIsResending(true);
+    try {
+      await api.post("/auth/resend-verification", { email: unverifiedEmail });
+      toast({
+        title: "Link enviado",
+        description: "Verifique sua caixa de entrada.",
+        className: "bg-emerald-50 border-emerald-200",
+      });
+      setResendCooldown(60);
+    } catch (err: unknown) {
+      const msg = getSafeErrorMessage(err, "Falha ao reenviar. Tente novamente.");
+      toast({ title: "Erro", description: msg, variant: "destructive" });
+    } finally {
+      setIsResending(false);
+    }
+  }
+
   return (
     <div className="w-full h-screen lg:grid lg:grid-cols-2">
 
-      {/* --- COLUNA VISUAL (ESQUERDA) --- */}
+      {/* Visual column */}
       <div className="hidden bg-zinc-900 lg:flex flex-col justify-between p-10 text-white">
         <div className="flex items-center text-lg font-medium gap-2">
           <div className="bg-white/10 p-1 rounded-md">
@@ -91,15 +142,15 @@ export default function LoginPage() {
         <div className="space-y-4">
           <blockquote className="space-y-2">
             <p className="text-lg">
-              &ldquo;Automatizar nosso atendimento com a ZenBots transformou nossa operação.
+              &ldquo;Automatizar nosso atendimento com a ZenBots transformou nossa operacao.
               Ganhamos 40 horas semanais e aumentamos as vendas em 30%.&rdquo;
             </p>
-            <footer className="text-sm text-zinc-400">João Silva - CEO da Hamburgueria Top</footer>
+            <footer className="text-sm text-zinc-400">Joao Silva - CEO da Hamburgueria Top</footer>
           </blockquote>
         </div>
       </div>
 
-      {/* --- COLUNA FORMULÁRIO (DIREITA) --- */}
+      {/* Form column */}
       <div className="flex items-center justify-center py-12 px-8">
         <div className="mx-auto w-full max-w-[350px] space-y-6">
 
@@ -160,6 +211,26 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {unverifiedEmail && (
+                <div className="p-3 text-sm bg-amber-50 border border-amber-200 rounded-md text-center space-y-2">
+                  <p className="text-amber-800">Seu e-mail ainda nao foi verificado.</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResendVerification}
+                    disabled={isResending || resendCooldown > 0}
+                  >
+                    {isResending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                    {resendCooldown > 0
+                      ? `Reenviar em ${resendCooldown}s`
+                      : isResending
+                        ? "Enviando..."
+                        : "Reenviar e-mail de verificacao"}
+                  </Button>
+                </div>
+              )}
+
               <Button
                 type="submit"
                 className="w-full h-10 font-medium"
@@ -200,5 +271,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 }
