@@ -50,7 +50,6 @@ import type { Plan } from '@/lib/types';
 interface Bot {
     id: number;
     restaurant_name: string;
-    whatsapp_number: string;
 }
 
 interface SubscriptionStatus {

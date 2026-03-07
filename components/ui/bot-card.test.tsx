@@ -42,12 +42,20 @@ describe('BotCard', () => {
     vi.clearAllMocks();
   });
 
-  it('renders bot name and WhatsApp number', () => {
-    const bot = createMockBot();
+  it('renders bot name and WhatsApp number when available', () => {
+    const bot = createMockBot({ whatsapp_number: '5511999999999' });
     renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
 
     expect(screen.getByText('Pizzaria Teste')).toBeInTheDocument();
     expect(screen.getByText('5511999999999')).toBeInTheDocument();
+  });
+
+  it('does not show WhatsApp number when not available', () => {
+    const bot = createMockBot({ whatsapp_number: undefined });
+    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+
+    expect(screen.getByText('Pizzaria Teste')).toBeInTheDocument();
+    expect(screen.queryByText('5511999999999')).not.toBeInTheDocument();
   });
 
   it('shows connected status when phone_number_id is present', () => {

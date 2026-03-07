@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 interface BotData {
   id: number;
   restaurant_name: string;
-  whatsapp_number: string;
+  whatsapp_number?: string;
   is_open: boolean;
   phone_number_id?: string;
 }
@@ -117,9 +117,11 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
               <DropdownMenuItem onClick={() => onEdit(bot)}>
                 <Settings className="mr-2 h-4 w-4" /> Configurações
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => copyToClipboard(bot.whatsapp_number)}>
-                <Copy className="mr-2 h-4 w-4" /> Copiar Número
-              </DropdownMenuItem>
+              {bot.whatsapp_number && (
+                <DropdownMenuItem onClick={() => copyToClipboard(bot.whatsapp_number!)}>
+                  <Copy className="mr-2 h-4 w-4" /> Copiar Número
+                </DropdownMenuItem>
+              )}
               
               <DropdownMenuSeparator />
               
@@ -141,10 +143,12 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
 
         {/* INFO */}
         <div className="pl-2 space-y-3 mt-2">
-          <div className="flex items-center gap-2 text-sm text-slate-600 bg-white/50 p-2 rounded-lg border border-slate-100/50">
-            <MessageCircle className="h-4 w-4 text-slate-400" />
-            <span className="font-mono">{bot.whatsapp_number || "Sem número"}</span>
-          </div>
+          {bot.whatsapp_number && (
+            <div className="flex items-center gap-2 text-sm text-slate-600 bg-white/50 p-2 rounded-lg border border-slate-100/50">
+              <MessageCircle className="h-4 w-4 text-slate-400" />
+              <span className="font-mono">{bot.whatsapp_number}</span>
+            </div>
+          )}
           
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
@@ -190,12 +194,14 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
            </div>
         )}
         
-        <Button 
-            className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs h-9 shadow-sm transition-all"
-            onClick={() => window.open(`https://wa.me/${bot.whatsapp_number}`, '_blank')}
-        >
-            <ExternalLink className="mr-2 h-3.5 w-3.5" /> Testar
-        </Button>
+        {bot.whatsapp_number && (
+          <Button
+              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs h-9 shadow-sm transition-all"
+              onClick={() => window.open(`https://wa.me/${bot.whatsapp_number}`, '_blank')}
+          >
+              <ExternalLink className="mr-2 h-3.5 w-3.5" /> Testar
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -22,8 +22,6 @@ export interface Bot {
 
 export interface BotFormValues {
   restaurant_name: string;
-  whatsapp_number: string;
-  pix_key: string;
   delivery_fee?: number;
   min_order_value?: number;
   cep: string;
@@ -31,8 +29,6 @@ export interface BotFormValues {
   max_delivery_radius: number;
   latitude?: number;
   longitude?: number;
-  whatsapp_token: string;
-  phone_number_id: string;
   is_open: boolean;
   closing_message?: string;
   schedule?: Record<string, { active: boolean; start: string; end: string }>;

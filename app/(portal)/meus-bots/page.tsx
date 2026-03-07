@@ -163,7 +163,7 @@ export default function MyBotsPage() {
           {bots?.map((bot) => (
             <BotCard
                 key={bot.id}
-                bot={bot as { id: number; restaurant_name: string; whatsapp_number: string; is_open: boolean; phone_number_id?: string }}
+                bot={bot}
                 onEdit={(b) => handleEdit(b as Bot)}
                 onToggleStatus={handleToggleStatus}
                 onDelete={(b) => setBotToDelete(b as Bot)}

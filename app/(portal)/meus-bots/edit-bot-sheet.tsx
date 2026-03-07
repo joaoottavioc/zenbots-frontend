@@ -27,14 +27,7 @@ export function EditBotSheet({ bot, isOpen, onClose }: EditBotSheetProps) {
   // 1. Mutação de Atualização (PUT)
   const updateBotMutation = useMutation({
     mutationFn: async (values: BotFormValues) => {
-      // Limpeza básica igual na criação
-      const cleanNumber = values.whatsapp_number.replace(/\D/g, "");
-      
-      // Chama a rota PUT /bots/{id}
-      return api.put(`/bots/${bot!.id}`, {
-        ...values,
-        whatsapp_number: cleanNumber,
-      });
+      return api.put(`/bots/${bot!.id}`, values);
     },
     onSuccess: () => {
       toast({ title: "Bot atualizado!", description: "As configurações foram salvas." });

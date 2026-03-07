@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { BotForm } from './bot-form'; 
 import { useToast } from "@/hooks/use-toast";
+import { getSafeErrorMessage } from "@/lib/error-messages";
 import type { BotFormValues } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,20 +20,15 @@ export default function NewBotPage() {
 
   const createBotMutation = useMutation({
     mutationFn: async (values: BotFormValues) => {
-      const cleanNumber = values.whatsapp_number.replace(/\D/g, '');
-      return api.post('/bots', {
-        ...values,
-        whatsapp_number: cleanNumber
-      });
+      return api.post('/bots', values);
     },
     onSuccess: () => {
-      toast({ title: "Sucesso!", description: "Bot criado. Agora você pode adicionar produtos." });
+      toast({ title: "Sucesso!", description: "Bot criado! Conecte o WhatsApp na página Meus Bots." });
       queryClient.invalidateQueries({ queryKey: ['myBots'] });
       router.push('/meus-bots');
     },
     onError: (error: unknown) => {
-      const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Erro ao criar bot.";
-      toast({ title: "Erro", description: msg, variant: "destructive" });
+      toast({ title: "Erro", description: getSafeErrorMessage(error, "Erro ao criar bot."), variant: "destructive" });
     }
   });
 

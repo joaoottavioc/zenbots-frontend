@@ -8,8 +8,14 @@ import { Input } from '@/components/ui/input';
 import {
   Plus, Trash2, Pencil, Check, X, Package,
   FileText, Image as ImageIcon, ExternalLink, Eye,
-  ChevronLeft, ChevronRight
 } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import * as z from 'zod'; 
 
 // --- Imports de Componentes Locais ---
@@ -78,7 +84,6 @@ const formSchema = z.object({
 type ProductFormValues = z.infer<typeof formSchema>;
 
 const BOTTOM_KEYWORDS = ["bebida", "cerveja", "drink", "refrigerante", "suco", "água", "agua", "vinho", "dose", "adicionais"];
-const ITEMS_PER_PAGE = 20;
 
 export default function ProdutosPage() {
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
@@ -88,7 +93,7 @@ export default function ProdutosPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<EditData>({ name: "", description: "", price: 0 });
-  const [currentPage, setCurrentPage] = useState(1);
+  const [isMenuPreviewOpen, setIsMenuPreviewOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -111,28 +116,16 @@ export default function ProdutosPage() {
     enabled: !!selectedBotId
   });
 
-  // --- Pagination ---
-  const totalPages = useMemo(() => {
-    if (!products) return 0;
-    return Math.ceil(products.length / ITEMS_PER_PAGE);
-  }, [products]);
-
-  const paginatedProducts = useMemo(() => {
-    if (!products) return [];
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return products.slice(start, start + ITEMS_PER_PAGE);
-  }, [products, currentPage]);
-
   // --- Computed & Sorting ---
   const groupedProducts = useMemo(() => {
-    if (!paginatedProducts.length) return {};
-    return paginatedProducts.reduce((acc, product) => {
+    if (!products?.length) return {};
+    return products.reduce((acc, product) => {
       const cat = product.category || "Sem Categoria";
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(product);
       return acc;
     }, {} as Record<string, Product[]>);
-  }, [paginatedProducts]);
+  }, [products]);
 
   const sortedCategories = useMemo(() => {
     return Object.keys(groupedProducts).sort((a, b) => {
@@ -193,7 +186,7 @@ export default function ProdutosPage() {
   });
 
   const startEditing = (p: Product) => { setEditingId(p.id); setEditData({ name: p.name, description: p.description || "", price: p.price }); };
-  const handleBotChange = useCallback((id: string) => { setSelectedBotId(id); setSelectedProductIds([]); setCurrentPage(1); }, []);
+  const handleBotChange = useCallback((id: string) => { setSelectedBotId(id); setSelectedProductIds([]); }, []);
 
   const handleSelectCategory = (category: string) => {
     const categoryProducts = groupedProducts[category];
@@ -251,32 +244,79 @@ export default function ProdutosPage() {
          )}
       </DashboardHeader>
 
-      {/* 2. NOVO: BANNER DE CARDÁPIO ATIVO */}
+      {/* 2. BANNER DE CARDÁPIO ATIVO */}
       {selectedBotId && currentBot?.menu_url && (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-4">
-                <div className={`h-12 w-12 rounded-full flex items-center justify-center ${isPdf ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-                    {isPdf ? <FileText className="h-6 w-6" /> : <ImageIcon className="h-6 w-6" />}
-                </div>
-                <div>
-                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                        Cardápio Ativo
-                        <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-green-50 text-green-700 border-green-200">Online</Badge>
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                        Este é o arquivo que seus clientes recebem no WhatsApp.
-                    </p>
-                </div>
-            </div>
-            <a 
-                href={currentBot.menu_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 px-4 py-2 rounded-lg transition-colors border border-slate-200"
-            >
-                <Eye className="h-4 w-4" /> Visualizar
-            </a>
-        </div>
+        <>
+          <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-4">
+                  {isPdf ? (
+                    <div className="h-12 w-12 rounded-full flex items-center justify-center bg-red-50 text-red-600">
+                      <FileText className="h-6 w-6" />
+                    </div>
+                  ) : (
+                    <img
+                      src={currentBot.menu_url!}
+                      alt="Cardápio"
+                      className="h-12 w-12 rounded-lg object-cover border border-slate-200"
+                    />
+                  )}
+                  <div>
+                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                          Cardápio Ativo
+                          <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-green-50 text-green-700 border-green-200">Online</Badge>
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                          Este é o arquivo que seus clientes recebem no WhatsApp.
+                      </p>
+                  </div>
+              </div>
+              <div className="flex items-center gap-2">
+                  <button
+                      onClick={() => setIsMenuPreviewOpen(true)}
+                      className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 px-4 py-2 rounded-lg transition-colors border border-slate-200"
+                  >
+                      <Eye className="h-4 w-4" /> Visualizar
+                  </button>
+                  <a
+                      href={currentBot.menu_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-slate-600 px-2 py-2 rounded-lg transition-colors"
+                      title="Abrir em nova aba"
+                  >
+                      <ExternalLink className="h-4 w-4" />
+                  </a>
+              </div>
+          </div>
+
+          <Sheet open={isMenuPreviewOpen} onOpenChange={setIsMenuPreviewOpen}>
+            <SheetContent side="right" className="sm:max-w-xl w-full p-0 flex flex-col">
+              <SheetHeader className="p-6 pb-4 border-b border-slate-100">
+                <SheetTitle>Cardápio Ativo</SheetTitle>
+                <SheetDescription>
+                  Pré-visualização do cardápio enviado aos clientes.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="flex-1 overflow-auto">
+                {isPdf ? (
+                  <iframe
+                    src={currentBot.menu_url}
+                    className="w-full h-full min-h-[70vh]"
+                    title="Pré-visualização do cardápio"
+                  />
+                ) : (
+                  <div className="p-6 flex items-center justify-center">
+                    <img
+                      src={currentBot.menu_url}
+                      alt="Cardápio"
+                      className="max-w-full h-auto rounded-lg shadow-sm"
+                    />
+                  </div>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </>
       )}
 
       {/* BARRA FLUTUANTE DE AÇÕES EM MASSA */}
@@ -419,30 +459,6 @@ export default function ProdutosPage() {
             </Card>
           ))}
 
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 pt-2 pb-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
-              </Button>
-              <span className="text-sm text-slate-600">
-                Página {currentPage} de {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Próxima <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          )}
         </div>
       )}
 

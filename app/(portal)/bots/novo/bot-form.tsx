@@ -33,40 +33,20 @@ const dayScheduleSchema = z.object({
 // --- SCHEMA ATUALIZADO ---
 export const formSchema = z.object({
   restaurant_name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }).max(100, { message: "Máximo de 100 caracteres." }),
-  whatsapp_number: z.string().regex(/^\d{10,11}$/, { message: "Número inválido. Use DDD + número (10 ou 11 dígitos)." }),
-  pix_key: z.string().min(5, { message: "A chave PIX é necessária para receber pagamentos." }).refine(
-    (val) => {
-      // CPF: 11 digits
-      if (/^\d{11}$/.test(val)) return true;
-      // CNPJ: 14 digits
-      if (/^\d{14}$/.test(val)) return true;
-      // Email
-      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return true;
-      // Phone: +55 followed by 10-11 digits
-      if (/^\+?\d{10,13}$/.test(val)) return true;
-      // UUID (EVP)
-      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)) return true;
-      return false;
-    },
-    { message: "Chave PIX inválida. Use CPF, CNPJ, e-mail, telefone ou chave aleatória." }
-  ),
 
   delivery_fee: z.coerce.number().min(0).max(500, { message: "Taxa máxima de R$ 500." }).optional(),
   min_order_value: z.coerce.number().min(0).max(10000, { message: "Valor máximo de R$ 10.000." }).optional(),
 
-  // Novos Campos de Localização
+  // Campos de Localização
   cep: z.string().transform((val) => val.replace(/\D/g, "")).pipe(z.string().regex(/^\d{8}$/, "CEP deve ter 8 dígitos.")),
   address: z.string().min(5, "Endereço obrigatório").max(200, { message: "Máximo de 200 caracteres." }),
   max_delivery_radius: z.coerce.number().min(1, "Mínimo 1km").max(100, { message: "Máximo de 100km." }).default(10),
-  
+
   // Coordenadas (Opcionais pois são preenchidas pelo sistema)
   latitude: z.coerce.number().optional(),
   longitude: z.coerce.number().optional(),
 
-  whatsapp_token: z.string().min(10, { message: "Informe o token de acesso da API do WhatsApp." }),
-  phone_number_id: z.string().min(5, { message: "Informe o phone_number_id da API do WhatsApp." }),
-
-  is_open: z.boolean().default(true),
+  is_open: z.boolean().default(false),
   closing_message: z.string().optional(),
   schedule: z.record(z.string(), dayScheduleSchema).optional(),
 });
@@ -118,21 +98,14 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       restaurant_name: initialData?.restaurant_name || "",
-      whatsapp_number: initialData?.whatsapp_number || "",
-      pix_key: initialData?.pix_key || "",
       delivery_fee: initialData?.delivery_fee ?? 0,
       min_order_value: initialData?.min_order_value ?? 0,
-      
-      // Defaults novos
       cep: initialData?.cep || "",
       address: initialData?.address || "",
       max_delivery_radius: initialData?.max_delivery_radius || 10,
       latitude: initialData?.latitude || 0,
       longitude: initialData?.longitude || 0,
-
-      whatsapp_token: initialData?.whatsapp_token || "",
-      phone_number_id: initialData?.phone_number_id || "",
-      is_open: initialData?.is_open ?? true,
+      is_open: initialData?.is_open ?? false,
       closing_message: initialData?.closing_message || "Olá! No momento estamos fechados. Nosso horário é das 18h às 23h. 🕒",
       schedule: getMergedSchedule(initialData?.schedule),
     },
@@ -214,7 +187,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
         <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Dados Básicos</CardTitle>
-            <CardDescription>Informações essenciais e financeiras do seu bot.</CardDescription>
+            <CardDescription>Nome e configurações de entrega do seu bot.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -225,35 +198,6 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                   <FormLabel>Nome do Restaurante</FormLabel>
                   <FormControl>
                     <Input placeholder="Ex: Pizzaria do João" {...field} className="w-full" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="whatsapp_number"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>WhatsApp</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: 11999998888" type="tel" {...field} className="w-full" />
-                  </FormControl>
-                  <FormDescription>Apenas números com DDD.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="pix_key"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Chave PIX</FormLabel>
-                  <FormControl>
-                    <Input placeholder="CPF/Email..." {...field} className="w-full" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -424,55 +368,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
             </CardContent>
         </Card>
 
-        {/* GRUPO 2: INTEGRAÇÃO WHATSAPP */}
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <CardTitle>Integração WhatsApp</CardTitle>
-            <CardDescription>
-              Dados da Meta (Facebook Developers).
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="whatsapp_token"
-              render={({ field }) => (
-                <FormItem className="w-full min-w-0">
-                  <FormLabel>WhatsApp Token</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Token..."
-                      {...field}
-                      className="w-full"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="phone_number_id"
-              render={({ field }) => (
-                <FormItem className="w-full min-w-0">
-                  <FormLabel>Phone Number ID</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Ex: 123456789..."
-                      {...field}
-                      className="w-full"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        {/* GRUPO 3: HORÁRIOS */}
+        {/* GRUPO 2: HORÁRIOS */}
         <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Horários Automáticos</CardTitle>

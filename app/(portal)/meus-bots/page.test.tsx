@@ -123,7 +123,6 @@ describe('MyBotsPage', () => {
       restaurant_name: 'Bot Seguro',
       whatsapp_token: 'SECRET_TOKEN_123',
       phone_number_id: 'phone_abc',
-      pix_key: 'secret_pix',
     });
     vi.mocked(api.get).mockResolvedValueOnce({ data: [bot] } as any);
     vi.mocked(api.put).mockResolvedValueOnce({ data: {} } as any);
@@ -149,7 +148,6 @@ describe('MyBotsPage', () => {
     // Verify that if put was called, it does NOT contain the full bot spread
     if (vi.mocked(api.put).mock.calls.length > 0) {
       const payload = vi.mocked(api.put).mock.calls[0][1];
-      expect(payload).not.toHaveProperty('pix_key');
       expect(payload.whatsapp_token).toBe('');
       expect(payload.phone_number_id).toBe('');
     }

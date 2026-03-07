@@ -35,7 +35,7 @@ describe('ConfiguracoesPage', () => {
       }
       if (url === '/bots') {
         return Promise.resolve({
-          data: [{ id: 1, restaurant_name: 'Bot Test', whatsapp_number: '111' }],
+          data: [{ id: 1, restaurant_name: 'Bot Test' }],
         }) as any;
       }
       if (url.includes('/billing/status')) {

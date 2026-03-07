@@ -2,9 +2,9 @@ export function createMockBot(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
     restaurant_name: 'Pizzaria Teste',
-    whatsapp_number: '5511999999999',
     is_open: true,
     phone_number_id: 'phone_123',
+    whatsapp_number: '5511999999999',
     ...overrides,
   };
 }
