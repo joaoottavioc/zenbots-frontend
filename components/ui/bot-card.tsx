@@ -29,7 +29,7 @@ interface BotData {
   id: number;
   restaurant_name: string;
   whatsapp_number?: string;
-  is_open: boolean;
+  is_open?: boolean;
   phone_number_id?: string;
 }
 
@@ -45,7 +45,7 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
   const { toast } = useToast();
   
   const isConnected = !!bot.phone_number_id && bot.phone_number_id.trim() !== "";
-  const isOpen = bot.is_open;
+  const isOpen = bot.is_open ?? false;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
