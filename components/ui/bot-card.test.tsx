@@ -62,7 +62,7 @@ describe('BotCard', () => {
     const bot = createMockBot({ phone_number_id: 'phone_123' });
     renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
 
-    expect(screen.getByText(/whatsapp conectado/i)).toBeInTheDocument();
+    expect(screen.getByText(/conectado/i)).toBeInTheDocument();
   });
 
   it('shows not connected when phone_number_id is empty', () => {

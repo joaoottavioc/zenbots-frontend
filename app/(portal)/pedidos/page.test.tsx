@@ -26,8 +26,8 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-vi.mock('@/components/layout/dashboard-header', () => ({
-  DashboardHeader: ({ children, selectedBotId, onBotChange }: any) => (
+vi.mock('@/components/layout/page-header', () => ({
+  PageHeader: ({ children, selectedBotId, onBotChange }: any) => (
     <div data-testid="dashboard-header">
       {!selectedBotId && (
         <button onClick={() => onBotChange('1')} data-testid="select-bot">
@@ -37,6 +37,10 @@ vi.mock('@/components/layout/dashboard-header', () => ({
       {children}
     </div>
   ),
+}));
+
+vi.mock('@/components/layout/page-container', () => ({
+  PageContainer: ({ children }: any) => <div>{children}</div>,
 }));
 
 vi.mock('@/components/ui/bot-selector', () => ({

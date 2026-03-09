@@ -13,7 +13,7 @@ export function PaymentStatusBadge({ method, status }: PaymentStatusBadgeProps) 
   if (isPix) {
     if (status === "PENDING") {
       return (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50 border border-rose-200 shadow-sm animate-pulse">
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 shadow-sm animate-pulse">
           <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
           <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">
             Aguardando Pix
@@ -22,7 +22,7 @@ export function PaymentStatusBadge({ method, status }: PaymentStatusBadgeProps) 
       );
     }
     return (
-      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 shadow-sm">
+      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 shadow-sm">
         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
         <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
           Pix Pago
@@ -34,7 +34,7 @@ export function PaymentStatusBadge({ method, status }: PaymentStatusBadgeProps) 
   // 2. Cartão
   if (["card", "cartao", "cartão", "credito", "debito"].some(k => methodClean.includes(k))) {
     return (
-      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 shadow-sm">
+      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 shadow-sm">
         <CreditCard className="w-3.5 h-3.5 text-amber-600" />
         <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
           Cartão
@@ -46,7 +46,7 @@ export function PaymentStatusBadge({ method, status }: PaymentStatusBadgeProps) 
   // 3. Dinheiro
   if (["money", "dinheiro", "troco", "nota"].some(k => methodClean.includes(k))) {
     return (
-      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 shadow-sm">
+      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 shadow-sm">
         <Banknote className="w-3.5 h-3.5 text-slate-500" />
         <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
           Dinheiro
@@ -57,7 +57,7 @@ export function PaymentStatusBadge({ method, status }: PaymentStatusBadgeProps) 
 
   // Fallback
   return (
-    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-400">
+    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-400">
       <span className="text-[10px] font-bold uppercase">? Verificar</span>
     </div>
   );

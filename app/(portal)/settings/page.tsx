@@ -18,6 +18,8 @@ import {
   Zap,
   Store
 } from 'lucide-react';
+import { PageHeader } from "@/components/layout/page-header";
+import { PageContainer } from "@/components/layout/page-container";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { api } from '@/lib/api';
@@ -231,12 +233,11 @@ export default function ConfiguracoesPage() {
   };
 
   return (
-    <div className="w-full p-6 animate-in fade-in duration-500">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Configurações</h1>
-        <p className="text-muted-foreground text-sm">Gerencie seu perfil e suas credenciais de acesso.</p>
-      </div>
-      <Separator className="mb-6" />
+    <PageContainer>
+      <PageHeader
+        title="Configurações"
+        description="Gerencie seu perfil e suas credenciais de acesso."
+      />
 
       <Tabs defaultValue="profile" orientation="vertical" className="flex flex-col lg:flex-row w-full gap-8">
         <aside className="w-full lg:w-60 shrink-0">
@@ -254,7 +255,7 @@ export default function ConfiguracoesPage() {
                     <CardContent className="p-6 space-y-6">
                         <div className="flex items-center gap-5"><Avatar className="h-16 w-16 border-2 border-slate-100 shadow-sm"><AvatarImage src="" /><AvatarFallback className="text-lg bg-slate-50 text-slate-500 font-bold">{name ? name.substring(0, 2).toUpperCase() : "..."}</AvatarFallback></Avatar><div className="space-y-1"><h3 className="text-sm font-medium text-slate-900">Sua Foto</h3><p className="text-xs text-muted-foreground max-w-sm">Clique na imagem para alterar.</p></div></div>
                         <div className="grid gap-5 md:grid-cols-2"><div className="space-y-2"><Label htmlFor="name">Nome</Label><Input id="name" value={name} readOnly className="h-9 text-sm" /></div><div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" value={email} disabled className="h-9 text-sm bg-slate-50 text-slate-500 cursor-not-allowed" /></div></div>
-                        <div className="flex justify-end pt-2"><Button disabled size="sm" className="h-9 px-4 bg-slate-900 hover:bg-slate-800"><Save className="mr-2 h-4 w-4" /> Salvar (em breve)</Button></div>
+                        <div className="flex justify-end pt-2"><Button disabled size="sm" variant="brand" className="h-9 px-4"><Save className="mr-2 h-4 w-4" /> Salvar (em breve)</Button></div>
                     </CardContent>
                 </Card>
             </TabsContent>
@@ -278,28 +279,29 @@ export default function ConfiguracoesPage() {
                               <FormItem>
                                 <FormLabel>Nova Senha</FormLabel>
                                 <FormControl><Input type="password" {...field} className="h-9 text-sm" /></FormControl>
-                                {newPasswordValue && (
-                                  <div className="grid grid-cols-2 gap-y-1 gap-x-4 pt-1 pl-1 animate-in fade-in slide-in-from-top-1">
-                                    <PasswordReq met={hasMinLen} text="Min. 8 caracteres" />
-                                    <PasswordReq met={hasUpper} text="Maiúscula" />
-                                    <PasswordReq met={hasLower} text="Minúscula" />
-                                    <PasswordReq met={hasNumber} text="Número" />
-                                    <PasswordReq met={hasSpecial} text="Símbolo (!@#)" />
-                                  </div>
-                                )}
-                                <FormMessage />
                               </FormItem>
                             )} />
                             <FormField control={passwordForm.control} name="confirm" render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Confirmar Senha</FormLabel>
                                 <FormControl><Input type="password" {...field} className={`h-9 text-sm ${confirmPasswordValue && !doPasswordsMatch ? "border-red-300 focus-visible:ring-red-100" : ""}`} /></FormControl>
-                                <FormMessage />
                               </FormItem>
                             )} />
                           </div>
+                          {confirmPasswordValue && !doPasswordsMatch && (
+                            <p className="text-sm font-medium text-destructive animate-in fade-in slide-in-from-top-1">As senhas não coincidem.</p>
+                          )}
+                          {newPasswordValue && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-1 gap-x-4 pt-1 pl-1 animate-in fade-in slide-in-from-top-1">
+                              <PasswordReq met={hasMinLen} text="Min. 8 caracteres" />
+                              <PasswordReq met={hasUpper} text="Maiúscula" />
+                              <PasswordReq met={hasLower} text="Minúscula" />
+                              <PasswordReq met={hasNumber} text="Número" />
+                              <PasswordReq met={hasSpecial} text="Símbolo (!@#)" />
+                            </div>
+                          )}
                           <div className="flex justify-end pt-2">
-                            <Button type="submit" disabled={isLoadingSecurity || !isPasswordStrong || !passwordForm.getValues("current")} size="sm" className="h-9 px-4 bg-slate-900 hover:bg-slate-800">
+                            <Button type="submit" disabled={isLoadingSecurity || !isPasswordStrong || !passwordForm.getValues("current")} size="sm" variant="brand" className="h-9 px-4">
                               {isLoadingSecurity ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Atualizar Senha
                             </Button>
                           </div>
@@ -405,6 +407,6 @@ export default function ConfiguracoesPage() {
             </TabsContent>
         </div>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }

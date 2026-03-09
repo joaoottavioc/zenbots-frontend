@@ -211,7 +211,7 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
     <Button
       onClick={handleConnect}
       disabled={isLoading || !isSdkLoaded}
-      className="w-full bg-brand-whatsapp hover:bg-brand-whatsapp-hover text-white font-bold h-9 text-xs shadow-sm transition-all"
+      className="w-full bg-brand-whatsapp hover:bg-brand-whatsapp-hover text-white font-medium h-9 text-xs shadow-sm transition-all"
     >
       {isLoading ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

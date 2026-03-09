@@ -55,7 +55,7 @@ export function ProductForm({ onSubmit, isPending, categories }: ProductFormProp
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         
         {/* NOME */}
         <FormField
@@ -76,7 +76,7 @@ export function ProductForm({ onSubmit, isPending, categories }: ProductFormProp
         />
 
         {/* GRID: PREÇO E CATEGORIA */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="price"
@@ -111,8 +111,8 @@ export function ProductForm({ onSubmit, isPending, categories }: ProductFormProp
             name="category"
             render={({ field }) => (
               <FormItem>
-                <div className="flex justify-between items-center h-6 mb-2">
-                  <FormLabel className="m-0">Categoria</FormLabel>
+                <div className="flex justify-between items-center">
+                  <FormLabel>Categoria</FormLabel>
                   {!isCreatingNewCategory && categories.length > 0 ? (
                     <button type="button" onClick={() => { setIsCreatingNewCategory(true); field.onChange(""); }} className="text-[10px] text-blue-600 font-bold hover:underline flex items-center uppercase tracking-wide">
                       <Plus className="w-3 h-3 mr-1" /> Nova
@@ -167,7 +167,7 @@ export function ProductForm({ onSubmit, isPending, categories }: ProductFormProp
           )}
         />
 
-        <Button type="submit" disabled={isPending} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold">
+        <Button type="submit" disabled={isPending} variant="brand" className="w-full">
           {isPending ? "Salvando..." : "Salvar Produto"}
         </Button>
       </form>

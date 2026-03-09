@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,53 +12,64 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Wallet,
   QrCode
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { api } from '@/lib/api';
 import { isTrustedRedirectUrl } from '@/lib/url-validation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BotSelector } from '@/components/ui/bot-selector';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { PageHeader } from "@/components/layout/page-header";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Componente interno que usa useSearchParams
 function PagamentosContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
 
   const code = searchParams.get('code');
   const returnedState = searchParams.get('state');
 
-  // Query: verifica status de conexão
-  const { data: statusData, isLoading: isCheckingStatus } = useQuery<{ is_active: boolean }>({
+  // --- Connection status: local state seeded once from the API ---
+  const [isConnected, setIsConnected] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  const { data: statusData } = useQuery<{ is_active: boolean }>({
     queryKey: ['paymentStatus'],
     queryFn: async () => (await api.get('/payments/status')).data,
     enabled: !code,
   });
 
-  const isConnected = code ? false : (statusData?.is_active ?? false);
+  // Seed local state from query result (runs once when data arrives)
+  useEffect(() => {
+    if (statusData && !initialized) {
+      setIsConnected(statusData.is_active);
+      setInitialized(true);
+    }
+  }, [statusData, initialized]);
+
+  // Show loading only during initial page load, never again
+  const showLoading = !initialized && !code;
 
   // Mutation: processa callback do MP
   const callbackMutation = useMutation({
-    mutationFn: async (authCode: string) => {
-      await api.post('/payments/callback', { code: authCode });
+    mutationFn: async ({ authCode, state }: { authCode: string; state: string }) => {
+      await api.post('/payments/callback', { code: authCode, state });
     },
     onSuccess: () => {
+      setIsConnected(true);
+      setInitialized(true);
       toast({
         title: "Conectado!",
         description: "Sua conta Mercado Pago foi vinculada com sucesso.",
         className: "bg-emerald-50 border-emerald-200"
       });
-      queryClient.invalidateQueries({ queryKey: ['paymentStatus'] });
       router.replace('/pagamentos');
     },
     onError: () => {
@@ -77,12 +88,10 @@ function PagamentosContent() {
         toast({ title: "URL não confiável", description: "O endereço de redirecionamento não é válido.", variant: "destructive" });
         return;
       }
-      // CSRF protection: generate a random state and append it to the OAuth URL
-      const state = crypto.randomUUID();
-      sessionStorage.setItem('mp_oauth_state', state);
-      const separator = url.includes('?') ? '&' : '?';
+      // The backend already includes a CSRF state token in the URL via /payments/auth-url.
+      // No need to generate a separate one — just redirect.
       toast({ title: "Redirecionando...", description: "Aguarde enquanto levamos você ao Mercado Pago." });
-      window.location.href = `${url}${separator}state=${encodeURIComponent(state)}`;
+      window.location.href = url;
     },
     onError: () => {
       toast({ title: "Erro", description: "Não foi possível iniciar a conexão.", variant: "destructive" });
@@ -94,51 +103,41 @@ function PagamentosContent() {
     mutationFn: async () => {
       await api.post(`/payments/disconnect?bot_id=${selectedBotId}`);
     },
+    onMutate: () => {
+      // Instant UI flip — pure local state, no React Query involvement
+      setIsConnected(false);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['paymentStatus'] });
       toast({ title: "Desconectado", description: "Integração removida." });
     },
     onError: () => {
-      toast({ title: "Erro", description: "Falha ao desconectar." });
+      // Revert on failure
+      setIsConnected(true);
+      toast({ title: "Erro", description: "Falha ao desconectar.", variant: "destructive" });
     },
   });
 
-  // Processar callback automaticamente se code presente, with CSRF state validation
-  React.useEffect(() => {
-    if (code && !callbackMutation.isPending && !callbackMutation.isSuccess) {
-      const storedState = sessionStorage.getItem('mp_oauth_state');
-      if (!storedState || storedState !== returnedState) {
-        toast({
-          title: "Erro de segurança",
-          description: "O parâmetro de estado OAuth não corresponde. Tente novamente.",
-          variant: "destructive",
-        });
-        router.replace('/pagamentos');
-        return;
-      }
-      sessionStorage.removeItem('mp_oauth_state');
-      callbackMutation.mutate(code);
+  // Processar callback automaticamente se code presente
+  // CSRF state validation is handled server-side via Redis-backed tokens
+  // Ref guard prevents StrictMode double-fire from consuming the token twice
+  const callbackFired = useRef(false);
+  useEffect(() => {
+    if (code && returnedState && !callbackFired.current) {
+      callbackFired.current = true;
+      callbackMutation.mutate({ authCode: code, state: returnedState });
     }
   }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isLoading = callbackMutation.isPending || connectMutation.isPending;
+  const isMutating = callbackMutation.isPending || connectMutation.isPending;
 
   return (
-    <div className="w-full p-6 space-y-8 animate-in fade-in duration-500">
-
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-          <Wallet className="h-8 w-8 text-slate-700" />
-          Pagamentos (Recebimentos)
-        </h1>
-        <p className="text-muted-foreground text-lg max-w-2xl">
-          Configure como seus bots recebem pagamentos via WhatsApp.
-        </p>
-      </div>
-
-      <BotSelector selectedBotId={selectedBotId} onBotChange={setSelectedBotId} />
-
-      <Separator />
+    <PageContainer>
+      <PageHeader
+        title="Pagamentos"
+        description="Configure como seus bots recebem pagamentos via WhatsApp."
+        selectedBotId={selectedBotId}
+        onBotChange={setSelectedBotId}
+      />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
@@ -149,7 +148,7 @@ function PagamentosContent() {
                 <div className="h-12 w-12 bg-brand-mercadopago rounded-lg flex items-center justify-center text-white font-bold shadow-sm">
                     <QrCode className="h-7 w-7" />
                 </div>
-                {isCheckingStatus ? (
+                {showLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
                 ) : isConnected ? (
                     <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200 flex gap-1">
@@ -182,16 +181,17 @@ function PagamentosContent() {
 
           <CardFooter className="pt-6">
             {isConnected ? (
-                <Button variant="outline" onClick={() => disconnectMutation.mutate()} disabled={!selectedBotId} className="w-full border-red-200 text-red-600 hover:bg-red-50">
+                <Button variant="outline" onClick={() => disconnectMutation.mutate()} disabled={!selectedBotId || disconnectMutation.isPending} className="w-full border-red-200 text-red-600 hover:bg-red-50">
+                    {disconnectMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Desconectar
                 </Button>
             ) : (
                 <Button
                     className="w-full bg-brand-mercadopago hover:bg-brand-mercadopago-hover text-white font-medium"
                     onClick={() => connectMutation.mutate()}
-                    disabled={isLoading || isCheckingStatus || !selectedBotId}
+                    disabled={isMutating || showLoading || !selectedBotId}
                 >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Conectar Conta
                 </Button>
             )}
@@ -223,7 +223,7 @@ function PagamentosContent() {
             </p>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
 

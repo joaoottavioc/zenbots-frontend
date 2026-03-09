@@ -220,11 +220,14 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                         className="w-full"
                       />
                     </FormControl>
+                    <FormDescription className="text-xs">
+                      Valor cobrado por entrega.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="min_order_value"
@@ -528,6 +531,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
           <Button
             type="submit"
             size="lg"
+            variant="brand"
             disabled={isPending}
             className="w-full md:w-auto"
           >

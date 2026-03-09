@@ -34,7 +34,7 @@ export function PremiumLock({
 
       {/* O Overlay de Bloqueio */}
       <div className="absolute inset-0 z-10 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full p-8 text-center shadow-2xl border-purple-100 bg-white/90 backdrop-blur-sm">
+        <Card className="max-w-md w-full p-6 text-center shadow-lg border-purple-100 bg-white/90 backdrop-blur-sm">
           <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
             <Lock className="w-6 h-6 text-purple-600" />
           </div>
@@ -49,7 +49,7 @@ export function PremiumLock({
 
           <Button 
             onClick={onUpgrade}
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold shadow-sm hover:shadow-md transition-all duration-200"
           >
             Desbloquear Agora
           </Button>

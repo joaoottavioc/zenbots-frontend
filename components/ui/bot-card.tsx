@@ -66,7 +66,7 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
         isOpen ? "bg-emerald-500" : "bg-slate-400" // AGORA: Cinza quando fechado
       )} />
 
-      <div className="p-5 flex-1">
+      <div className="p-4 flex-1">
         <div className="flex justify-between items-start mb-4 pl-2">
           
           <div className="flex items-center gap-4">
@@ -96,11 +96,16 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
               
               <div className="flex items-center gap-1.5 mt-1.5">
                 <span className={cn(
-                  "flex h-2 w-2 rounded-full",
-                  isConnected ? "bg-green-500" : "bg-amber-400"
-                )} />
-                <span className="text-xs text-slate-500 font-medium">
-                  {isConnected ? "WhatsApp Conectado" : "Não Conectado"}
+                  "inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-md border uppercase tracking-wide",
+                  isConnected
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border-amber-200"
+                )}>
+                  <span className={cn(
+                    "flex h-1.5 w-1.5 rounded-full",
+                    isConnected ? "bg-emerald-500" : "bg-amber-400"
+                  )} />
+                  {isConnected ? "Conectado" : "Não Conectado"}
                 </span>
               </div>
             </div>
@@ -196,7 +201,8 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
         
         {bot.whatsapp_number && (
           <Button
-              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs h-9 shadow-sm transition-all"
+              variant="brand"
+              className="flex-1 text-xs h-9"
               onClick={() => window.open(`https://wa.me/${bot.whatsapp_number}`, '_blank')}
           >
               <ExternalLink className="mr-2 h-3.5 w-3.5" /> Testar

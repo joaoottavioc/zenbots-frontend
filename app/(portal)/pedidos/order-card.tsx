@@ -10,6 +10,7 @@ import {
   Ban,
   AlertCircle,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { Order } from "./types";
 import { getMinutesFromDate } from "./utils";
@@ -61,7 +62,7 @@ export const OrderCard = React.memo(function OrderCard({ order, onAction, onBack
   };
 
   return (
-    <div className={`group bg-white rounded-lg border shadow-sm transition-all duration-200 flex flex-col ${isPixPending ? 'border-rose-100 bg-rose-50/10' : 'border-slate-200 hover:border-slate-300 hover:shadow-md'}`}>
+    <div className={`group bg-white rounded-xl border shadow-sm transition-all duration-200 flex flex-col ${isPixPending ? 'border-rose-100 bg-rose-50/10' : 'border-slate-200 hover:border-slate-300 hover:shadow-md'}`}>
 
       {/* HEADER */}
       <div className="p-3 border-b border-slate-100/50 flex justify-between items-start">
@@ -86,11 +87,11 @@ export const OrderCard = React.memo(function OrderCard({ order, onAction, onBack
 
           <div className="flex items-center gap-2 flex-wrap">
             {order.type === "DELIVERY" ? (
-              <div className="flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-1 rounded-md border border-sky-100 uppercase tracking-wide">
+              <div className="flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-100 uppercase tracking-wide">
                 <Bike className="w-3.5 h-3.5" /> Entrega
               </div>
             ) : (
-              <div className="flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 px-2 py-1 rounded-md border border-orange-100 uppercase tracking-wide">
+              <div className="flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100 uppercase tracking-wide">
                 <ShoppingBag className="w-3.5 h-3.5" /> Retirada
               </div>
             )}
@@ -112,7 +113,7 @@ export const OrderCard = React.memo(function OrderCard({ order, onAction, onBack
                   {item.product_name}
                 </span>
                 {item.price_at_time_of_order && (
-                  <span className="text-[11px] font-medium text-slate-400 whitespace-nowrap ml-2">
+                  <span className="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">
                     {(item.price_at_time_of_order * item.quantity).toLocaleString('pt-BR', {
                       style: 'currency',
                       currency: 'BRL'
@@ -137,7 +138,7 @@ export const OrderCard = React.memo(function OrderCard({ order, onAction, onBack
           {order.type === "DELIVERY" && (
             <div className="flex justify-between items-center px-2 py-1 bg-sky-50/50 rounded border border-sky-100/50 mb-2">
               <span className="text-[10px] font-bold text-sky-600 uppercase tracking-tight">Taxa de Entrega</span>
-              <span className="text-[11px] font-bold text-sky-700">
+              <span className="text-xs font-bold text-sky-700">
                 {order.delivery_fee?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || "R$ 0,00"}
               </span>
             </div>
@@ -175,7 +176,7 @@ export const OrderCard = React.memo(function OrderCard({ order, onAction, onBack
           </div>
 
           {order.type === "DELIVERY" && order.fullAddress && (
-            <div className="flex items-start gap-1.5 text-[11px] text-slate-500 bg-white p-2 rounded border border-slate-100">
+            <div className="flex items-start gap-1.5 text-xs text-slate-500 bg-white p-2 rounded border border-slate-100">
               <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
               <span className="leading-tight line-clamp-2">{order.fullAddress}</span>
             </div>
@@ -185,27 +186,29 @@ export const OrderCard = React.memo(function OrderCard({ order, onAction, onBack
         {/* Botões de Ação */}
         <div className="flex gap-2 h-9">
           {onBack && (
-            <button onClick={onBack} disabled={disabled} aria-label="Voltar status" className="px-3 rounded-md bg-white border border-slate-200 text-slate-400 hover:text-slate-700 hover:border-slate-300 transition-all">
+            <Button onClick={onBack} disabled={disabled} aria-label="Voltar status" variant="outline" size="icon" className="px-3 text-slate-400 hover:text-slate-700">
               <Undo2 className="w-4 h-4" />
-            </button>
+            </Button>
           )}
 
           {onCancel && order.status !== "CANCELED" && order.status !== "COMPLETED" && (
-            <button
+            <Button
               onClick={onCancel}
               disabled={disabled}
               aria-label="Cancelar pedido"
-              className="px-3 rounded-md bg-white border border-rose-200 text-rose-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 transition-all"
+              variant="outline"
+              size="icon"
+              className="px-3 border-rose-200 text-rose-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300"
               title="Cancelar Pedido"
             >
               <Ban className="w-4 h-4" />
-            </button>
+            </Button>
           )}
 
-          <button
+          <Button
             onClick={onAction}
             disabled={isActionDisabled}
-            className={`flex-1 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2
+            className={`flex-1 text-xs font-bold uppercase tracking-wider
                 ${isActionDisabled
                 ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                 : `${btnVariants[actionVariant]} active:scale-[0.98]`
@@ -213,7 +216,7 @@ export const OrderCard = React.memo(function OrderCard({ order, onAction, onBack
           >
             {isPixPending && <Clock className="w-3 h-3 animate-spin" />}
             {currentActionLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

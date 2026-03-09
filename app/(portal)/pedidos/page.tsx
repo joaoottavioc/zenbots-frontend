@@ -5,7 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DashboardHeader } from '@/components/layout/dashboard-header';
+import { PageHeader } from '@/components/layout/page-header';
+import { PageContainer } from '@/components/layout/page-container';
 import {
   Volume2,
   VolumeX,
@@ -236,15 +237,11 @@ export default function PedidosPage() {
   }, [orders]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-130px)] min-h-[650px] space-y-2">
+    <PageContainer fullHeight>
 
       {/* --- CABEÇALHO PADRONIZADO (KDS) --- */}
-      <DashboardHeader
-        title={
-          <span className="font-heading font-bold tracking-tight">
-            Gestão de Pedidos
-          </span>
-        }
+      <PageHeader
+        title="Gestão de Pedidos"
         titleSuffix={
           <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border transition-colors ${isConnected
             ? "bg-emerald-50 text-emerald-700 border-emerald-100"
@@ -270,7 +267,7 @@ export default function PedidosPage() {
           {soundEnabled ? <Volume2 className="h-4 w-4 text-emerald-600" /> : <VolumeX className="h-4 w-4" />}
           <span className="hidden sm:inline">{soundEnabled ? "Som Ativo" : "Mudo"}</span>
         </button>
-      </DashboardHeader>
+      </PageHeader>
 
       {/* --- BOARD KANBAN --- */}
       {!selectedBotId ? (
@@ -418,6 +415,6 @@ export default function PedidosPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageContainer>
   );
 }

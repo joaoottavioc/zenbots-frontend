@@ -21,7 +21,9 @@ import * as z from 'zod';
 // --- Imports de Componentes Locais ---
 import { ProductForm } from './product-form';
 import { MenuImportDialog } from './menu-import-dialog';
-import { DashboardHeader } from '@/components/layout/dashboard-header';
+import { PageHeader } from '@/components/layout/page-header';
+import { PageContainer } from '@/components/layout/page-container';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // --- Imports Shadcn ---
 import { Checkbox } from "@/components/ui/checkbox";
@@ -212,10 +214,9 @@ export default function ProdutosPage() {
   const isPdf = currentBot?.menu_url?.toLowerCase().endsWith(".pdf");
 
   return (
-    <div className="container mx-auto max-w-6xl p-6 space-y-8 min-h-screen bg-slate-50/50">
-      
+    <PageContainer>
       {/* 1. CABEÇALHO PADRONIZADO */}
-      <DashboardHeader 
+      <PageHeader
          title="Catálogo Digital"
          description="Gerencie produtos, preços e disponibilidade do cardápio."
          selectedBotId={selectedBotId}
@@ -224,25 +225,25 @@ export default function ProdutosPage() {
          {selectedBotId && (
             <>
                 <MenuImportDialog botId={selectedBotId} />
-                
+
                 <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/10">
+                        <Button variant="brand">
                             <Plus className="mr-2 h-4 w-4" /> Novo Produto
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader><DialogTitle>Adicionar Produto</DialogTitle></DialogHeader>
-                        <ProductForm 
-                            onSubmit={(v) => createMutation.mutate(v)} 
-                            isPending={createMutation.isPending} 
-                            categories={sortedCategories} 
+                        <ProductForm
+                            onSubmit={(v) => createMutation.mutate(v)}
+                            isPending={createMutation.isPending}
+                            categories={sortedCategories}
                         />
                     </DialogContent>
                 </Dialog>
             </>
          )}
-      </DashboardHeader>
+      </PageHeader>
 
       {/* 2. BANNER DE CARDÁPIO ATIVO */}
       {selectedBotId && currentBot?.menu_url && (
@@ -352,12 +353,12 @@ export default function ProdutosPage() {
           </Button>
         </div>
       ) : isEmpty && selectedBotId ? (
-         <div className="flex flex-col items-center justify-center p-16 bg-white border border-dashed border-slate-200 rounded-2xl text-center">
-            <div className="bg-slate-50 p-4 rounded-full mb-4"><Package className="h-12 w-12 text-slate-300" /></div>
-            <h3 className="text-lg font-semibold text-slate-900">Cardápio Vazio</h3>
-            <p className="text-slate-500 mb-6 max-w-sm">Este bot ainda não tem produtos. Adicione manualmente ou use a IA para importar.</p>
-            <Button variant="outline" onClick={() => setIsCreateModalOpen(true)}>Criar Primeiro Produto</Button>
-         </div>
+         <EmptyState
+            icon={Package}
+            title="Cardápio Vazio"
+            description="Este bot ainda não tem produtos. Adicione manualmente ou use a IA para importar."
+            action={<Button variant="outline" onClick={() => setIsCreateModalOpen(true)}>Criar Primeiro Produto</Button>}
+         />
       ) : !selectedBotId ? (
           <div className="text-center py-20 opacity-50"><p>Selecione um bot acima para começar.</p></div>
       ) : (
@@ -477,6 +478,6 @@ export default function ProdutosPage() {
             <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => bulkDeleteMutation.mutate(selectedProductIds)}>Confirmar</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageContainer>
   );
 }

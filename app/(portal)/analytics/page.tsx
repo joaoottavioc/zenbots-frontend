@@ -3,14 +3,15 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { 
-  Trophy, 
-  DollarSign, 
-  ShoppingBag, 
+import {
+  Trophy,
+  DollarSign,
+  ShoppingBag,
   Medal,
   Utensils
 } from 'lucide-react';
-import { BotSelector } from '@/components/ui/bot-selector';
+import { PageHeader } from "@/components/layout/page-header";
+import { PageContainer } from "@/components/layout/page-container";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -117,25 +118,13 @@ export default function BestSellersPage() {
   };
 
   return (
-    <div className="space-y-8 pb-10 fade-in">
-      
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3 text-slate-800">
-            <Trophy className="h-8 w-8 text-yellow-500" /> 
-            Produtos Campeões
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Análise detalhada da performance do seu cardápio.
-          </p>
-        </div>
-        <div className="w-full md:w-[300px]">
-           <BotSelector selectedBotId={selectedBotId} onBotChange={setSelectedBotId} />
-        </div>
-      </div>
-
-      <hr className="border-slate-100" />
+    <PageContainer className="pb-10">
+      <PageHeader
+        title="Produtos Campeões"
+        description="Análise detalhada da performance do seu cardápio."
+        selectedBotId={selectedBotId}
+        onBotChange={setSelectedBotId}
+      />
 
       {/* BLOQUEIO */}
       <PremiumLock 
@@ -148,7 +137,7 @@ export default function BestSellersPage() {
         {isLoading ? (
            <DashboardSkeleton />
         ) : !displayProducts || displayProducts.length === 0 ? (
-          <EmptyState />
+          <AnalyticsEmptyState />
         ) : (
           <>
             {/* KPI CARDS */}
@@ -243,7 +232,7 @@ export default function BestSellersPage() {
           </>
         )}
       </PremiumLock>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -266,6 +255,6 @@ function DashboardSkeleton() {
     return <div className="space-y-6"><Skeleton className="h-32 rounded-xl" /><Skeleton className="h-[400px] rounded-xl" /></div>
 }
 
-function EmptyState() {
-    return <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200"><Utensils className="h-8 w-8 text-muted-foreground" /><h3 className="text-lg font-semibold text-slate-800">Nenhum dado encontrado</h3><BotSelector selectedBotId={null} onBotChange={() => {}} /></div>
+function AnalyticsEmptyState() {
+    return <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-300"><div className="bg-white p-4 rounded-full shadow-sm inline-flex mb-4"><Utensils className="h-10 w-10 text-slate-400" /></div><h3 className="text-lg font-medium text-slate-900">Nenhum dado encontrado</h3><p className="text-slate-500 mt-1">Selecione um bot com vendas para ver a análise.</p></div>
 }

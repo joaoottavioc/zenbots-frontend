@@ -18,10 +18,19 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-vi.mock('@/components/ui/bot-selector', () => ({
-  BotSelector: ({ onBotChange }: any) => (
-    <button onClick={() => onBotChange('1')} data-testid="bot-selector">Select Bot</button>
+vi.mock('@/components/layout/page-header', () => ({
+  PageHeader: ({ children, selectedBotId, onBotChange }: any) => (
+    <div data-testid="page-header">
+      {onBotChange && (
+        <button onClick={() => onBotChange('1')} data-testid="bot-selector">Select Bot</button>
+      )}
+      {children}
+    </div>
   ),
+}));
+
+vi.mock('@/components/layout/page-container', () => ({
+  PageContainer: ({ children }: any) => <div>{children}</div>,
 }));
 
 vi.mock('next/navigation', () => ({
@@ -81,10 +90,7 @@ describe('PagamentosPage', () => {
     });
   });
 
-  it('redirects to Mercado Pago auth URL with state param on connect click', async () => {
-    const mockUUID = 'test-uuid-1234';
-    vi.spyOn(crypto, 'randomUUID').mockReturnValue(mockUUID as `${string}-${string}-${string}-${string}-${string}`);
-
+  it('redirects to Mercado Pago auth URL on connect click', async () => {
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url.includes('/auth-url')) {
         return Promise.resolve({ data: { url: 'https://mercadopago.com/auth' } }) as any;
@@ -105,10 +111,10 @@ describe('PagamentosPage', () => {
     await user.click(screen.getByText(/conectar conta/i));
 
     await waitFor(() => {
-      expect(window.location.href).toContain('state=test-uuid-1234');
+      // Backend includes CSRF state in the URL — no client-side state param
+      expect(window.location.href).toContain('mercadopago.com/auth');
     });
 
-    expect(sessionStorage.setItem).toHaveBeenCalledWith('mp_oauth_state', mockUUID);
     // Verify bot_id is passed to the API
     expect(api.get).toHaveBeenCalledWith(expect.stringContaining('bot_id=1'));
   });

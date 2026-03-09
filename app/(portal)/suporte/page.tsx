@@ -10,7 +10,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import {
   Search,
   MessageCircle,
@@ -21,6 +20,8 @@ import {
   ShoppingBag,
   Settings,
 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageContainer } from "@/components/layout/page-container";
 
 const faqItems = [
   {
@@ -97,17 +98,11 @@ export default function SuportePage() {
   });
 
   return (
-    <div className="w-full animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Suporte
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Encontre respostas rápidas ou fale com nosso time.
-        </p>
-      </div>
-      <Separator className="mb-6" />
+    <PageContainer>
+      <PageHeader
+        title="Suporte"
+        description="Encontre respostas rápidas ou fale com nosso time."
+      />
 
       {/* Search */}
       <div className="relative mb-6">
@@ -235,6 +230,6 @@ export default function SuportePage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   );
 }

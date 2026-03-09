@@ -22,11 +22,11 @@ interface OrderColumnProps {
 
 export const OrderColumn = React.memo(function OrderColumn({ title, subtitle, orders, topLineColor, statusBadgeColor, onAction, onBack, onCancel, onTakeover, onPrint, actionLabel, actionVariant, loading }: OrderColumnProps) {
   return (
-    <div className="flex flex-col h-full bg-slate-100/50 rounded-xl border border-slate-200 shadow-inner overflow-hidden relative">
+    <div className="flex flex-col h-full bg-slate-100/50 rounded-xl border border-slate-200 shadow-sm overflow-hidden relative">
 
       <div className={`h-1.5 w-full ${topLineColor}`} />
 
-      <div className="px-4 py-3 bg-white border-b border-slate-200 flex justify-between items-center">
+      <div className="p-3 bg-white border-b border-slate-200 flex justify-between items-center">
         <div>
           <h2 className="font-bold text-slate-800 text-base">{title}</h2>
           <p className="text-xs text-slate-400 font-medium">{subtitle}</p>

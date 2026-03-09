@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getSafeErrorMessage } from "@/lib/error-messages";
 import type { BotFormValues } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageContainer } from '@/components/layout/page-container';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -35,7 +36,7 @@ export default function NewBotPage() {
   return (
     // LIMPEZA: Removemos hacks de altura/largura. 
     // O 'max-w-4xl' centraliza o formulário e 'mx-auto' alinha no meio.
-    <div className="max-w-4xl mx-auto">
+    <PageContainer className="max-w-4xl">
       
       {/* Botão de Voltar */}
       <div className="mb-6 flex items-center">
@@ -63,6 +64,6 @@ export default function NewBotPage() {
           />
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }
