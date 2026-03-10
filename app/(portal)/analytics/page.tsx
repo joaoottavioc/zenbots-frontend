@@ -34,6 +34,14 @@ interface BestSeller {
   revenue: number;
 }
 
+interface SubscriptionStatus {
+  status: string;
+  is_active: boolean;
+  days_remaining: number;
+  next_payment: string;
+  plan_type?: string;
+}
+
 export default function BestSellersPage() {
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
   const router = useRouter();
@@ -42,32 +50,31 @@ export default function BestSellersPage() {
   const { data: pricingData } = useQuery({
     queryKey: ['plan-pricing', 'pro'],
     queryFn: async () => {
-      const res = await api.get(`/plans/pricing`); 
-      return res.data; 
+      const res = await api.get(`/plans/pricing`);
+      return res.data;
     },
     staleTime: 1000 * 60 * 60, // Cache de 1 hora
   });
 
-  // --- 2. BUSCA DADOS DE VENDAS (COM TRATAMENTO DE BLOQUEIO) ---
-  const { data: products, isLoading, error } = useQuery<BestSeller[]>({
-    queryKey: ['best-sellers-full', selectedBotId],
-    queryFn: async () => {
-      if (!selectedBotId) return [];
-      try {
-        const res = await api.get(`/bots/${selectedBotId}/analytics/best-sellers`);
-        return res.data;
-      } catch (err: any) {
-        if (err.response?.status === 403 && err.response?.data?.detail === "SUBSCRIPTION_REQUIRED") {
-          throw new Error("PLAN_LOCKED");
-        }
-        throw err;
-      }
-    },
+  // --- 2. VERIFICA STATUS DA ASSINATURA ANTES DE BUSCAR DADOS ---
+  const { data: subStatus } = useQuery<SubscriptionStatus>({
+    queryKey: ['billingStatus', selectedBotId],
+    queryFn: async () => (await api.get(`/billing/status?bot_id=${selectedBotId}`)).data,
     enabled: !!selectedBotId,
-    retry: false, 
   });
 
-  const isPlanLocked = error?.message === "PLAN_LOCKED";
+  const isPlanLocked = !!selectedBotId && subStatus !== undefined && subStatus.plan_type !== 'pro';
+
+  // --- 3. BUSCA DADOS DE VENDAS (SOMENTE SE PLANO PERMITIR) ---
+  const { data: products, isLoading } = useQuery<BestSeller[]>({
+    queryKey: ['best-sellers-full', selectedBotId],
+    queryFn: async () => {
+      const res = await api.get(`/bots/${selectedBotId}/analytics/best-sellers`);
+      return res.data;
+    },
+    enabled: !!selectedBotId && !isPlanLocked,
+    retry: false,
+  });
 
   // Formata o preço dinâmico para o componente
   const dynamicPriceLabel = useMemo(() => {

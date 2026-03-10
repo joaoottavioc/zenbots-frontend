@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -118,9 +119,13 @@ type ChangePasswordValues = z.infer<typeof changePasswordSchema>;
 
 export default function ConfiguracoesPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const botIdFromUrl = searchParams.get("bot_id");
+  const defaultTab = tabFromUrl === "subscription" || tabFromUrl === "security" ? tabFromUrl : "profile";
 
   const [isLoadingSecurity, setIsLoadingSecurity] = useState(false);
-  const [selectedBotId, setSelectedBotId] = useState<string>("");
+  const [selectedBotId, setSelectedBotId] = useState<string>(botIdFromUrl || "");
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
 
   const passwordForm = useForm<ChangePasswordValues>({
@@ -239,7 +244,7 @@ export default function ConfiguracoesPage() {
         description="Gerencie seu perfil e suas credenciais de acesso."
       />
 
-      <Tabs defaultValue="profile" orientation="vertical" className="flex flex-col lg:flex-row w-full gap-8">
+      <Tabs defaultValue={defaultTab} orientation="vertical" className="flex flex-col lg:flex-row w-full gap-8">
         <aside className="w-full lg:w-60 shrink-0">
             <TabsList className="flex flex-col h-auto w-full items-stretch bg-transparent space-y-1 p-0">
                 <TabsTrigger value="profile" className="justify-start px-3 py-2 text-sm font-medium transition-all data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md hover:bg-slate-50 text-muted-foreground"><UserCircle className="mr-2 h-4 w-4" /> Meu Perfil</TabsTrigger>
@@ -367,7 +372,7 @@ export default function ConfiguracoesPage() {
                             <div className="text-center py-10 text-sm text-muted-foreground">Nenhum plano disponível</div>
                         ) : (
                         <div className="grid md:grid-cols-2 gap-6 pb-10">
-                            {plans.map((plan) => {
+                            {[...plans].sort((a, b) => (a.key === 'basic' ? -1 : b.key === 'basic' ? 1 : 0)).map((plan) => {
                                 const style = PLAN_STYLES[plan.key] || PLAN_STYLES.basic;
                                 const features = PLAN_FEATURES[plan.key] || [];
                                 const isCurrent = isCurrentPlan(plan.key);

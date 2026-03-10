@@ -97,6 +97,9 @@ describe('BestSellersPage', () => {
       if (url.includes('/plans/pricing')) {
         return Promise.resolve({ data: { price: 10 } }) as any;
       }
+      if (url.includes('/billing/status')) {
+        return Promise.resolve({ data: { status: 'active', is_active: true, days_remaining: 30, next_payment: '2026-04-10', plan_type: 'pro' } }) as any;
+      }
       if (url.includes('/analytics/best-sellers')) {
         return Promise.resolve({ data: realData }) as any;
       }
