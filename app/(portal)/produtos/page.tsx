@@ -211,7 +211,15 @@ export default function ProdutosPage() {
   const isEmpty = !isLoading && (!products || products.length === 0);
   
   // Helper para identificar tipo
-  const isPdf = currentBot?.menu_url?.toLowerCase().endsWith(".pdf");
+  const isPdf = (() => {
+    if (!currentBot?.menu_url) return false;
+    try {
+      const pathname = new URL(currentBot.menu_url).pathname;
+      return pathname.toLowerCase().endsWith(".pdf");
+    } catch {
+      return currentBot.menu_url.toLowerCase().endsWith(".pdf");
+    }
+  })();
 
   return (
     <PageContainer>

@@ -46,7 +46,7 @@ locals {
     "script-src 'self' 'unsafe-inline' https://connect.facebook.net",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    "img-src 'self' data: blob: https://*.facebook.com https://*.fbcdn.net",
+    "img-src 'self' data: blob: https://*.facebook.com https://*.fbcdn.net https://zenbots-dev-menus.s3.us-east-1.amazonaws.com",
     "connect-src 'self' ${var.api_base_url} https://*.facebook.com",
     "frame-src https://www.facebook.com",
     "object-src 'none'",
