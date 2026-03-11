@@ -16,8 +16,20 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  QrCode
+  QrCode,
+  AlertTriangle
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useToast } from "@/hooks/use-toast";
 import { api } from '@/lib/api';
 import { isTrustedRedirectUrl } from '@/lib/url-validation';
@@ -181,10 +193,36 @@ function PagamentosContent() {
 
           <CardFooter className="pt-6">
             {isConnected ? (
-                <Button variant="outline" onClick={() => disconnectMutation.mutate()} disabled={!selectedBotId || disconnectMutation.isPending} className="w-full border-red-200 text-red-600 hover:bg-red-50">
-                    {disconnectMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Desconectar
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" disabled={!selectedBotId || disconnectMutation.isPending} className="w-full border-red-200 text-red-600 hover:bg-red-50">
+                        {disconnectMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Desconectar
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                          <AlertTriangle className="h-5 w-5 text-red-600" />
+                        </div>
+                        <AlertDialogTitle>Desconectar Mercado Pago?</AlertDialogTitle>
+                      </div>
+                      <AlertDialogDescription className="pt-2">
+                        Ao desconectar, seus clientes não poderão mais realizar pagamentos via Pix pelo WhatsApp. Você pode reconectar a qualquer momento.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => disconnectMutation.mutate()}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        Sim, desconectar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
             ) : (
                 <Button
                     className="w-full bg-brand-mercadopago hover:bg-brand-mercadopago-hover text-white font-medium"
@@ -206,7 +244,7 @@ function PagamentosContent() {
             </div>
             <CardTitle className="mt-4 text-lg text-slate-500">Outros Gateways</CardTitle>
             <CardDescription>
-              Em breve integrações com Stripe e Asaas.
+              Em breve, novas opções de pagamento.
             </CardDescription>
           </CardHeader>
         </Card>
