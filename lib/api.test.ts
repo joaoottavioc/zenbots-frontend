@@ -9,6 +9,17 @@ vi.mock('./auth-events', () => ({
   emitSessionExpired: (...args: unknown[]) => mockEmitSessionExpired(...args),
 }));
 
+// Axios interceptors have an internal `handlers` array not in the public types.
+// This interface mirrors the internal shape we need for testing.
+interface InterceptorHandler<T> {
+  fulfilled?: (value: T) => T | Promise<T>;
+  rejected?: (error: unknown) => unknown;
+}
+
+interface InterceptorManagerWithHandlers<T> {
+  handlers: InterceptorHandler<T>[];
+}
+
 describe('api module', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -31,7 +42,8 @@ describe('api module', () => {
     document.cookie = 'csrf_token=test-csrf-value; path=/';
     const { api } = await import('./api');
 
-    const config = await api.interceptors.request.handlers[0].fulfilled!({
+    const requestInterceptors = api.interceptors.request as unknown as InterceptorManagerWithHandlers<InternalAxiosRequestConfig>;
+    const config = await requestInterceptors.handlers[0].fulfilled!({
       method: 'post',
       url: '/bots/123',
       headers: {} as unknown as AxiosHeaders,
@@ -44,7 +56,8 @@ describe('api module', () => {
     document.cookie = 'csrf_token=test-csrf-value; path=/';
     const { api } = await import('./api');
 
-    const config = await api.interceptors.request.handlers[0].fulfilled!({
+    const requestInterceptors = api.interceptors.request as unknown as InterceptorManagerWithHandlers<InternalAxiosRequestConfig>;
+    const config = await requestInterceptors.handlers[0].fulfilled!({
       method: 'get',
       url: '/bots',
       headers: {} as unknown as AxiosHeaders,
@@ -59,8 +72,9 @@ describe('api module', () => {
 
     const exemptPaths = ['/auth/token', '/auth/register', '/auth/forgot-password', '/auth/reset-password', '/auth/logout'];
 
+    const requestInterceptors = api.interceptors.request as unknown as InterceptorManagerWithHandlers<InternalAxiosRequestConfig>;
     for (const url of exemptPaths) {
-      const config = await api.interceptors.request.handlers[0].fulfilled!({
+      const config = await requestInterceptors.handlers[0].fulfilled!({
         method: 'post',
         url,
         headers: {} as unknown as AxiosHeaders,
@@ -81,7 +95,8 @@ describe('api module', () => {
         configurable: true,
       });
 
-      const responseInterceptor = api.interceptors.response.handlers[0];
+      const responseInterceptors = api.interceptors.response as unknown as InterceptorManagerWithHandlers<unknown>;
+      const responseInterceptor = responseInterceptors.handlers[0];
       const error = { response: { status: 401 } };
 
       await expect(responseInterceptor.rejected!(error)).rejects.toEqual(error);
@@ -101,7 +116,8 @@ describe('api module', () => {
         configurable: true,
       });
 
-      const responseInterceptor = api.interceptors.response.handlers[0];
+      const responseInterceptors = api.interceptors.response as unknown as InterceptorManagerWithHandlers<unknown>;
+      const responseInterceptor = responseInterceptors.handlers[0];
       const error = { response: { status: 401 } };
 
       await expect(responseInterceptor.rejected!(error)).rejects.toEqual(error);
@@ -113,7 +129,8 @@ describe('api module', () => {
     it('passes through non-401 errors unchanged', async () => {
       const { api } = await import('./api');
 
-      const responseInterceptor = api.interceptors.response.handlers[0];
+      const responseInterceptors = api.interceptors.response as unknown as InterceptorManagerWithHandlers<unknown>;
+      const responseInterceptor = responseInterceptors.handlers[0];
       const error = { response: { status: 500 } };
 
       await expect(responseInterceptor.rejected!(error)).rejects.toEqual(error);

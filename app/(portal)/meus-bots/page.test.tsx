@@ -147,7 +147,7 @@ describe('MyBotsPage', () => {
 
     // Verify that if put was called, it does NOT contain the full bot spread
     if (vi.mocked(api.put).mock.calls.length > 0) {
-      const payload = vi.mocked(api.put).mock.calls[0][1];
+      const payload = vi.mocked(api.put).mock.calls[0][1] as Record<string, unknown>;
       expect(payload.whatsapp_token).toBe('');
       expect(payload.phone_number_id).toBe('');
     }
