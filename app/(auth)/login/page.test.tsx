@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import LoginPage from './page';
 import { api } from '@/lib/api';
+import { mockResponse } from '@/tests/helpers/mocks';
 
 // Mock the api module
 vi.mock('@/lib/api', () => ({
@@ -63,9 +64,7 @@ describe('LoginPage', () => {
   });
 
   it('sets presence cookie and redirects on successful login', async () => {
-    vi.mocked(api.post).mockResolvedValueOnce({
-      data: { access_token: 'fake-jwt-token' },
-    } as any);
+    vi.mocked(api.post).mockResolvedValueOnce(mockResponse({ access_token: 'fake-jwt-token' }));
 
     const user = userEvent.setup();
     renderWithProviders(<LoginPage />);
@@ -98,9 +97,7 @@ describe('LoginPage', () => {
   });
 
   it('sends URLSearchParams format to the API', async () => {
-    vi.mocked(api.post).mockResolvedValueOnce({
-      data: { access_token: 'fake-jwt-token' },
-    } as any);
+    vi.mocked(api.post).mockResolvedValueOnce(mockResponse({ access_token: 'fake-jwt-token' }));
 
     const user = userEvent.setup();
     renderWithProviders(<LoginPage />);
@@ -171,7 +168,7 @@ describe('LoginPage', () => {
       expect(screen.getByText(/e-mail ainda nao foi verificado/i)).toBeInTheDocument();
     });
 
-    vi.mocked(api.post).mockResolvedValueOnce({ data: {} } as any);
+    vi.mocked(api.post).mockResolvedValueOnce(mockResponse({}));
     await user.click(screen.getByRole('button', { name: /reenviar e-mail/i }));
 
     await waitFor(() => {

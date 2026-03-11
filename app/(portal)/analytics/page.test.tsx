@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import BestSellersPage from './page';
 import { api } from '@/lib/api';
+import { mockResponse } from '@/tests/helpers/mocks';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -19,7 +20,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/components/ui/bot-selector', () => ({
-  BotSelector: ({ onBotChange, selectedBotId }: any) => (
+  BotSelector: ({ onBotChange, selectedBotId }: { onBotChange: (id: string) => void; selectedBotId: string | null }) => (
     <button onClick={() => onBotChange('1')} data-testid="bot-selector">
       {selectedBotId ? `Bot ${selectedBotId}` : 'Select Bot'}
     </button>
@@ -32,7 +33,7 @@ describe('BestSellersPage', () => {
   });
 
   it('renders page header', () => {
-    vi.mocked(api.get).mockResolvedValue({ data: {} } as any);
+    vi.mocked(api.get).mockResolvedValue(mockResponse({}));
     renderWithProviders(<BestSellersPage />);
 
     expect(screen.getByText(/produtos campeões/i)).toBeInTheDocument();
@@ -41,14 +42,14 @@ describe('BestSellersPage', () => {
   it('shows premium lock when API returns 403', async () => {
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url.includes('/plans/pricing')) {
-        return Promise.resolve({ data: { price: 10 } }) as any;
+        return Promise.resolve(mockResponse({ price: 10 }));
       }
       if (url.includes('/analytics/best-sellers')) {
         return Promise.reject({
           response: { status: 403, data: { detail: 'SUBSCRIPTION_REQUIRED' } },
         });
       }
-      return Promise.resolve({ data: [] }) as any;
+      return Promise.resolve(mockResponse([]));
     });
 
     const user = userEvent.setup();
@@ -65,14 +66,14 @@ describe('BestSellersPage', () => {
   it('shows blurred content with mock data when locked', async () => {
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url.includes('/plans/pricing')) {
-        return Promise.resolve({ data: { price: 10 } }) as any;
+        return Promise.resolve(mockResponse({ price: 10 }));
       }
       if (url.includes('/analytics/best-sellers')) {
         return Promise.reject({
           response: { status: 403, data: { detail: 'SUBSCRIPTION_REQUIRED' } },
         });
       }
-      return Promise.resolve({ data: [] }) as any;
+      return Promise.resolve(mockResponse([]));
     });
 
     const user = userEvent.setup();
@@ -95,15 +96,15 @@ describe('BestSellersPage', () => {
 
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url.includes('/plans/pricing')) {
-        return Promise.resolve({ data: { price: 10 } }) as any;
+        return Promise.resolve(mockResponse({ price: 10 }));
       }
       if (url.includes('/billing/status')) {
-        return Promise.resolve({ data: { status: 'active', is_active: true, days_remaining: 30, next_payment: '2026-04-10', plan_type: 'pro' } }) as any;
+        return Promise.resolve(mockResponse({ status: 'active', is_active: true, days_remaining: 30, next_payment: '2026-04-10', plan_type: 'pro' }));
       }
       if (url.includes('/analytics/best-sellers')) {
-        return Promise.resolve({ data: realData }) as any;
+        return Promise.resolve(mockResponse(realData));
       }
-      return Promise.resolve({ data: [] }) as any;
+      return Promise.resolve(mockResponse([]));
     });
 
     const user = userEvent.setup();

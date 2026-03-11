@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import ResetPasswordPage from './page';
 import { api } from '@/lib/api';
+import { mockResponse } from '@/tests/helpers/mocks';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -82,7 +83,7 @@ describe('ResetPasswordPage', () => {
 
   it('redirects to login on successful password reset', async () => {
     mockSearchParams = new URLSearchParams('token=valid-reset-token');
-    vi.mocked(api.post).mockResolvedValueOnce({ data: {} } as any);
+    vi.mocked(api.post).mockResolvedValueOnce(mockResponse({}));
 
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });

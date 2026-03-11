@@ -61,6 +61,7 @@ function PagamentosContent() {
   // Seed local state from query result (runs once when data arrives)
   useEffect(() => {
     if (statusData && !initialized) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsConnected(statusData.is_active);
       setInitialized(true);
     }

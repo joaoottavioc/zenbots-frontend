@@ -50,6 +50,7 @@ function ResetForm() {
     defaultValues: { password: "", confirmPassword: "" },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const passwordValue = form.watch("password");
 
   // --- Validação Visual em Tempo Real ---

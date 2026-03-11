@@ -83,11 +83,11 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
   const [bulkStart, setBulkStart] = useState("18:00");
   const [bulkEnd, setBulkEnd] = useState("23:00");
   
-  const getMergedSchedule = (savedSchedule: any) => {
+  const getMergedSchedule = (savedSchedule: Record<string, { active: boolean; start: string; end: string }> | null | undefined) => {
     if (!savedSchedule || Object.keys(savedSchedule).length === 0) {
       return DEFAULT_SCHEDULE;
     }
-    const merged: any = {};
+    const merged: Record<string, { active: boolean; start: string; end: string }> = {};
     WEEKDAYS.forEach((day) => {
       merged[day.key] = savedSchedule[day.key] || { active: true, start: "18:00", end: "23:00" };
     });
@@ -161,9 +161,10 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
         });
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Tratamento para quando o CEP não existe na API
-      const msg = error.response?.status === 404
+      const isNotFound = error instanceof Error && 'response' in error && (error as { response?: { status?: number } }).response?.status === 404;
+      const msg = isNotFound
         ? "CEP não encontrado na base de dados."
         : getSafeErrorMessage(error, "Falha ao buscar CEP.");
 

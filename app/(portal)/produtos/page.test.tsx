@@ -4,7 +4,8 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import ProdutosPage from './page';
 import { api } from '@/lib/api';
-import { createMockProduct } from '@/tests/helpers/mocks';
+import { createMockProduct, mockResponse } from '@/tests/helpers/mocks';
+import type { ReactNode } from 'react';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -28,15 +29,15 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/components/layout/page-header', () => ({
-  PageHeader: ({ children, selectedBotId, onBotChange }: any) => (
+  PageHeader: ({ children, selectedBotId, onBotChange }: { children?: ReactNode; selectedBotId?: string | null; onBotChange?: (id: string) => void }) => (
     <div data-testid="dashboard-header">
       {!selectedBotId && (
-        <button onClick={() => onBotChange('1')} data-testid="select-bot">
+        <button onClick={() => onBotChange?.('1')} data-testid="select-bot">
           Select Bot
         </button>
       )}
       {selectedBotId && (
-        <button onClick={() => onBotChange('2')} data-testid="change-bot">
+        <button onClick={() => onBotChange?.('2')} data-testid="change-bot">
           Change Bot
         </button>
       )}
@@ -46,11 +47,11 @@ vi.mock('@/components/layout/page-header', () => ({
 }));
 
 vi.mock('@/components/layout/page-container', () => ({
-  PageContainer: ({ children }: any) => <div>{children}</div>,
+  PageContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('@/components/ui/empty-state', () => ({
-  EmptyState: ({ title, description, action }: any) => (
+  EmptyState: ({ title, description, action }: { title: string; description: string; action?: ReactNode }) => (
     <div data-testid="empty-state">
       <h3>{title}</h3>
       <p>{description}</p>
@@ -79,9 +80,9 @@ describe('ProdutosPage', () => {
 
   it('shows empty state when no products exist', async () => {
     vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url.includes('/products')) return Promise.resolve({ data: [] }) as any;
-      if (url.includes('/bots')) return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Test', menu_url: null }] }) as any;
-      return Promise.resolve({ data: [] }) as any;
+      if (url.includes('/products')) return Promise.resolve(mockResponse([]));
+      if (url.includes('/bots')) return Promise.resolve(mockResponse([{ id: 1, restaurant_name: 'Test', menu_url: null }]));
+      return Promise.resolve(mockResponse([]));
     });
 
     renderWithProviders(<ProdutosPage />);
@@ -102,9 +103,9 @@ describe('ProdutosPage', () => {
     ];
 
     vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url.includes('/products')) return Promise.resolve({ data: products }) as any;
-      if (url.includes('/bots')) return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Test', menu_url: null }] }) as any;
-      return Promise.resolve({ data: [] }) as any;
+      if (url.includes('/products')) return Promise.resolve(mockResponse(products));
+      if (url.includes('/bots')) return Promise.resolve(mockResponse([{ id: 1, restaurant_name: 'Test', menu_url: null }]));
+      return Promise.resolve(mockResponse([]));
     });
 
     renderWithProviders(<ProdutosPage />);
@@ -127,9 +128,9 @@ describe('ProdutosPage', () => {
     ];
 
     vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url.includes('/products')) return Promise.resolve({ data: products }) as any;
-      if (url.includes('/bots')) return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Test', menu_url: null }] }) as any;
-      return Promise.resolve({ data: [] }) as any;
+      if (url.includes('/products')) return Promise.resolve(mockResponse(products));
+      if (url.includes('/bots')) return Promise.resolve(mockResponse([{ id: 1, restaurant_name: 'Test', menu_url: null }]));
+      return Promise.resolve(mockResponse([]));
     });
 
     renderWithProviders(<ProdutosPage />);
@@ -144,8 +145,8 @@ describe('ProdutosPage', () => {
   it('shows error state when products query fails', async () => {
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url.includes('/products')) return Promise.reject(new Error('Network error'));
-      if (url.includes('/bots')) return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Test', menu_url: null }] }) as any;
-      return Promise.resolve({ data: [] }) as any;
+      if (url.includes('/bots')) return Promise.resolve(mockResponse([{ id: 1, restaurant_name: 'Test', menu_url: null }]));
+      return Promise.resolve(mockResponse([]));
     });
 
     renderWithProviders(<ProdutosPage />);
@@ -164,9 +165,9 @@ describe('ProdutosPage', () => {
     );
 
     vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url.includes('/products')) return Promise.resolve({ data: products }) as any;
-      if (url.includes('/bots')) return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Test', menu_url: null }] }) as any;
-      return Promise.resolve({ data: [] }) as any;
+      if (url.includes('/products')) return Promise.resolve(mockResponse(products));
+      if (url.includes('/bots')) return Promise.resolve(mockResponse([{ id: 1, restaurant_name: 'Test', menu_url: null }]));
+      return Promise.resolve(mockResponse([]));
     });
 
     renderWithProviders(<ProdutosPage />);
@@ -187,9 +188,9 @@ describe('ProdutosPage', () => {
     ];
 
     vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url.includes('/products')) return Promise.resolve({ data: products }) as any;
-      if (url.includes('/bots')) return Promise.resolve({ data: [{ id: 1, restaurant_name: 'Test', menu_url: null }] }) as any;
-      return Promise.resolve({ data: [] }) as any;
+      if (url.includes('/products')) return Promise.resolve(mockResponse(products));
+      if (url.includes('/bots')) return Promise.resolve(mockResponse([{ id: 1, restaurant_name: 'Test', menu_url: null }]));
+      return Promise.resolve(mockResponse([]));
     });
 
     vi.mocked(api.delete).mockRejectedValue(new Error('Network error'));
@@ -204,7 +205,7 @@ describe('ProdutosPage', () => {
 
     // Click the delete button (trash icon) that appears on hover
     const deleteButtons = screen.getAllByRole('button');
-    const trashButton = deleteButtons.find(
+    deleteButtons.find(
       btn => btn.querySelector('.lucide-trash-2') || btn.querySelector('svg')
     );
 

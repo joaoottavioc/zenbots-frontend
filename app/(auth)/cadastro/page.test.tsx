@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import RegisterPage from './page';
 import { api } from '@/lib/api';
+import { mockResponse } from '@/tests/helpers/mocks';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -77,7 +78,7 @@ describe('RegisterPage', () => {
   });
 
   it('redirects to check-email page on successful registration', async () => {
-    vi.mocked(api.post).mockResolvedValueOnce({ data: {} } as any);
+    vi.mocked(api.post).mockResolvedValueOnce(mockResponse({}));
 
     const user = userEvent.setup();
     renderWithProviders(<RegisterPage />);
@@ -105,7 +106,7 @@ describe('RegisterPage', () => {
   });
 
   it('sends whatsapp when provided', async () => {
-    vi.mocked(api.post).mockResolvedValueOnce({ data: {} } as any);
+    vi.mocked(api.post).mockResolvedValueOnce(mockResponse({}));
 
     const user = userEvent.setup();
     renderWithProviders(<RegisterPage />);

@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import type { InternalAxiosRequestConfig, AxiosHeaders } from 'axios';
 
 // Must mock before importing api
 vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'https://test-api.example.com');
@@ -33,8 +34,8 @@ describe('api module', () => {
     const config = await api.interceptors.request.handlers[0].fulfilled!({
       method: 'post',
       url: '/bots/123',
-      headers: {} as any,
-    } as any);
+      headers: {} as unknown as AxiosHeaders,
+    } as InternalAxiosRequestConfig);
 
     expect(config.headers['X-CSRF-Token']).toBe('test-csrf-value');
   });
@@ -46,8 +47,8 @@ describe('api module', () => {
     const config = await api.interceptors.request.handlers[0].fulfilled!({
       method: 'get',
       url: '/bots',
-      headers: {} as any,
-    } as any);
+      headers: {} as unknown as AxiosHeaders,
+    } as InternalAxiosRequestConfig);
 
     expect(config.headers['X-CSRF-Token']).toBeUndefined();
   });
@@ -62,8 +63,8 @@ describe('api module', () => {
       const config = await api.interceptors.request.handlers[0].fulfilled!({
         method: 'post',
         url,
-        headers: {} as any,
-      } as any);
+        headers: {} as unknown as AxiosHeaders,
+      } as InternalAxiosRequestConfig);
 
       expect(config.headers['X-CSRF-Token']).toBeUndefined();
     }

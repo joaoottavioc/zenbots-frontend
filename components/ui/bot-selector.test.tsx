@@ -1,9 +1,9 @@
 import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import { BotSelector } from './bot-selector';
 import { api } from '@/lib/api';
+import { mockResponse } from '@/tests/helpers/mocks';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -24,7 +24,7 @@ describe('BotSelector', () => {
   });
 
   it('shows loading skeleton while fetching bots', () => {
-    vi.mocked(api.get).mockReturnValue(new Promise(() => {}) as any);
+    vi.mocked(api.get).mockReturnValue(new Promise(() => {}));
 
     renderWithProviders(
       <BotSelector selectedBotId={null} onBotChange={vi.fn()} />
@@ -35,7 +35,7 @@ describe('BotSelector', () => {
   });
 
   it('shows empty state when no bots returned', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ data: [] } as any);
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse([]));
 
     renderWithProviders(
       <BotSelector selectedBotId={null} onBotChange={vi.fn()} />
@@ -47,12 +47,10 @@ describe('BotSelector', () => {
   });
 
   it('auto-selects first bot when none selected', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({
-      data: [
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse([
         { id: 1, restaurant_name: 'Pizzaria A' },
         { id: 2, restaurant_name: 'Pizzaria B' },
-      ],
-    } as any);
+    ]));
 
     const onBotChange = vi.fn();
     renderWithProviders(
@@ -65,16 +63,12 @@ describe('BotSelector', () => {
   });
 
   it('calls onBotChange when user selects a bot', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({
-      data: [
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse([
         { id: 1, restaurant_name: 'Pizzaria A' },
         { id: 2, restaurant_name: 'Pizzaria B' },
-      ],
-    } as any);
+    ]));
 
     const onBotChange = vi.fn();
-    const user = userEvent.setup();
-
     renderWithProviders(
       <BotSelector selectedBotId="1" onBotChange={onBotChange} />
     );
@@ -86,11 +80,9 @@ describe('BotSelector', () => {
   });
 
   it('does not re-fire onBotChange when callback reference changes', async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: [
+    vi.mocked(api.get).mockResolvedValue(mockResponse([
         { id: 1, restaurant_name: 'Pizzaria A' },
-      ],
-    } as any);
+    ]));
 
     const onBotChange1 = vi.fn();
     const { rerender } = renderWithProviders(

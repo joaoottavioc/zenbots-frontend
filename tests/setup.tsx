@@ -23,16 +23,16 @@ vi.mock('next/navigation', () => ({
 
 // --- Mock next/image ---
 vi.mock('next/image', () => ({
-  default: (props: Record<string, unknown>) => {
-    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
-    const { fill, priority, ...rest } = props as any;
-    return <img {...rest} />;
+  default: ({ fill, priority, ...rest }: Record<string, unknown>) => {
+    void fill; void priority;
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img alt="" {...(rest as React.ImgHTMLAttributes<HTMLImageElement>)} />;
   },
 }));
 
 // --- Mock next/link ---
 vi.mock('next/link', () => ({
-  default: ({ children, href, ...rest }: any) => (
+  default: ({ children, href, ...rest }: { children: React.ReactNode; href: string; [key: string]: unknown }) => (
     <a href={href} {...rest}>
       {children}
     </a>
@@ -111,13 +111,13 @@ Object.defineProperty(navigator, 'clipboard', {
 window.print = vi.fn();
 
 // --- Audio constructor mock ---
-window.Audio = vi.fn(function (this: any) {
+window.Audio = vi.fn(function (this: Record<string, unknown>) {
   this.play = vi.fn().mockResolvedValue(undefined);
   this.pause = vi.fn();
   this.load = vi.fn();
   this.addEventListener = vi.fn();
   this.removeEventListener = vi.fn();
-}) as any;
+}) as unknown as typeof Audio;
 
 // --- window.open mock ---
 window.open = vi.fn();
@@ -149,7 +149,7 @@ class MockEventSource {
   }
 }
 
-(globalThis as any).EventSource = MockEventSource;
+(globalThis as unknown as { EventSource: typeof MockEventSource }).EventSource = MockEventSource;
 
 // --- BroadcastChannel mock ---
 const broadcastChannels = new Map<string, Set<MockBroadcastChannel>>();
@@ -180,7 +180,7 @@ class MockBroadcastChannel {
   }
 }
 
-(globalThis as any).BroadcastChannel = MockBroadcastChannel;
+(globalThis as unknown as { BroadcastChannel: typeof MockBroadcastChannel }).BroadcastChannel = MockBroadcastChannel;
 
 afterEach(() => {
   broadcastChannels.clear();

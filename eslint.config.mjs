@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // CloudFront Function (not app code):
     "infra/**",
+    // Generated coverage files:
+    "coverage/**",
   ]),
 ]);
 

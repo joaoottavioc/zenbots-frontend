@@ -13,16 +13,14 @@ export default function PortalLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
+  const [isAuthed] = useState(() => isAuthenticated());
   useSessionGuard();
 
   useEffect(() => {
-    if (!isAuthenticated()) {
+    if (!isAuthed) {
       router.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
-    } else {
-      setIsAuthed(true);
     }
-  }, [router]);
+  }, [isAuthed, router]);
 
   // Cross-tab auth sync: redirect if another tab broadcasts logout
   useEffect(() => {

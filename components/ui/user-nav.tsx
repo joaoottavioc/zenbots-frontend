@@ -16,7 +16,7 @@ import { api } from "@/lib/api";
 import { clearAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { User, Settings, LogOut } from "lucide-react";
+import { Settings, LogOut } from "lucide-react";
 
 export function UserNav() {
   const router = useRouter();

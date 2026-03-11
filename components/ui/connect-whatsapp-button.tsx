@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Button } from "@/components/ui/button"; 
 import { Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -78,6 +78,7 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
 
   // 1. Carregamento do SDK do Facebook (Apenas uma vez)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (window.FB) { setIsSdkLoaded(true); return; }
 
     window.fbAsyncInit = function() {
@@ -93,7 +94,32 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
     document.body.appendChild(script);
   }, [appId]);
 
-  // 2. Listener do Evento "Happy Path" (WA_EMBEDDED_SIGNUP) + OAuth callback
+  // 2. Função Unificada de Envio ao Backend
+  const finishOnboarding = useCallback(async (payload: Record<string, string | null>) => {
+      try {
+          // O frontend é "burro": ele apenas repassa o que tem para o backend
+          await api.post("/bots/whatsapp/complete-onboarding", {
+            bot_id: botId,
+            redirect_uri: redirectUri,
+            ...payload
+          });
+
+          toast({
+            title: "Conectado! 🚀",
+            description: "WhatsApp integrado com sucesso.",
+            className: "bg-emerald-50 border-emerald-200"
+          });
+
+          queryClient.invalidateQueries({ queryKey: ['myBots'] });
+
+      } catch (error: unknown) {
+              const msg = getSafeErrorMessage(error, "Não foi possível concluir a conexão.");
+          toast({ title: "Erro na Conexão", description: msg, variant: "destructive" });
+          setIsLoading(false);
+      }
+  }, [botId, redirectUri, toast, queryClient]);
+
+  // 3. Listener do Evento "Happy Path" (WA_EMBEDDED_SIGNUP) + OAuth callback
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (!isAllowedOrigin(event.origin, window.location.origin)) return;
@@ -133,32 +159,7 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [botId]);
-
-  // 3. Função Unificada de Envio ao Backend
-  const finishOnboarding = async (payload: Record<string, string | null>) => {
-      try {
-          // O frontend é "burro": ele apenas repassa o que tem para o backend
-          await api.post("/bots/whatsapp/complete-onboarding", {
-            bot_id: botId,
-            redirect_uri: redirectUri,
-            ...payload
-          });
-
-          toast({ 
-            title: "Conectado! 🚀", 
-            description: "WhatsApp integrado com sucesso.",
-            className: "bg-emerald-50 border-emerald-200"
-          });
-          
-          queryClient.invalidateQueries({ queryKey: ['myBots'] });
-
-      } catch (error: unknown) {
-              const msg = getSafeErrorMessage(error, "Não foi possível concluir a conexão.");
-          toast({ title: "Erro na Conexão", description: msg, variant: "destructive" });
-          setIsLoading(false);
-      }
-  };
+  }, [botId, finishOnboarding]);
 
   // 4. Gatilho de Login (Popup)
   const handleConnect = () => {

@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import VerifyEmailPage from './page';
 import { api } from '@/lib/api';
+import { mockResponse } from '@/tests/helpers/mocks';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -53,9 +54,7 @@ describe('VerifyEmailPage', () => {
   });
 
   it('shows success state on successful verification', async () => {
-    vi.mocked(api.post).mockResolvedValueOnce({
-      data: { message: 'E-mail verificado com sucesso!' },
-    } as any);
+    vi.mocked(api.post).mockResolvedValueOnce(mockResponse({ message: 'E-mail verificado com sucesso!' }));
 
     renderWithProviders(<VerifyEmailPage />);
 
@@ -67,9 +66,7 @@ describe('VerifyEmailPage', () => {
   });
 
   it('shows already-verified state', async () => {
-    vi.mocked(api.post).mockResolvedValueOnce({
-      data: { message: 'E-mail já verificado.' },
-    } as any);
+    vi.mocked(api.post).mockResolvedValueOnce(mockResponse({ message: 'E-mail já verificado.' }));
 
     renderWithProviders(<VerifyEmailPage />);
 
@@ -79,9 +76,7 @@ describe('VerifyEmailPage', () => {
   });
 
   it('redirects to login after success', async () => {
-    vi.mocked(api.post).mockResolvedValueOnce({
-      data: { message: 'E-mail verificado com sucesso!' },
-    } as any);
+    vi.mocked(api.post).mockResolvedValueOnce(mockResponse({ message: 'E-mail verificado com sucesso!' }));
 
     renderWithProviders(<VerifyEmailPage />);
 
@@ -130,7 +125,7 @@ describe('VerifyEmailPage', () => {
       expect(screen.getByText(/link invalido ou expirado/i)).toBeInTheDocument();
     });
 
-    vi.mocked(api.post).mockResolvedValueOnce({ data: {} } as any);
+    vi.mocked(api.post).mockResolvedValueOnce(mockResponse({}));
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
     await user.type(screen.getByPlaceholderText('seu@email.com'), 'test@example.com');

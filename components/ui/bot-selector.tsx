@@ -34,7 +34,10 @@ export function BotSelector({ selectedBotId, onBotChange, className }: BotSelect
 
   // 2. Auto-seleciona o primeiro se nenhum estiver selecionado
   const onBotChangeRef = useRef(onBotChange);
-  onBotChangeRef.current = onBotChange;
+
+  useEffect(() => {
+    onBotChangeRef.current = onBotChange;
+  });
 
   useEffect(() => {
     if (bots && bots.length > 0 && !selectedBotId) {

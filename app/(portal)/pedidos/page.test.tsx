@@ -4,7 +4,8 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import PedidosPage from './page';
 import { api } from '@/lib/api';
-import { createMockOrder } from '@/tests/helpers/mocks';
+import { createMockOrder, mockResponse } from '@/tests/helpers/mocks';
+import type { ReactNode } from 'react';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -27,10 +28,10 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/components/layout/page-header', () => ({
-  PageHeader: ({ children, selectedBotId, onBotChange }: any) => (
+  PageHeader: ({ children, selectedBotId, onBotChange }: { children?: ReactNode; selectedBotId?: string | null; onBotChange?: (id: string) => void }) => (
     <div data-testid="dashboard-header">
       {!selectedBotId && (
-        <button onClick={() => onBotChange('1')} data-testid="select-bot">
+        <button onClick={() => onBotChange?.('1')} data-testid="select-bot">
           Select Bot
         </button>
       )}
@@ -40,11 +41,11 @@ vi.mock('@/components/layout/page-header', () => ({
 }));
 
 vi.mock('@/components/layout/page-container', () => ({
-  PageContainer: ({ children }: any) => <div>{children}</div>,
+  PageContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('@/components/ui/bot-selector', () => ({
-  BotSelector: ({ onBotChange }: any) => (
+  BotSelector: ({ onBotChange }: { onBotChange: (id: string) => void }) => (
     <button onClick={() => onBotChange('1')} data-testid="bot-selector">Bot</button>
   ),
 }));
@@ -73,7 +74,7 @@ describe('PedidosPage', () => {
       createMockOrder({ id: 3, status: 'READY', customer_name: 'Cliente 3' }),
     ];
 
-    vi.mocked(api.get).mockResolvedValue({ data: orders } as any);
+    vi.mocked(api.get).mockResolvedValue(mockResponse(orders));
     localStorage.setItem('zenbots_token', 'test-token');
 
     const user = userEvent.setup();
@@ -102,7 +103,7 @@ describe('PedidosPage', () => {
       }),
     ];
 
-    vi.mocked(api.get).mockResolvedValue({ data: orders } as any);
+    vi.mocked(api.get).mockResolvedValue(mockResponse(orders));
     localStorage.setItem('zenbots_token', 'test-token');
 
     const user = userEvent.setup();

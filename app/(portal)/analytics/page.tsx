@@ -86,15 +86,18 @@ export default function BestSellersPage() {
   }, [pricingData]);
 
   // --- DADOS FALSOS (Mock) PARA O BLUR ---
-  const mockData: BestSeller[] = isPlanLocked ? [
-    { name: "Combo Família Premium", quantity: 142, revenue: 8520 },
-    { name: "X-Bacon Supremo", quantity: 98, revenue: 3430 },
-    { name: "Coca-Cola 2L", quantity: 85, revenue: 1275 },
-    { name: "Batata Frita Especial", quantity: 76, revenue: 2280 },
-    { name: "Pudim de Leite", quantity: 45, revenue: 675 },
-  ] : [];
-
-  const displayProducts = isPlanLocked ? mockData : (products || []);
+  const displayProducts = useMemo(() => {
+    if (isPlanLocked) {
+      return [
+        { name: "Combo Família Premium", quantity: 142, revenue: 8520 },
+        { name: "X-Bacon Supremo", quantity: 98, revenue: 3430 },
+        { name: "Coca-Cola 2L", quantity: 85, revenue: 1275 },
+        { name: "Batata Frita Especial", quantity: 76, revenue: 2280 },
+        { name: "Pudim de Leite", quantity: 45, revenue: 675 },
+      ];
+    }
+    return products || [];
+  }, [isPlanLocked, products]);
 
   // --- KPIs ---
   const stats = useMemo(() => {

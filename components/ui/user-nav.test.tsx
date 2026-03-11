@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import { UserNav } from './user-nav';
 import { api } from '@/lib/api';
+import { mockResponse } from '@/tests/helpers/mocks';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -33,9 +34,7 @@ describe('UserNav', () => {
   });
 
   it('fetches user data from /auth/me and displays initials', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({
-      data: { email: 'joao@test.com', name: '' },
-    } as any);
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse({ email: 'joao@test.com', name: '' }));
 
     renderWithProviders(<UserNav />);
 
@@ -45,9 +44,7 @@ describe('UserNav', () => {
   });
 
   it('displays user name when available', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({
-      data: { email: 'teste@test.com', name: 'Teste User' },
-    } as any);
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse({ email: 'teste@test.com', name: 'Teste User' }));
 
     renderWithProviders(<UserNav />);
 
@@ -57,9 +54,7 @@ describe('UserNav', () => {
   });
 
   it('does not render an <img> element inside the avatar', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({
-      data: { email: 'user@test.com', name: 'User' },
-    } as any);
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse({ email: 'user@test.com', name: 'User' }));
 
     renderWithProviders(<UserNav />);
 
@@ -73,9 +68,7 @@ describe('UserNav', () => {
   });
 
   it('logout calls backend, clears cache, presence cookie and redirects to login', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({
-      data: { email: 'user@test.com', name: 'User' },
-    } as any);
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse({ email: 'user@test.com', name: 'User' }));
     document.cookie = 'zenbots_auth=1; path=/';
 
     const user = userEvent.setup();

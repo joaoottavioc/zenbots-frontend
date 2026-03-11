@@ -197,7 +197,7 @@ export default function ConfiguracoesPage() {
             }
             window.open(response.data.checkout_url, '_blank');
         }
-    } catch (error) {
+    } catch {
         toast({ title: "Erro no pagamento", description: "Não foi possível iniciar o checkout.", variant: "destructive" });
     } finally {
         setProcessingPlan(null);

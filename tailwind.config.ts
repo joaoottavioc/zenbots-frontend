@@ -1,6 +1,7 @@
 // tailwind.config.ts
 import type { Config } from "tailwindcss"
 import { fontFamily } from "tailwindcss/defaultTheme";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 const config = {
 
@@ -101,7 +102,7 @@ const config = {
     	},
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 } satisfies Config
 
 export default config

@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import { OrderCard } from './order-card';
 import { createMockOrder } from '@/tests/helpers/mocks';
+import type { Order } from './types';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -25,28 +26,28 @@ describe('OrderCard', () => {
 
   it('has aria-label on the print button', () => {
     const order = createMockOrder();
-    renderWithProviders(<OrderCard order={order as any} {...defaultProps} />);
+    renderWithProviders(<OrderCard order={order as Order} {...defaultProps} />);
 
     expect(screen.getByLabelText('Imprimir pedido')).toBeInTheDocument();
   });
 
   it('has aria-label on the undo button', () => {
     const order = createMockOrder();
-    renderWithProviders(<OrderCard order={order as any} {...defaultProps} />);
+    renderWithProviders(<OrderCard order={order as Order} {...defaultProps} />);
 
     expect(screen.getByLabelText('Voltar status')).toBeInTheDocument();
   });
 
   it('has aria-label on the cancel button', () => {
     const order = createMockOrder({ status: 'PENDING' });
-    renderWithProviders(<OrderCard order={order as any} {...defaultProps} />);
+    renderWithProviders(<OrderCard order={order as Order} {...defaultProps} />);
 
     expect(screen.getByLabelText('Cancelar pedido')).toBeInTheDocument();
   });
 
   it('has aria-label on the human takeover switch', () => {
     const order = createMockOrder();
-    renderWithProviders(<OrderCard order={order as any} {...defaultProps} />);
+    renderWithProviders(<OrderCard order={order as Order} {...defaultProps} />);
 
     expect(screen.getByLabelText('Atendimento humano')).toBeInTheDocument();
   });

@@ -7,7 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trophy, ArrowRight, Store } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 interface BestSeller {

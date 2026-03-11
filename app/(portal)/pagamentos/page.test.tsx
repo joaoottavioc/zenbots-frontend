@@ -4,6 +4,8 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import PagamentosPage from './page';
 import { api } from '@/lib/api';
+import { mockResponse } from '@/tests/helpers/mocks';
+import type { ReactNode } from 'react';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -19,7 +21,7 @@ vi.mock('@/hooks/use-toast', () => ({
 }));
 
 vi.mock('@/components/layout/page-header', () => ({
-  PageHeader: ({ children, selectedBotId, onBotChange }: any) => (
+  PageHeader: ({ children, onBotChange }: { children?: ReactNode; selectedBotId?: string | null; onBotChange?: (id: string) => void }) => (
     <div data-testid="page-header">
       {onBotChange && (
         <button onClick={() => onBotChange('1')} data-testid="bot-selector">Select Bot</button>
@@ -30,7 +32,7 @@ vi.mock('@/components/layout/page-header', () => ({
 }));
 
 vi.mock('@/components/layout/page-container', () => ({
-  PageContainer: ({ children }: any) => <div>{children}</div>,
+  PageContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('next/navigation', () => ({
@@ -51,7 +53,7 @@ describe('PagamentosPage', () => {
   });
 
   it('shows disconnected badge when not connected', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { is_active: false } } as any);
+    vi.mocked(api.get).mockResolvedValue(mockResponse({ is_active: false }));
 
     renderWithProviders(<PagamentosPage />);
 
@@ -61,7 +63,7 @@ describe('PagamentosPage', () => {
   });
 
   it('shows connected badge when connected', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { is_active: true } } as any);
+    vi.mocked(api.get).mockResolvedValue(mockResponse({ is_active: true }));
 
     renderWithProviders(<PagamentosPage />);
 
@@ -71,7 +73,7 @@ describe('PagamentosPage', () => {
   });
 
   it('shows connect button when disconnected', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { is_active: false } } as any);
+    vi.mocked(api.get).mockResolvedValue(mockResponse({ is_active: false }));
 
     renderWithProviders(<PagamentosPage />);
 
@@ -81,7 +83,7 @@ describe('PagamentosPage', () => {
   });
 
   it('shows disconnect button when connected', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { is_active: true } } as any);
+    vi.mocked(api.get).mockResolvedValue(mockResponse({ is_active: true }));
 
     renderWithProviders(<PagamentosPage />);
 
@@ -93,9 +95,9 @@ describe('PagamentosPage', () => {
   it('redirects to Mercado Pago auth URL on connect click', async () => {
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url.includes('/auth-url')) {
-        return Promise.resolve({ data: { url: 'https://mercadopago.com/auth' } }) as any;
+        return Promise.resolve(mockResponse({ url: 'https://mercadopago.com/auth' }));
       }
-      return Promise.resolve({ data: { is_active: false } }) as any;
+      return Promise.resolve(mockResponse({ is_active: false }));
     });
 
     const user = userEvent.setup();
@@ -120,7 +122,7 @@ describe('PagamentosPage', () => {
   });
 
   it('renders Mercado Pago card with features', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { is_active: false } } as any);
+    vi.mocked(api.get).mockResolvedValue(mockResponse({ is_active: false }));
 
     renderWithProviders(<PagamentosPage />);
 

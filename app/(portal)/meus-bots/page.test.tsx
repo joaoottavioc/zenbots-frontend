@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import MyBotsPage from './page';
 import { api } from '@/lib/api';
-import { createMockBot } from '@/tests/helpers/mocks';
+import { createMockBot, mockResponse } from '@/tests/helpers/mocks';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -43,7 +43,7 @@ describe('MyBotsPage', () => {
   });
 
   it('shows loading skeletons while fetching', () => {
-    vi.mocked(api.get).mockReturnValue(new Promise(() => {}) as any);
+    vi.mocked(api.get).mockReturnValue(new Promise(() => {}));
     renderWithProviders(<MyBotsPage />);
 
     const skeletons = document.querySelectorAll('[class*="animate-pulse"]');
@@ -51,7 +51,7 @@ describe('MyBotsPage', () => {
   });
 
   it('shows empty state when no bots exist', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ data: [] } as any);
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse([]));
 
     renderWithProviders(<MyBotsPage />);
 
@@ -67,7 +67,7 @@ describe('MyBotsPage', () => {
       createMockBot({ id: 1, restaurant_name: 'Pizzaria Alpha' }),
       createMockBot({ id: 2, restaurant_name: 'Burger Beta' }),
     ];
-    vi.mocked(api.get).mockResolvedValueOnce({ data: bots } as any);
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse(bots));
 
     renderWithProviders(<MyBotsPage />);
 
@@ -79,7 +79,7 @@ describe('MyBotsPage', () => {
 
   it('shows delete confirmation dialog', async () => {
     const bots = [createMockBot({ id: 1, restaurant_name: 'Pizzaria Delete' })];
-    vi.mocked(api.get).mockResolvedValueOnce({ data: bots } as any);
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse(bots));
 
     const user = userEvent.setup();
     renderWithProviders(<MyBotsPage />);
@@ -89,7 +89,7 @@ describe('MyBotsPage', () => {
     });
 
     // Open dropdown
-    const moreButton = screen.getByRole('button', { name: 'Menu de ações' });
+    screen.getByRole('button', { name: 'Menu de ações' });
     // Find the MoreVertical trigger button - it's the button with the 3 dots
     const dropdownTrigger = document.querySelector('[data-state]');
     if (dropdownTrigger) {
@@ -98,7 +98,7 @@ describe('MyBotsPage', () => {
   });
 
   it('shows Novo Bot link', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ data: [] } as any);
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse([]));
 
     renderWithProviders(<MyBotsPage />);
 
@@ -124,8 +124,8 @@ describe('MyBotsPage', () => {
       whatsapp_token: 'SECRET_TOKEN_123',
       phone_number_id: 'phone_abc',
     });
-    vi.mocked(api.get).mockResolvedValueOnce({ data: [bot] } as any);
-    vi.mocked(api.put).mockResolvedValueOnce({ data: {} } as any);
+    vi.mocked(api.get).mockResolvedValueOnce(mockResponse([bot]));
+    vi.mocked(api.put).mockResolvedValueOnce(mockResponse({}));
 
     const user = userEvent.setup();
     renderWithProviders(<MyBotsPage />);

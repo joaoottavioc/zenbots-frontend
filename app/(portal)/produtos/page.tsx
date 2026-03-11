@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input'; 
 import {
   Plus, Trash2, Pencil, Check, X, Package,
-  FileText, Image as ImageIcon, ExternalLink, Eye,
+  FileText, ExternalLink, Eye,
 } from 'lucide-react';
 import {
   Sheet,
@@ -16,8 +16,6 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import * as z from 'zod'; 
-
 // --- Imports de Componentes Locais ---
 import { ProductForm } from './product-form';
 import { MenuImportDialog } from './menu-import-dialog';
@@ -76,14 +74,12 @@ interface BotData {
 
 interface EditData { name: string; description: string; price: number; }
 
-const formSchema = z.object({
-  name: z.string().min(2), 
-  description: z.string().optional(), 
-  price: z.coerce.number().positive(), 
-  category: z.string().min(1),
-});
-
-type ProductFormValues = z.infer<typeof formSchema>;
+type ProductFormValues = {
+  name: string;
+  description?: string;
+  price: number;
+  category: string;
+};
 
 const BOTTOM_KEYWORDS = ["bebida", "cerveja", "drink", "refrigerante", "suco", "água", "agua", "vinho", "dose", "adicionais"];
 
@@ -263,6 +259,7 @@ export default function ProdutosPage() {
                       <FileText className="h-6 w-6" />
                     </div>
                   ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={currentBot.menu_url!}
                       alt="Cardápio"
@@ -315,6 +312,7 @@ export default function ProdutosPage() {
                   />
                 ) : (
                   <div className="p-6 flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={currentBot.menu_url}
                       alt="Cardápio"

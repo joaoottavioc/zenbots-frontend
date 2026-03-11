@@ -1,3 +1,15 @@
+import type { AxiosResponse } from 'axios';
+
+export function mockResponse<T>(data: T): AxiosResponse<T> {
+  return {
+    data,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: {} as AxiosResponse['config'],
+  };
+}
+
 export function createMockBot(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,

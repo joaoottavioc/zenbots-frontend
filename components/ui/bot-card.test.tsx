@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { renderWithProviders } from '@/tests/helpers/render';
 import { BotCard } from './bot-card';
 import { createMockBot } from '@/tests/helpers/mocks';
+import type { Bot } from '@/lib/types';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -44,7 +45,7 @@ describe('BotCard', () => {
 
   it('renders bot name and WhatsApp number when available', () => {
     const bot = createMockBot({ whatsapp_number: '5511999999999' });
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByText('Pizzaria Teste')).toBeInTheDocument();
     expect(screen.getByText('5511999999999')).toBeInTheDocument();
@@ -52,7 +53,7 @@ describe('BotCard', () => {
 
   it('does not show WhatsApp number when not available', () => {
     const bot = createMockBot({ whatsapp_number: undefined });
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByText('Pizzaria Teste')).toBeInTheDocument();
     expect(screen.queryByText('5511999999999')).not.toBeInTheDocument();
@@ -60,28 +61,28 @@ describe('BotCard', () => {
 
   it('shows connected status when phone_number_id is present', () => {
     const bot = createMockBot({ phone_number_id: 'phone_123' });
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByText(/conectado/i)).toBeInTheDocument();
   });
 
   it('shows not connected when phone_number_id is empty', () => {
     const bot = createMockBot({ phone_number_id: '' });
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByText(/não conectado/i)).toBeInTheDocument();
   });
 
   it('shows "Aberta" when bot is open', () => {
     const bot = createMockBot({ is_open: true });
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByText(/aberta/i)).toBeInTheDocument();
   });
 
   it('shows "Fechada" when bot is closed', () => {
     const bot = createMockBot({ is_open: false });
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByText(/fechada/i)).toBeInTheDocument();
   });
@@ -89,7 +90,7 @@ describe('BotCard', () => {
   it('calls onToggleStatus when switch is toggled', async () => {
     const bot = createMockBot({ is_open: true });
     const user = userEvent.setup();
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     const switchEl = screen.getByRole('switch');
     await user.click(switchEl);
@@ -99,28 +100,28 @@ describe('BotCard', () => {
 
   it('shows ConnectWhatsApp button when not connected', () => {
     const bot = createMockBot({ phone_number_id: '' });
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByTestId('connect-whatsapp')).toBeInTheDocument();
   });
 
   it('shows Gerenciar button when connected', () => {
     const bot = createMockBot({ phone_number_id: 'phone_123' });
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByText(/gerenciar/i)).toBeInTheDocument();
   });
 
   it('has aria-label on the menu button', () => {
     const bot = createMockBot();
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByLabelText('Menu de ações')).toBeInTheDocument();
   });
 
   it('has aria-label on the store status switch', () => {
     const bot = createMockBot();
-    renderWithProviders(<BotCard bot={bot as any} {...defaultProps} />);
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByLabelText('Alterar status da loja')).toBeInTheDocument();
   });
