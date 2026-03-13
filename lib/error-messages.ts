@@ -20,6 +20,7 @@ const ERROR_MAP: Record<string, string> = {
   "catalog processing failed": "Erro ao processar o cardápio. Tente novamente.",
   "file too large": "Arquivo muito grande.",
   "whatsapp connection failed": "Não foi possível concluir a conexão com o WhatsApp.",
+  "número já pertence a outro usuário": "Este número do WhatsApp já está conectado a outra conta. Se é seu, faça login na conta original ou desconecte o número primeiro.",
   "email não verificado": "Seu e-mail ainda não foi verificado.",
   "email not verified": "Seu e-mail ainda não foi verificado.",
   "token inválido ou expirado": "O link expirou ou é inválido. Solicite um novo.",
