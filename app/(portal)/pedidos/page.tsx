@@ -65,7 +65,7 @@ export default function PedidosPage() {
       }));
     },
     enabled: !!selectedBotId,
-    refetchInterval: 15_000,
+    refetchInterval: isConnected ? false : 5_000,
   });
 
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
@@ -153,7 +153,7 @@ export default function PedidosPage() {
 
       if (cancelled) return;
 
-      const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
+      const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
       retryCount++;
       retryTimeout = setTimeout(connect, delay);
     }
