@@ -65,6 +65,7 @@ export default function PedidosPage() {
       }));
     },
     enabled: !!selectedBotId,
+    refetchInterval: 15_000,
   });
 
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
