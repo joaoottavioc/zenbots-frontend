@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getSafeErrorMessage } from "@/lib/error-messages";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, MapPin, Copy, Clock } from "lucide-react";
+import { Loader2, Search, MapPin, Copy, Clock, Bell, Timer, Phone } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -49,6 +49,16 @@ export const formSchema = z.object({
   is_open: z.boolean().default(false),
   closing_message: z.string().optional(),
   schedule: z.record(z.string(), dayScheduleSchema).optional(),
+
+  // F-07: ETA
+  default_delivery_time_minutes: z.coerce.number().min(1).max(180).optional().nullable(),
+  default_pickup_time_minutes: z.coerce.number().min(1).max(180).optional().nullable(),
+
+  // F-09: Owner notifications
+  owner_notification_phone: z.string().max(20).optional().nullable(),
+
+  // F-17: Cancellation window
+  cancellation_window_minutes: z.coerce.number().min(0).max(30).default(5),
 });
 
 type BotFormValues = z.infer<typeof formSchema>;
@@ -108,6 +118,10 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
       is_open: initialData?.is_open ?? false,
       closing_message: initialData?.closing_message || "Olá! No momento estamos fechados. Nosso horário é das 18h às 23h. 🕒",
       schedule: getMergedSchedule(initialData?.schedule),
+      default_delivery_time_minutes: initialData?.default_delivery_time_minutes ?? null,
+      default_pickup_time_minutes: initialData?.default_pickup_time_minutes ?? null,
+      owner_notification_phone: initialData?.owner_notification_phone ?? null,
+      cancellation_window_minutes: initialData?.cancellation_window_minutes ?? 5,
     },
   });
 
@@ -525,6 +539,142 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                 );
               })}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* GRUPO 3: TEMPO DE PREPARO E ENTREGA */}
+        <Card className="overflow-hidden border-amber-100 bg-amber-50/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Timer className="h-5 w-5 text-amber-600" />
+              Tempo Estimado (ETA)
+            </CardTitle>
+            <CardDescription>
+              Previsão de tempo enviada ao cliente após confirmar o pedido.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="default_delivery_time_minutes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tempo de Entrega (min)</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="Ex: 45"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                          className="bg-white max-w-[200px]"
+                        />
+                        <span className="absolute right-3 top-2.5 text-xs text-slate-400">min</span>
+                      </div>
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Deixe vazio para não informar.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="default_pickup_time_minutes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tempo de Retirada (min)</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="Ex: 20"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                          className="bg-white max-w-[200px]"
+                        />
+                        <span className="absolute right-3 top-2.5 text-xs text-slate-400">min</span>
+                      </div>
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Deixe vazio para não informar.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* GRUPO 4: NOTIFICAÇÕES E CANCELAMENTO */}
+        <Card className="overflow-hidden border-emerald-100 bg-emerald-50/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-emerald-600" />
+              Notificações e Pedidos
+            </CardTitle>
+            <CardDescription>
+              Receba alertas de novos pedidos e configure o cancelamento.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="owner_notification_phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    WhatsApp para Notificações
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="5511999999999"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.value)}
+                      className="bg-white max-w-[280px]"
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Número com DDD para receber aviso de cada novo pedido. Deixe vazio para desativar.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Separator />
+
+            <FormField
+              control={form.control}
+              name="cancellation_window_minutes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Janela de Cancelamento (min)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        {...field}
+                        value={field.value ?? 5}
+                        className="bg-white max-w-[200px]"
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-slate-400">min</span>
+                    </div>
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Tempo que o cliente pode cancelar pelo WhatsApp após fazer o pedido. 0 = sem cancelamento.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
 
