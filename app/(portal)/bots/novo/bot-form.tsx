@@ -567,7 +567,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                           type="number"
                           placeholder="Ex: 45"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value != null ? String(field.value) : ""}
                           onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
                           className="bg-white max-w-[200px]"
                         />
@@ -593,7 +593,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                           type="number"
                           placeholder="Ex: 20"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value != null ? String(field.value) : ""}
                           onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
                           className="bg-white max-w-[200px]"
                         />
@@ -636,7 +636,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                     <Input
                       placeholder="5511999999999"
                       {...field}
-                      value={field.value ?? ""}
+                      value={field.value != null ? String(field.value) : ""}
                       onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.value)}
                       className="bg-white max-w-[280px]"
                     />
@@ -662,7 +662,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                       <Input
                         type="number"
                         {...field}
-                        value={field.value ?? 5}
+                        value={field.value != null ? String(field.value) : "5"}
                         className="bg-white max-w-[200px]"
                       />
                       <span className="absolute right-3 top-2.5 text-xs text-slate-400">min</span>
