@@ -70,100 +70,54 @@ export default function PedidosPage() {
 
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
 
-  // 2. SSE (TEMPO REAL) — Autenticado via httpOnly cookie
+  // 2. SSE (TEMPO REAL) — Autenticado via httpOnly cookie (EventSource)
   useEffect(() => {
     if (!isAuthenticated()) {
       setIsConnected(false);
       return;
     }
 
-    let controller: AbortController | null = null;
-    let retryTimeout: ReturnType<typeof setTimeout>;
-    let retryCount = 0;
-    let cancelled = false;
+    const es = new EventSource(`${getApiBase()}/stream`, {
+      withCredentials: true,
+    });
 
-    async function connect() {
-      if (cancelled) return;
+    es.onopen = () => {
+      setIsConnected(true);
+    };
 
-      controller = new AbortController();
-
+    es.onmessage = (event) => {
       try {
-        const response = await fetch(`${getApiBase()}/stream`, {
-          headers: {
-            'Accept': 'text/event-stream',
-          },
-          credentials: 'include',
-          signal: controller.signal,
-        });
+        const data = JSON.parse(event.data);
+        if (data.type === 'ping') return;
 
-        if (!response.ok || !response.body) {
-          throw new Error(`SSE response error: ${response.status}`);
-        }
+        if (data.type === 'new_order' || data.type === 'payment_confirmed') {
+          queryClient.invalidateQueries({ queryKey: ['orders', selectedBotId] });
 
-        setIsConnected(true);
-        retryCount = 0;
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const raw = line.slice(6).trim();
-            if (!raw) continue;
-
-            try {
-              const data = JSON.parse(raw);
-              if (data.type === 'ping') continue;
-
-              if (data.type === 'new_order' || data.type === 'payment_confirmed') {
-                queryClient.invalidateQueries({ queryKey: ['orders', selectedBotId] });
-
-                if (data.type === 'new_order') {
-                  toast({
-                    title: "Novo Pedido na Cozinha!",
-                    description: `Cliente: ${data.payload.customer_name}`,
-                    className: "bg-slate-900 text-white border-slate-800"
-                  });
-                } else if (data.type === 'payment_confirmed') {
-                  toast({
-                    title: "Pagamento Recebido!",
-                    description: `O Pedido #${data.payload.id || '?'} foi pago.`,
-                    className: "bg-emerald-600 text-white border-emerald-500"
-                  });
-                }
-              }
-            } catch {
-              // ignore malformed SSE data lines
-            }
+          if (data.type === 'new_order') {
+            toast({
+              title: "Novo Pedido na Cozinha!",
+              description: `Cliente: ${data.payload.customer_name}`,
+              className: "bg-slate-900 text-white border-slate-800"
+            });
+          } else if (data.type === 'payment_confirmed') {
+            toast({
+              title: "Pagamento Recebido!",
+              description: `O Pedido #${data.payload.id || '?'} foi pago.`,
+              className: "bg-emerald-600 text-white border-emerald-500"
+            });
           }
         }
-      } catch (err) {
-        if (cancelled || (err instanceof DOMException && err.name === 'AbortError')) return;
-        setIsConnected(false);
+      } catch {
+        // ignore malformed SSE data
       }
+    };
 
-      if (cancelled) return;
-
-      const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-      retryCount++;
-      retryTimeout = setTimeout(connect, delay);
-    }
-
-    connect();
+    es.onerror = () => {
+      setIsConnected(false);
+    };
 
     return () => {
-      cancelled = true;
-      clearTimeout(retryTimeout);
-      controller?.abort();
+      es.close();
     };
   }, [selectedBotId, queryClient, toast]);
 
