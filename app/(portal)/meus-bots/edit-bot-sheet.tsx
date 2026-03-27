@@ -26,8 +26,14 @@ export function EditBotSheet({ bot, isOpen, onClose }: EditBotSheetProps) {
 
   // 1. Mutação de Atualização (PUT)
   const updateBotMutation = useMutation({
-    mutationFn: async (values: BotFormValues) => {
-      return api.put(`/bots/${bot!.id}`, values);
+    mutationFn: async ({ values, image }: { values: BotFormValues; image?: File }) => {
+      const res = await api.put(`/bots/${bot!.id}`, values);
+      if (image) {
+        const formData = new FormData();
+        formData.append('file', image);
+        await api.post(`/bots/${bot!.id}/image`, formData);
+      }
+      return res;
     },
     onSuccess: () => {
       toast({ title: "Bot atualizado!", description: "As configurações foram salvas." });
@@ -59,7 +65,7 @@ export function EditBotSheet({ bot, isOpen, onClose }: EditBotSheetProps) {
         {bot && (
           <BotForm
             initialData={bot}
-            onSubmit={(values) => updateBotMutation.mutate(values)}
+            onSubmit={(values, image) => updateBotMutation.mutate({ values, image })}
             isPending={updateBotMutation.isPending}
           />
         )}

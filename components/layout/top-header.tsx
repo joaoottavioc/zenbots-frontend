@@ -26,7 +26,17 @@ export function TopHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="relative h-16 flex items-center justify-between px-6 z-40 bg-brand-nav border-b border-slate-700/60">
+    <header className="relative h-16 flex items-center px-6 z-40 bg-brand-nav border-b border-slate-700/60">
+
+      {/* Logo — desktop only, matches sidebar width */}
+      <div className="hidden md:flex items-center w-[200px] -ml-6 pl-2 h-full relative z-20 shrink-0">
+        <Logo collapsed={false} />
+        {/* Vertical separator */}
+        <div
+          className="absolute right-0 top-2 bottom-2 w-px pointer-events-none"
+          style={{ background: "linear-gradient(180deg, transparent 0%, #0e7490 30%, #06b6d4 50%, #0e7490 70%, transparent 100%)" }}
+        />
+      </div>
 
       {/* Mobile hamburger */}
       <Button
@@ -87,14 +97,6 @@ export function TopHeader() {
 
       {/* Circuit artwork */}
       <CircuitBg />
-
-      {/* Subtle left-edge ambient glow */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-32 pointer-events-none"
-        style={{
-          background: "radial-gradient(ellipse at 0% 50%, rgba(6,182,212,0.06) 0%, transparent 70%)",
-        }}
-      />
 
       {/* Flex spacer */}
       <div className="flex-1 relative z-10" />

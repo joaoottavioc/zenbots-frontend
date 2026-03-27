@@ -8,12 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from "@/hooks/use-toast";
 import { getSafeErrorMessage } from "@/lib/error-messages";
 import { 
-  Wand2, 
   UploadCloud, 
   X, 
   FileType2, 
   Image as ImageIcon, 
-  Sparkles,
+  Cpu,
   Info
 } from 'lucide-react';
 import { useDropzone, FileRejection } from 'react-dropzone';
@@ -150,15 +149,15 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 border-0 shadow-sm">
-            <Sparkles className="mr-2 h-4 w-4" /> Cadastro Mágico
+          <Button className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-700 hover:to-blue-700 border-0 shadow-sm">
+            <Cpu className="mr-2 h-4 w-4" /> Cadastro Mágico
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-             <div className="p-2 bg-purple-100 rounded-lg"><Wand2 className="h-5 w-5 text-purple-600" /></div>
+             <div className="p-2 bg-cyan-100 rounded-lg"><Cpu className="h-5 w-5 text-cyan-600" /></div>
              Cadastro Mágico
           </DialogTitle>
           <DialogDescription>
@@ -173,7 +172,7 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
             {...getRootProps()} 
             className={`
               relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300
-              ${isDragActive ? "border-purple-500 bg-purple-50" : "border-slate-200 hover:border-purple-300 hover:bg-slate-50"}
+              ${isDragActive ? "border-cyan-500 bg-cyan-50" : "border-slate-200 hover:border-cyan-300 hover:bg-slate-50"}
             `}
           >
             <input {...getInputProps()} />
@@ -213,7 +212,7 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
             </div>
             <Textarea 
               placeholder="Hamburguer Clássico - R$ 25,00..." 
-              className="h-[100px] font-mono text-sm pt-4 border-slate-200 focus:border-purple-500 transition-colors"
+              className="h-[100px] font-mono text-sm pt-4 border-slate-200 focus:border-cyan-500 transition-colors"
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={!!fileToUpload && !text} 
@@ -226,9 +225,9 @@ export function MenuImportDialog({ botId, trigger }: MenuImportDialogProps) {
           <Button 
             onClick={() => importMutation.mutate()} 
             disabled={importMutation.isPending}
-            className="bg-purple-600 hover:bg-purple-700 text-white min-w-[140px]"
+            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white min-w-[140px] border-0"
           >
-            {importMutation.isPending ? <Wand2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+            {importMutation.isPending ? <Cpu className="mr-2 h-4 w-4 animate-spin" /> : <Cpu className="mr-2 h-4 w-4" />}
             {importMutation.isPending ? "Lendo..." : "Processar"}
           </Button>
         </DialogFooter>

@@ -13,14 +13,17 @@ export default function PortalLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [isAuthed] = useState(() => isAuthenticated());
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
   useSessionGuard();
 
+  // Check auth on mount only (client-side) to avoid hydration mismatch
   useEffect(() => {
-    if (!isAuthed) {
+    const authed = isAuthenticated();
+    setIsAuthed(authed); // eslint-disable-line react-hooks/set-state-in-effect -- auth guard must set state on mount
+    if (!authed) {
       router.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
     }
-  }, [isAuthed, router]);
+  }, [router]);
 
   // Cross-tab auth sync: redirect if another tab broadcasts logout
   useEffect(() => {
@@ -39,13 +42,13 @@ export default function PortalLayout({
     return () => channel.close();
   }, [router]);
 
-  if (!isAuthed) {
+  // Render nothing until auth check completes (same on server and client = no mismatch)
+  if (isAuthed === null || !isAuthed) {
     return null;
   }
 
   return (
-    // Flex container principal
-    <div className="flex min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
 
       <a
         href="#main-content"
@@ -54,20 +57,21 @@ export default function PortalLayout({
         Ir para o conteúdo principal
       </a>
 
-      {/* 1. SIDEBAR FIXO (STICKY) */}
-      <div className="sticky top-0 h-screen hidden md:block z-50 shrink-0">
-        <Sidebar />
+      {/* 1. TOP HEADER — full width, sticky */}
+      <div className="sticky top-0 z-50 w-full">
+        <TopHeader />
       </div>
 
-      {/* 2. ÁREA DE CONTEÚDO (COLUNA DA DIREITA) */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* 2. SIDEBAR + CONTENT below the header */}
+      <div className="flex flex-1 min-w-0">
 
-        <div className="sticky top-0 z-40 w-full">
-           <TopHeader />
+        {/* Sidebar — sticks below header */}
+        <div className="sticky top-16 h-[calc(100vh-4rem)] hidden md:block z-40 shrink-0">
+          <Sidebar />
         </div>
 
         {/* Conteúdo Principal */}
-        <main id="main-content" className="p-6 md:p-8 w-full max-w-[100vw]">
+        <main id="main-content" className="flex-1 p-6 md:p-8 min-w-0">
           {children}
         </main>
 

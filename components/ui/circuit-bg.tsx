@@ -2,7 +2,7 @@ import React from "react";
 
 export const CircuitBg = React.memo(function CircuitBg() {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden md:left-[200px]">
 
       {/* Subtle dot grid background for depth */}
       <div
@@ -125,6 +125,99 @@ export const CircuitBg = React.memo(function CircuitBg() {
         <line x1="300" y1="36" x2="300" y2="38" stroke="#06b6d4" strokeWidth="0.4" strokeOpacity="0.25" />
         <circle cx="300" cy="26" r="1" fill="#06b6d4" fillOpacity="0.3" />
         <circle cx="300" cy="38" r="1" fill="#06b6d4" fillOpacity="0.3" />
+
+        {/* ═══ ELECTRICITY PULSES — one-shot on mount ═══ */}
+
+        {/* Pulse on main horizontal trace */}
+        <line x1="44" y1="32" x2="820" y2="32"
+          stroke="#67e8f9" strokeWidth="2" strokeLinecap="round"
+          filter="url(#glow)"
+          strokeDasharray="60 900"
+          strokeDashoffset="60"
+        >
+          <animate attributeName="stroke-dashoffset" from="60" to="-840" dur="1.8s" begin="0.3s" fill="freeze" />
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.85;1" dur="1.8s" begin="0.3s" fill="freeze" />
+        </line>
+        {/* Bloom layer for main pulse */}
+        <line x1="44" y1="32" x2="820" y2="32"
+          stroke="#22d3ee" strokeWidth="6" strokeLinecap="round"
+          filter="url(#softGlow)"
+          strokeDasharray="60 900"
+          strokeDashoffset="60"
+          opacity="0"
+        >
+          <animate attributeName="stroke-dashoffset" from="60" to="-840" dur="1.8s" begin="0.3s" fill="freeze" />
+          <animate attributeName="opacity" values="0;0.3;0.3;0" keyTimes="0;0.05;0.85;1" dur="1.8s" begin="0.3s" fill="freeze" />
+        </line>
+
+        {/* Pulse on upper trace */}
+        <path d="M20 11 L20 8 L48 8 L56 14 L680 14"
+          stroke="#67e8f9" strokeWidth="1.5" strokeLinecap="round"
+          filter="url(#glow)"
+          strokeDasharray="45 750"
+          strokeDashoffset="45"
+          opacity="0"
+        >
+          <animate attributeName="stroke-dashoffset" from="45" to="-720" dur="1.6s" begin="0.6s" fill="freeze" />
+          <animate attributeName="opacity" values="0;0.9;0.9;0" keyTimes="0;0.05;0.85;1" dur="1.6s" begin="0.6s" fill="freeze" />
+        </path>
+
+        {/* Pulse on lower trace */}
+        <path d="M20 53 L20 56 L48 56 L56 50 L640 50"
+          stroke="#67e8f9" strokeWidth="1.5" strokeLinecap="round"
+          filter="url(#glow)"
+          strokeDasharray="45 700"
+          strokeDashoffset="45"
+          opacity="0"
+        >
+          <animate attributeName="stroke-dashoffset" from="45" to="-680" dur="1.5s" begin="0.8s" fill="freeze" />
+          <animate attributeName="opacity" values="0;0.9;0.9;0" keyTimes="0;0.05;0.85;1" dur="1.5s" begin="0.8s" fill="freeze" />
+        </path>
+
+        {/* Pulse on secondary upper trace */}
+        <path d="M44 26 L60 26 L72 20 L440 20"
+          stroke="#22d3ee" strokeWidth="1.2" strokeLinecap="round"
+          filter="url(#glow)"
+          strokeDasharray="35 500"
+          strokeDashoffset="35"
+          opacity="0"
+        >
+          <animate attributeName="stroke-dashoffset" from="35" to="-460" dur="1.3s" begin="1.1s" fill="freeze" />
+          <animate attributeName="opacity" values="0;0.7;0.7;0" keyTimes="0;0.05;0.85;1" dur="1.3s" begin="1.1s" fill="freeze" />
+        </path>
+
+        {/* Pulse on secondary lower trace */}
+        <path d="M44 38 L60 38 L72 44 L440 44"
+          stroke="#22d3ee" strokeWidth="1.2" strokeLinecap="round"
+          filter="url(#glow)"
+          strokeDasharray="35 500"
+          strokeDashoffset="35"
+          opacity="0"
+        >
+          <animate attributeName="stroke-dashoffset" from="35" to="-460" dur="1.3s" begin="1.2s" fill="freeze" />
+          <animate attributeName="opacity" values="0;0.7;0.7;0" keyTimes="0;0.05;0.85;1" dur="1.3s" begin="1.2s" fill="freeze" />
+        </path>
+
+        {/* Node flash — processor lights up when main pulse passes */}
+        <circle cx="24" cy="32" r="5" fill="#67e8f9" filter="url(#softGlow)" opacity="0">
+          <animate attributeName="opacity" values="0;0.8;0" dur="0.5s" begin="0.3s" fill="freeze" />
+          <animate attributeName="r" values="3;8;3" dur="0.5s" begin="0.3s" fill="freeze" />
+        </circle>
+
+        {/* Node flash — cluster 1 */}
+        <circle cx="90" cy="32" r="4" fill="#67e8f9" filter="url(#softGlow)" opacity="0">
+          <animate attributeName="opacity" values="0;0.6;0" dur="0.4s" begin="0.65s" fill="freeze" />
+        </circle>
+
+        {/* Node flash — cluster 2 */}
+        <circle cx="180" cy="32" r="3" fill="#67e8f9" filter="url(#softGlow)" opacity="0">
+          <animate attributeName="opacity" values="0;0.5;0" dur="0.4s" begin="0.95s" fill="freeze" />
+        </circle>
+
+        {/* Node flash — cluster 3 */}
+        <circle cx="300" cy="32" r="3" fill="#67e8f9" filter="url(#softGlow)" opacity="0">
+          <animate attributeName="opacity" values="0;0.4;0" dur="0.4s" begin="1.3s" fill="freeze" />
+        </circle>
 
         {/* GHOST ELEMENTS */}
         <circle cx="420" cy="32" r="2.5" stroke="#06b6d4" strokeWidth="0.3" strokeOpacity="0.2" fill="none" />

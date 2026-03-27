@@ -64,11 +64,6 @@ describe('Sidebar', () => {
     expect(inactiveLink?.className).toContain('text-zinc-400');
   });
 
-  it('renders logo', () => {
-    renderWithProviders(<Sidebar />);
-    expect(screen.getByTestId('logo')).toBeInTheDocument();
-  });
-
   it('uses a <nav> element with aria-label', () => {
     renderWithProviders(<Sidebar />);
 

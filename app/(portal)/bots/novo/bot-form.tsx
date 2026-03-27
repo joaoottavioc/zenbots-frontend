@@ -1,19 +1,20 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { api } from '@/lib/api'; // Necessário para buscar o CEP
+import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from "@/components/ui/switch"; 
+import { Switch } from "@/components/ui/switch";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { getSafeErrorMessage } from "@/lib/error-messages";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, MapPin, Copy, Clock, Bell, Timer, Phone } from "lucide-react";
+import { Loader2, Search, MapPin, Copy, Clock, Bell, Timer, Phone, ImagePlus, X } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -64,8 +65,8 @@ export const formSchema = z.object({
 type BotFormValues = z.infer<typeof formSchema>;
 
 interface BotFormProps {
-  initialData?: Partial<BotFormValues>; 
-  onSubmit: (values: BotFormValues) => void;
+  initialData?: Partial<BotFormValues> & { restaurant_image_url?: string | null };
+  onSubmit: (values: BotFormValues, restaurantImage?: File) => void;
   isPending: boolean;
 }
 
@@ -92,6 +93,32 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [bulkStart, setBulkStart] = useState("18:00");
   const [bulkEnd, setBulkEnd] = useState("23:00");
+  const [restaurantImage, setRestaurantImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(
+    initialData?.restaurant_image_url ?? null
+  );
+
+  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Arquivo inválido", description: "Selecione uma imagem (JPG, PNG, WebP).", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Imagem muito grande", description: "Máximo de 5MB.", variant: "destructive" });
+      return;
+    }
+
+    setRestaurantImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  }, [toast]);
+
+  const handleRemoveImage = useCallback(() => {
+    setRestaurantImage(null);
+    setImagePreview(null);
+  }, []);
   
   const getMergedSchedule = (savedSchedule: Record<string, { active: boolean; start: string; end: string }> | null | undefined) => {
     if (!savedSchedule || Object.keys(savedSchedule).length === 0) {
@@ -196,7 +223,7 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 w-full max-w-full">
+      <form onSubmit={form.handleSubmit((values) => onSubmit(values, restaurantImage ?? undefined))} className="space-y-8 w-full max-w-full">
         
         {/* GRUPO 1: DADOS BÁSICOS */}
         <Card className="overflow-hidden">
@@ -218,6 +245,48 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                 </FormItem>
               )}
             />
+
+            {/* Foto do Restaurante */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none">
+                Foto do Restaurante
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Aparece no cartão do bot e pode ser usada como foto do WhatsApp. JPG, PNG ou WebP, até 5MB.
+              </p>
+              {imagePreview ? (
+                <div className="relative w-full h-36 rounded-lg overflow-hidden border border-slate-200">
+                  <Image
+                    src={imagePreview}
+                    alt="Preview da foto do restaurante"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 600px"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-7 w-7 bg-black/50 hover:bg-black/70 text-white rounded-full"
+                    onClick={handleRemoveImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full h-36 rounded-lg border-2 border-dashed border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors">
+                  <ImagePlus className="h-8 w-8 text-slate-400 mb-2" />
+                  <span className="text-sm text-slate-500">Clique para selecionar uma foto</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+                </label>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField

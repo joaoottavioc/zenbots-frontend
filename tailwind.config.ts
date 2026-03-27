@@ -39,7 +39,14 @@ const config = {
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'steam-1': 'steam-1 2.5s ease-out infinite',
+  			'steam-2': 'steam-2 3s ease-out 0.5s infinite',
+  			'steam-3': 'steam-3 2s ease-out 1s infinite',
+  			'sizzle-1': 'sizzle-1 0.8s ease-out infinite',
+  			'sizzle-2': 'sizzle-2 1.1s ease-out 0.3s infinite',
+  			'sizzle-3': 'sizzle-3 0.9s ease-out 0.6s infinite',
+  			'z-rider': 'z-rider-pulse 1.5s ease-in-out infinite',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

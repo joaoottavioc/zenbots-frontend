@@ -20,8 +20,15 @@ export default function NewBotPage() {
   const queryClient = useQueryClient();
 
   const createBotMutation = useMutation({
-    mutationFn: async (values: BotFormValues) => {
-      return api.post('/bots', values);
+    mutationFn: async ({ values, image }: { values: BotFormValues; image?: File }) => {
+      const res = await api.post('/bots', values);
+      const botId = res.data.id;
+      if (image) {
+        const formData = new FormData();
+        formData.append('file', image);
+        await api.post(`/bots/${botId}/image`, formData);
+      }
+      return res;
     },
     onSuccess: () => {
       toast({ title: "Sucesso!", description: "Bot criado! Conecte o WhatsApp na página Meus Bots." });
@@ -58,8 +65,8 @@ export default function NewBotPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
-          <BotForm 
-            onSubmit={(values) => createBotMutation.mutate(values)}
+          <BotForm
+            onSubmit={(values, image) => createBotMutation.mutate({ values, image })}
             isPending={createBotMutation.isPending}
           />
         </CardContent>

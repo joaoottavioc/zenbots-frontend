@@ -17,6 +17,7 @@ export interface Bot {
   latitude?: number;
   longitude?: number;
   menu_url?: string | null;
+  restaurant_image_url?: string | null;
   schedule?: Record<string, { active: boolean; start: string; end: string }>;
 }
 

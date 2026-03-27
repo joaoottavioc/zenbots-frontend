@@ -73,7 +73,6 @@ export default function PedidosPage() {
   // 2. SSE (TEMPO REAL) — Autenticado via httpOnly cookie (EventSource)
   useEffect(() => {
     if (!isAuthenticated()) {
-      setIsConnected(false);
       return;
     }
 
@@ -260,7 +259,11 @@ export default function PedidosPage() {
               topLineColor="bg-amber-500"
               statusBadgeColor="bg-amber-100 text-amber-700"
               onAction={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "ready" })}
-              onBack={(id: number) => updateStatusMutation.mutate({ orderId: id, newStatus: "paid" })}
+              onBack={(id: number) => {
+                const order = orders?.find(o => o.id === id);
+                const isPix = (order?.payment_method || "").toLowerCase() === "pix";
+                updateStatusMutation.mutate({ orderId: id, newStatus: isPix ? "paid" : "pending" });
+              }}
               onTakeover={handleTakeover}
               actionLabel="Marcar Pronto"
               actionVariant="warning"

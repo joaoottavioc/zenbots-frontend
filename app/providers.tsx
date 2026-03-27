@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster"; // <--- Adicionamos o Toaster aqui
+import { Toaster } from "@/components/ui/toaster";
 import { initErrorReporting } from "@/lib/error-reporting";
 import { cleanupLegacyAuth } from "@/lib/auth";
 
 initErrorReporting();
 cleanupLegacyAuth();
 
+const emptySubscribe = () => () => {};
+
 export default function Providers({ children }: { children: React.ReactNode }) {
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -29,7 +33,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <Toaster /> {/* <--- O componente de notificações renderiza aqui */}
+      {mounted && <Toaster />}
     </QueryClientProvider>
   );
 }

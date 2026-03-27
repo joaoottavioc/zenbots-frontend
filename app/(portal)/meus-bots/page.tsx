@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Plus, Bot as BotIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContainer } from "@/components/layout/page-container";
@@ -34,6 +35,7 @@ export default function MyBotsPage() {
 
   // Estado para controlar qual bot será deletado
   const [botToDelete, setBotToDelete] = useState<Bot | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // 1. Fetch Bots
   const { data: bots, isLoading, isError } = useQuery<Bot[]>({
@@ -173,19 +175,34 @@ export default function MyBotsPage() {
       />
 
       {/* DIALOG DE CONFIRMAÇÃO DE EXCLUSÃO */}
-      <AlertDialog open={!!botToDelete} onOpenChange={(open) => !open && setBotToDelete(null)}>
+      <AlertDialog open={!!botToDelete} onOpenChange={(open) => { if (!open) { setBotToDelete(null); setDeleteConfirmText(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Essa ação irá excluir permanentemente o bot <strong>{botToDelete?.restaurant_name}</strong> e todo o seu histórico de conversas e cardápio.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Essa ação irá excluir permanentemente o bot <strong>{botToDelete?.restaurant_name}</strong> e todo o seu histórico de conversas e cardápio.
+                </p>
+                <p className="text-sm">
+                  Digite <span className="font-mono font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">excluir</span> para confirmar:
+                </p>
+                <Input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="excluir"
+                  className="font-mono"
+                  autoComplete="off"
+                />
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={() => botToDelete && deleteBotMutation.mutate(botToDelete.id)}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={deleteConfirmText.toLowerCase() !== "excluir" || deleteBotMutation.isPending}
             >
               {deleteBotMutation.isPending ? "Excluindo..." : "Sim, Excluir Bot"}
             </AlertDialogAction>

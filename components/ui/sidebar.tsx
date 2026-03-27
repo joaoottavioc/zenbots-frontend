@@ -12,10 +12,9 @@ import {
   LifeBuoy,
   Bot
 } from "lucide-react";
-import { Logo } from "@/components/ui/logo";
 
 const routes = [
-  { label: "Meus BotZ", icon: Bot, href: "/meus-bots", color: "text-sky-500" }, // Cor Neon
+  { label: "Meus BotZ", icon: Bot, href: "/meus-bots", color: "text-sky-500" },
   { label: "Produtos", icon: ShoppingBag, href: "/produtos", color: "text-violet-500" },
   { label: "Pedidos", icon: Package, href: "/pedidos", color: "text-pink-700" },
   { label: "Mais Vendidos", icon: BarChart3, href: "/analytics", color: "text-orange-700" },
@@ -28,21 +27,13 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Menu principal" className="space-y-4 py-4 flex flex-col h-full bg-brand-nav text-white border-r border-slate-800">
-      
-      <div className="px-3 py-2 flex-1 flex flex-col">
-        
-        {/* LOGO (Mantive simples pois já temos o icone no Header Global) */}
-        <div className="relative h-24 flex items-start justify-center pt-3 mb-8">
-          <Logo />
-          {/* Cyan glow divider — matches topbar circuit aesthetic */}
-          <div
-            className="absolute bottom-0 left-3 right-3 h-px"
-            style={{ background: "linear-gradient(90deg, transparent 0%, #0e7490 30%, #06b6d4 50%, #0e7490 70%, transparent 100%)" }}
-          />
-        </div>
-
-        {/* MENU DE NAVEGAÇÃO */}
+    <nav aria-label="Menu principal" className="w-[200px] flex flex-col h-full bg-brand-nav text-white border-r border-slate-800 relative">
+      {/* Cyan aura divider — visual bridge from header logo */}
+      <div
+        className="absolute top-0 left-3 right-3 h-px pointer-events-none"
+        style={{ background: "linear-gradient(90deg, transparent 0%, #0e7490 30%, #06b6d4 50%, #0e7490 70%, transparent 100%)" }}
+      />
+      <div className="px-3 pt-5 pb-2 flex-1 flex flex-col">
         <div className="space-y-1">
           {routes.map((route) => (
             <Link

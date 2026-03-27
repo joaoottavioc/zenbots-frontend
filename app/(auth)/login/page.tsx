@@ -12,7 +12,8 @@ import { setAuthPresence, setCsrfToken } from '@/lib/auth';
 import { getSafeErrorMessage } from '@/lib/error-messages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Command } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { SmashBurgerAnimation, NightSkyline } from '@/components/ui/smash-burger-animation';
 import { useToast } from "@/hooks/use-toast";
 import { useSubmitThrottle } from "@/hooks/use-submit-throttle";
 import {
@@ -134,21 +135,33 @@ function LoginContent() {
     <div className="w-full h-screen lg:grid lg:grid-cols-2">
 
       {/* Visual column */}
-      <div className="hidden bg-zinc-900 lg:flex flex-col justify-between p-10 text-white">
-        <div className="flex items-center text-lg font-medium gap-2">
-          <div className="bg-white/10 p-1 rounded-md">
-            <Command className="h-6 w-6" />
-          </div>
-          ZenBots AI
+      <div className="hidden bg-zinc-900 lg:flex flex-col justify-between p-10 text-white overflow-hidden relative">
+        {/* Night skyline — covers the entire left section */}
+        <NightSkyline />
+
+        {/* Top branding */}
+        <div className="flex items-center text-lg font-medium gap-2 z-10">
+          <span className="font-logo text-xl tracking-tight">
+            <span className="text-zinc-300">Zen</span>
+            <span className="text-white font-bold">Bot</span>
+            <span className="text-cyan-400">Z</span>
+          </span>
+          <span className="text-xs text-zinc-500 ml-1">AI Delivery</span>
         </div>
 
-        <div className="space-y-4">
+        {/* Burger animation */}
+        <div className="flex-1 flex items-center justify-center -mt-8">
+          <SmashBurgerAnimation />
+        </div>
+
+        {/* Testimonial */}
+        <div className="space-y-4 z-10">
           <blockquote className="space-y-2">
-            <p className="text-lg">
+            <p className="text-lg leading-relaxed">
               &ldquo;Automatizar nosso atendimento com a ZenBots transformou nossa operacao.
               Ganhamos 40 horas semanais e aumentamos as vendas em 30%.&rdquo;
             </p>
-            <footer className="text-sm text-zinc-400">Joao Silva - CEO da Hamburgueria Top</footer>
+            <footer className="text-sm text-zinc-400">Joao Silva - Hamburgueria Top, Zona Sul SP</footer>
           </blockquote>
         </div>
       </div>

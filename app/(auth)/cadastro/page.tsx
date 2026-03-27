@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Command, Loader2, MessageSquare, ShoppingBag, BarChart3 } from "lucide-react";
+import { Loader2, MessageSquare, ShoppingBag, BarChart3 } from "lucide-react";
 import { PasswordReq } from "@/components/ui/password-req";
+import { NightSkyline } from "@/components/ui/smash-burger-animation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,60 +104,73 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="w-full h-screen lg:grid lg:grid-cols-2">
+    <div className="w-full h-screen lg:grid lg:grid-cols-2 overflow-hidden">
 
       {/* Visual column */}
-      <div className="hidden bg-slate-900 lg:flex flex-col justify-between p-10 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-primary/20 blur-3xl rounded-full pointer-events-none" />
+      <div className="hidden bg-zinc-900 lg:flex flex-col justify-between p-10 text-white relative overflow-hidden">
+        {/* Night skyline — covers the entire left section */}
+        <NightSkyline />
 
+        {/* Top branding — matches login */}
         <div className="flex items-center text-lg font-medium gap-2 z-10">
-          <div className="bg-white/10 p-1 rounded-md">
-            <Command className="h-6 w-6" />
-          </div>
-          ZenBots AI
+          <span className="font-logo text-xl tracking-tight">
+            <span className="text-zinc-300">Zen</span>
+            <span className="text-white font-bold">Bot</span>
+            <span className="text-cyan-400">Z</span>
+          </span>
+          <span className="text-xs text-zinc-500 ml-1">AI Delivery</span>
         </div>
 
-        <div className="space-y-8 z-10 max-w-md">
-          <h2 className="text-3xl font-bold tracking-tight">Automatize seu delivery com inteligencia artificial.</h2>
-          <div className="space-y-5">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-0.5 rounded-md bg-white/10 p-2">
-                <MessageSquare className="h-5 w-5 text-emerald-400" />
+        {/* Feature highlights — floating over the skyline */}
+        <div className="flex-1 flex items-center z-10">
+          <div className="space-y-8 max-w-md">
+            <h2 className="text-3xl font-bold tracking-tight leading-tight">
+              Automatize seu delivery com
+              <span className="text-cyan-400"> inteligencia artificial.</span>
+            </h2>
+            <div className="space-y-5">
+              <div className="flex items-start gap-3 group">
+                <div className="flex-shrink-0 mt-0.5 rounded-lg bg-cyan-400/10 border border-cyan-400/20 p-2 transition-colors group-hover:bg-cyan-400/15">
+                  <MessageSquare className="h-5 w-5 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="font-medium">Atendimento 24/7 via WhatsApp</p>
+                  <p className="text-sm text-zinc-400">Seu bot responde clientes a qualquer hora, sem perder pedidos.</p>
+                </div>
               </div>
-              <div>
-                <p className="font-medium">Atendimento 24/7 via WhatsApp</p>
-                <p className="text-sm text-slate-400">Seu bot responde clientes a qualquer hora, sem perder pedidos.</p>
+              <div className="flex items-start gap-3 group">
+                <div className="flex-shrink-0 mt-0.5 rounded-lg bg-cyan-400/10 border border-cyan-400/20 p-2 transition-colors group-hover:bg-cyan-400/15">
+                  <ShoppingBag className="h-5 w-5 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="font-medium">Pedidos automatizados</p>
+                  <p className="text-sm text-zinc-400">Do cardapio ao pagamento, tudo num fluxo simples e rapido.</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-0.5 rounded-md bg-white/10 p-2">
-                <ShoppingBag className="h-5 w-5 text-emerald-400" />
-              </div>
-              <div>
-                <p className="font-medium">Pedidos automatizados</p>
-                <p className="text-sm text-slate-400">Do cardapio ao pagamento, tudo num fluxo simples e rapido.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-0.5 rounded-md bg-white/10 p-2">
-                <BarChart3 className="h-5 w-5 text-emerald-400" />
-              </div>
-              <div>
-                <p className="font-medium">Analytics em tempo real</p>
-                <p className="text-sm text-slate-400">Acompanhe vendas, produtos mais pedidos e metricas do negocio.</p>
+              <div className="flex items-start gap-3 group">
+                <div className="flex-shrink-0 mt-0.5 rounded-lg bg-cyan-400/10 border border-cyan-400/20 p-2 transition-colors group-hover:bg-cyan-400/15">
+                  <BarChart3 className="h-5 w-5 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="font-medium">Analytics em tempo real</p>
+                  <p className="text-sm text-zinc-400">Acompanhe vendas, produtos mais pedidos e metricas do negocio.</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <p className="text-xs text-slate-500 z-10">Plataforma segura com criptografia de ponta a ponta.</p>
+        {/* Footer — matches login testimonial area */}
+        <div className="z-10">
+          <p className="text-xs text-zinc-500">Plataforma segura com criptografia de ponta a ponta.</p>
+        </div>
       </div>
 
       {/* Form column */}
-      <div className="flex items-center justify-center py-12 px-8 bg-background">
-        <div className="mx-auto w-full max-w-[440px] space-y-6">
+      <div className="flex items-center justify-center py-6 px-8 bg-background overflow-y-auto">
+        <div className="mx-auto w-full max-w-[440px] space-y-4">
 
-          <div className="flex flex-col space-y-2 text-center">
+          <div className="flex flex-col space-y-1 text-center">
             <h1 className="text-2xl font-semibold tracking-tight">Criar sua conta</h1>
             <p className="text-sm text-muted-foreground">
               Preencha os dados abaixo para comecar
@@ -164,9 +178,9 @@ export default function RegisterPage() {
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="name"
@@ -174,9 +188,9 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Nome completo</FormLabel>
                       <FormControl>
-                        <Input placeholder="Seu nome" {...field} className="h-10" />
+                        <Input placeholder="Seu nome" {...field} className="h-9" />
                       </FormControl>
-                      <FormMessage />
+                      <div className="min-h-[16px]"><FormMessage /></div>
                     </FormItem>
                   )}
                 />
@@ -193,11 +207,11 @@ export default function RegisterPage() {
                         <Input
                           placeholder="(11) 99999-9999"
                           {...field}
-                          className="h-10"
+                          className="h-9"
                           onChange={(e) => field.onChange(formatWhatsApp(e.target.value))}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <div className="min-h-[16px]"><FormMessage /></div>
                     </FormItem>
                   )}
                 />
@@ -210,9 +224,9 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="seu@email.com" {...field} className="h-10" />
+                      <Input placeholder="seu@email.com" {...field} className="h-9" />
                     </FormControl>
-                    <FormMessage />
+                    <div className="min-h-[16px]"><FormMessage /></div>
                   </FormItem>
                 )}
               />
@@ -224,10 +238,10 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel>Senha</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="********" {...field} className="h-10" />
+                      <Input type="password" placeholder="********" {...field} className="h-9" />
                     </FormControl>
 
-                    <div className="grid grid-cols-2 gap-y-1 gap-x-4 pt-1 pl-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 pt-0.5 pl-0.5">
                       <PasswordReq met={hasMinLen} text="Min. 8 caracteres" />
                       <PasswordReq met={hasUpper} text="Maiuscula" />
                       <PasswordReq met={hasLower} text="Minuscula" />
@@ -235,7 +249,7 @@ export default function RegisterPage() {
                       <PasswordReq met={hasSpecial} text="Simbolo (!@#)" />
                     </div>
 
-                    <FormMessage />
+                    <div className="min-h-[16px]"><FormMessage /></div>
                   </FormItem>
                 )}
               />
@@ -247,30 +261,32 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel>Confirmar Senha</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="********" {...field} className="h-10" />
+                      <Input type="password" placeholder="********" {...field} className="h-9" />
                     </FormControl>
-                    <FormMessage />
+                    <div className="min-h-[16px]"><FormMessage /></div>
                   </FormItem>
                 )}
               />
 
-              <Button type="submit" className="w-full h-10 font-bold" disabled={isLoading || throttle.isThrottled}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {throttle.isThrottled
-                  ? `Aguarde ${throttle.remainingSeconds}s...`
-                  : isLoading
-                    ? "Criando..."
-                    : "Criar Conta Gratis"}
-              </Button>
+              <div className="pt-1 space-y-3">
+                <Button type="submit" className="w-full h-10 font-bold" disabled={isLoading || throttle.isThrottled}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {throttle.isThrottled
+                    ? `Aguarde ${throttle.remainingSeconds}s...`
+                    : isLoading
+                      ? "Criando..."
+                      : "Criar Conta Gratis"}
+                </Button>
+
+                <p className="text-[11px] text-center text-muted-foreground leading-tight">
+                  Ao criar sua conta, voce concorda com nossos{" "}
+                  <span className="underline underline-offset-4 cursor-pointer hover:text-primary">Termos de Uso</span>{" "}
+                  e{" "}
+                  <span className="underline underline-offset-4 cursor-pointer hover:text-primary">Politica de Privacidade</span>.
+                </p>
+              </div>
             </form>
           </Form>
-
-          <p className="text-xs text-center text-muted-foreground">
-            Ao criar sua conta, voce concorda com nossos{" "}
-            <span className="underline underline-offset-4 cursor-pointer hover:text-primary">Termos de Uso</span>{" "}
-            e{" "}
-            <span className="underline underline-offset-4 cursor-pointer hover:text-primary">Politica de Privacidade</span>.
-          </p>
 
           <p className="text-center text-sm text-muted-foreground">
             Ja possui cadastro?{" "}
