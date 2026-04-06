@@ -66,8 +66,12 @@ export const formSchema = z.object({
 
 type BotFormValues = z.infer<typeof formSchema>;
 
+type NullablePartial<T> = {
+  [K in keyof T]?: T[K] | null;
+};
+
 interface BotFormProps {
-  initialData?: Partial<BotFormValues> & {
+  initialData?: NullablePartial<BotFormValues> & {
     id?: number;
     restaurant_image_url?: string | null;
     phone_number_id?: string;

@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import type { User } from "@/lib/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContainer } from "@/components/layout/page-container";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QAReportsPanel } from "./qa-reports";
@@ -28,7 +28,18 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { DollarSign, Zap, AlertTriangle, TrendingUp, ShieldAlert } from "lucide-react";
+import {
+  DollarSign,
+  Zap,
+  AlertTriangle,
+  TrendingUp,
+  ShieldAlert,
+  Activity,
+  Server,
+  Trophy,
+  FileBarChart,
+  Gamepad2,
+} from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -159,22 +170,24 @@ function KPICard({
   value,
   subtitle,
   icon: Icon,
-  color,
+  borderColor,
+  iconColor,
 }: {
   title: string;
   value: string;
   subtitle: string;
   icon: React.ElementType;
-  color: string;
+  borderColor: string;
+  iconColor: string;
 }) {
   return (
-    <Card className={`border-l-4 ${color} shadow-sm`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+    <Card className={`border-l-4 ${borderColor}`}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</span>
+          <Icon className={`h-4 w-4 ${iconColor}`} />
+        </div>
+        <div className="text-2xl font-bold font-heading">{value}</div>
         <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
       </CardContent>
     </Card>
@@ -252,7 +265,7 @@ export default function ObservabilityPage() {
     <PageContainer>
       <PageHeader
         title="Observability"
-        description="Platform cost monitoring and usage analytics"
+        description="Platform cost monitoring, QA testing, and corpus management"
       >
         <Select value={days} onValueChange={setDays}>
           <SelectTrigger className="w-[130px]">
@@ -269,223 +282,244 @@ export default function ObservabilityPage() {
       </PageHeader>
 
       <Tabs defaultValue="costs" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="costs">Costs</TabsTrigger>
-          <TabsTrigger value="qa">QA Tests</TabsTrigger>
-          <TabsTrigger value="corpus">Corpus Game</TabsTrigger>
+        <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsTrigger value="costs" className="flex items-center gap-1.5">
+            <Activity className="h-3.5 w-3.5" />
+            Costs
+          </TabsTrigger>
+          <TabsTrigger value="qa" className="flex items-center gap-1.5">
+            <FileBarChart className="h-3.5 w-3.5" />
+            QA Tests
+          </TabsTrigger>
+          <TabsTrigger value="corpus" className="flex items-center gap-1.5">
+            <Gamepad2 className="h-3.5 w-3.5" />
+            Corpus Game
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="costs" className="space-y-6">
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {overviewLoading ? (
-          [1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28" />)
-        ) : (
-          <>
-            <KPICard
-              title="Total Spend"
-              value={formatUSD(overview?.total_cost_usd ?? 0)}
-              subtitle={`Last ${daysNum} days`}
-              icon={DollarSign}
-              color="border-l-blue-500"
-            />
-            <KPICard
-              title="Projected Monthly"
-              value={formatUSD(projectedMonthly)}
-              subtitle="Based on current burn rate"
-              icon={TrendingUp}
-              color="border-l-emerald-500"
-            />
-            <KPICard
-              title="API Calls"
-              value={formatNumber(totalCalls)}
-              subtitle={`${overview?.total_bots ?? 0} active bots`}
-              icon={Zap}
-              color="border-l-amber-500"
-            />
-            <KPICard
-              title="Failure Rate"
-              value={`${failRate}%`}
-              subtitle={`${formatNumber(totalFailed)} failed calls`}
-              icon={AlertTriangle}
-              color="border-l-red-500"
-            />
-          </>
-        )}
-      </div>
-
-      {/* Daily Cost Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Daily Cost by Service</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {dailyLoading ? (
-            <Skeleton className="h-[300px]" />
-          ) : chartData.length === 0 ? (
-            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-              No cost data for this period
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 12 }} />
-                <YAxis
-                  tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                  className="text-xs"
-                  tick={{ fontSize: 12 }}
-                  width={60}
-                />
-                <Tooltip
-                  formatter={(value, name) => [
-                    formatUSD(Number(value)),
-                    SERVICE_LABELS[String(name)] ?? String(name),
-                  ]}
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: 12,
-                  }}
-                />
-                <Legend
-                  formatter={(value: string) => SERVICE_LABELS[value] ?? value}
-                  wrapperStyle={{ fontSize: 12 }}
-                />
-                {Array.from(serviceKeys).map((svc) => (
-                  <Area
-                    key={svc}
-                    type="monotone"
-                    dataKey={svc}
-                    stackId="1"
-                    stroke={SERVICE_COLORS[svc] ?? "#94a3b8"}
-                    fill={SERVICE_COLORS[svc] ?? "#94a3b8"}
-                    fillOpacity={0.6}
-                  />
-                ))}
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Service Breakdown + Leaderboard side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Service Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Cost by Service</CardTitle>
-          </CardHeader>
-          <CardContent>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {overviewLoading ? (
-              <Skeleton className="h-[200px]" />
-            ) : services.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No data</p>
+              [1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28" />)
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Service</TableHead>
-                    <TableHead className="text-right">Cost</TableHead>
-                    <TableHead className="text-right">Calls</TableHead>
-                    <TableHead className="text-right">Tokens</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {services
-                    .sort((a, b) => b.total_cost_usd - a.total_cost_usd)
-                    .map((svc) => (
-                      <TableRow key={svc.service}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: SERVICE_COLORS[svc.service] ?? "#94a3b8" }}
-                            />
-                            {SERVICE_LABELS[svc.service] ?? svc.service}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-sm">
-                          {formatUSD(svc.total_cost_usd)}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          {formatNumber(svc.total_api_calls)}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          {formatNumber(svc.total_input_tokens + svc.total_output_tokens)}
-                        </TableCell>
-                      </TableRow>
+              <>
+                <KPICard
+                  title="Total Spend"
+                  value={formatUSD(overview?.total_cost_usd ?? 0)}
+                  subtitle={`Last ${daysNum} days`}
+                  icon={DollarSign}
+                  borderColor="border-l-blue-500"
+                  iconColor="text-blue-500"
+                />
+                <KPICard
+                  title="Projected Monthly"
+                  value={formatUSD(projectedMonthly)}
+                  subtitle="Based on current burn rate"
+                  icon={TrendingUp}
+                  borderColor="border-l-emerald-500"
+                  iconColor="text-emerald-500"
+                />
+                <KPICard
+                  title="API Calls"
+                  value={formatNumber(totalCalls)}
+                  subtitle={`${overview?.total_bots ?? 0} active bots`}
+                  icon={Zap}
+                  borderColor="border-l-amber-500"
+                  iconColor="text-amber-500"
+                />
+                <KPICard
+                  title="Failure Rate"
+                  value={`${failRate}%`}
+                  subtitle={`${formatNumber(totalFailed)} failed calls`}
+                  icon={AlertTriangle}
+                  borderColor="border-l-red-500"
+                  iconColor="text-red-500"
+                />
+              </>
+            )}
+          </div>
+
+          {/* Daily Cost Chart */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-heading flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                Daily Cost by Service
+              </CardTitle>
+              <CardDescription>Stacked area chart of daily spend across all services</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {dailyLoading ? (
+                <Skeleton className="h-[300px]" />
+              ) : chartData.length === 0 ? (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  No cost data for this period
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 12 }} />
+                    <YAxis
+                      tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                      className="text-xs"
+                      tick={{ fontSize: 12 }}
+                      width={60}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatUSD(Number(value)),
+                        SERVICE_LABELS[String(name)] ?? String(name),
+                      ]}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: 12,
+                      }}
+                    />
+                    <Legend
+                      formatter={(value: string) => SERVICE_LABELS[value] ?? value}
+                      wrapperStyle={{ fontSize: 12 }}
+                    />
+                    {Array.from(serviceKeys).map((svc) => (
+                      <Area
+                        key={svc}
+                        type="monotone"
+                        dataKey={svc}
+                        stackId="1"
+                        stroke={SERVICE_COLORS[svc] ?? "#94a3b8"}
+                        fill={SERVICE_COLORS[svc] ?? "#94a3b8"}
+                        fillOpacity={0.6}
+                      />
                     ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Bot Leaderboard */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Top Bots by Cost</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {leaderboardLoading ? (
-              <Skeleton className="h-[200px]" />
-            ) : !leaderboard?.bots?.length ? (
-              <p className="text-muted-foreground text-sm">No data</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8">#</TableHead>
-                    <TableHead>Restaurant</TableHead>
-                    <TableHead className="text-right">Cost</TableHead>
-                    <TableHead className="text-right">Calls</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leaderboard.bots.map((bot) => (
-                    <TableRow key={bot.bot_id}>
-                      <TableCell>
-                        <Badge
-                          variant={bot.rank <= 3 ? "default" : "secondary"}
-                          className={
-                            bot.rank === 1
-                              ? "bg-amber-500"
-                              : bot.rank === 2
-                              ? "bg-slate-400"
-                              : bot.rank === 3
-                              ? "bg-amber-700"
-                              : ""
-                          }
-                        >
-                          {bot.rank}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[180px] truncate" title={bot.restaurant_name}>
-                        {bot.restaurant_name}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {formatUSD(bot.total_cost_usd)}
-                      </TableCell>
-                      <TableCell className="text-right text-sm">
-                        {formatNumber(bot.total_api_calls)}
-                        {bot.total_failed_calls > 0 && (
-                          <span className="text-red-500 ml-1">
-                            ({bot.total_failed_calls} err)
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          {/* Service Breakdown + Leaderboard */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Service Breakdown */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-heading flex items-center gap-2">
+                  <Server className="h-4 w-4 text-muted-foreground" />
+                  Cost by Service
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {overviewLoading ? (
+                  <Skeleton className="h-[200px]" />
+                ) : services.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">No data</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Service</TableHead>
+                        <TableHead className="text-right">Cost</TableHead>
+                        <TableHead className="text-right">Calls</TableHead>
+                        <TableHead className="text-right">Tokens</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {services
+                        .sort((a, b) => b.total_cost_usd - a.total_cost_usd)
+                        .map((svc) => (
+                          <TableRow key={svc.service}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: SERVICE_COLORS[svc.service] ?? "#94a3b8" }}
+                                />
+                                <span className="text-sm">{SERVICE_LABELS[svc.service] ?? svc.service}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm">
+                              {formatUSD(svc.total_cost_usd)}
+                            </TableCell>
+                            <TableCell className="text-right text-sm">
+                              {formatNumber(svc.total_api_calls)}
+                            </TableCell>
+                            <TableCell className="text-right text-sm">
+                              {formatNumber(svc.total_input_tokens + svc.total_output_tokens)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
 
+            {/* Bot Leaderboard */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-heading flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-muted-foreground" />
+                  Top Bots by Cost
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {leaderboardLoading ? (
+                  <Skeleton className="h-[200px]" />
+                ) : !leaderboard?.bots?.length ? (
+                  <p className="text-muted-foreground text-sm">No data</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8">#</TableHead>
+                        <TableHead>Restaurant</TableHead>
+                        <TableHead className="text-right">Cost</TableHead>
+                        <TableHead className="text-right">Calls</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {leaderboard.bots.map((bot) => (
+                        <TableRow key={bot.bot_id}>
+                          <TableCell>
+                            <Badge
+                              variant={bot.rank <= 3 ? "default" : "secondary"}
+                              className={
+                                bot.rank === 1
+                                  ? "bg-amber-500 hover:bg-amber-500"
+                                  : bot.rank === 2
+                                  ? "bg-slate-400 hover:bg-slate-400"
+                                  : bot.rank === 3
+                                  ? "bg-amber-700 hover:bg-amber-700"
+                                  : ""
+                              }
+                            >
+                              {bot.rank}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[180px] truncate" title={bot.restaurant_name}>
+                            {bot.restaurant_name}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {formatUSD(bot.total_cost_usd)}
+                          </TableCell>
+                          <TableCell className="text-right text-sm">
+                            {formatNumber(bot.total_api_calls)}
+                            {bot.total_failed_calls > 0 && (
+                              <span className="text-red-500 ml-1 text-xs">
+                                ({bot.total_failed_calls} err)
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="qa" className="space-y-6">
@@ -495,7 +529,6 @@ export default function ObservabilityPage() {
         <TabsContent value="corpus" className="space-y-6">
           <CorpusGamePanel />
         </TabsContent>
-
       </Tabs>
     </PageContainer>
   );
