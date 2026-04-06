@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useForm } from 'react-hook-form';
+import { useMutation } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { api } from '@/lib/api';
@@ -15,6 +16,7 @@ import { getSafeErrorMessage } from "@/lib/error-messages";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Search, MapPin, Copy, Clock, Bell, Timer, Phone, ImagePlus, X } from "lucide-react";
+import { WhatsAppIcon } from "@/app/(portal)/pedidos/whatsapp-icon";
 import {
   Form,
   FormControl,
@@ -65,7 +67,11 @@ export const formSchema = z.object({
 type BotFormValues = z.infer<typeof formSchema>;
 
 interface BotFormProps {
-  initialData?: Partial<BotFormValues> & { restaurant_image_url?: string | null };
+  initialData?: Partial<BotFormValues> & {
+    id?: number;
+    restaurant_image_url?: string | null;
+    phone_number_id?: string;
+  };
   onSubmit: (values: BotFormValues, restaurantImage?: File) => void;
   isPending: boolean;
 }
@@ -88,6 +94,19 @@ const DEFAULT_SCHEDULE = WEEKDAYS.reduce(
   {} as Record<string, z.infer<typeof dayScheduleSchema>>
 );
 
+async function convertWebpToJpeg(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, 0, 0);
+  const blob = await new Promise<Blob>((resolve) =>
+    canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.92)
+  );
+  return new File([blob], file.name.replace(/\.webp$/i, ".jpg"), { type: "image/jpeg" });
+}
+
 export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
   const { toast } = useToast();
   const [isLoadingCep, setIsLoadingCep] = useState(false);
@@ -97,6 +116,46 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(
     initialData?.restaurant_image_url ?? null
   );
+
+  const botId = initialData?.id;
+  const isWhatsAppConnected = !!initialData?.phone_number_id && initialData.phone_number_id.trim() !== "";
+  const hasImage = !!imagePreview;
+
+  const whatsAppPictureMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      // Convert WebP to JPEG before sending (backend only accepts JPEG/PNG)
+      const fileToSend = file.type === "image/webp" ? await convertWebpToJpeg(file) : file;
+      formData.append("file", fileToSend);
+      return api.put(`/bots/${botId}/whatsapp-profile-picture`, formData);
+    },
+    onSuccess: () => {
+      toast({ title: "Foto atualizada!", description: "Foto de perfil do WhatsApp atualizada com sucesso." });
+    },
+    onError: (error) => {
+      const msg = getSafeErrorMessage(error, "Falha ao atualizar foto na Meta. Tente novamente.");
+      toast({ title: "Erro ao atualizar foto", description: msg, variant: "destructive" });
+    },
+  });
+
+  const handleSetWhatsAppPicture = useCallback(async () => {
+    if (restaurantImage) {
+      whatsAppPictureMutation.mutate(restaurantImage);
+      return;
+    }
+
+    if (initialData?.restaurant_image_url) {
+      try {
+        const response = await fetch(initialData.restaurant_image_url);
+        const blob = await response.blob();
+        const ext = blob.type.split("/")[1] || "jpeg";
+        const file = new File([blob], `profile.${ext}`, { type: blob.type });
+        whatsAppPictureMutation.mutate(file);
+      } catch {
+        toast({ title: "Erro", description: "Não foi possível carregar a imagem. Tente novamente.", variant: "destructive" });
+      }
+    }
+  }, [restaurantImage, initialData?.restaurant_image_url, whatsAppPictureMutation, toast]);
 
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -255,24 +314,43 @@ export function BotForm({ initialData, onSubmit, isPending }: BotFormProps) {
                 Aparece no cartão do bot e pode ser usada como foto do WhatsApp. JPG, PNG ou WebP, até 5MB.
               </p>
               {imagePreview ? (
-                <div className="relative w-full h-36 rounded-lg overflow-hidden border border-slate-200">
-                  <Image
-                    src={imagePreview}
-                    alt="Preview da foto do restaurante"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 600px"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 h-7 w-7 bg-black/50 hover:bg-black/70 text-white rounded-full"
-                    onClick={handleRemoveImage}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-2">
+                  <div className="relative w-full h-36 rounded-lg overflow-hidden border border-slate-200">
+                    <Image
+                      src={imagePreview}
+                      alt="Preview da foto do restaurante"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 600px"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 h-7 w-7 bg-black/50 hover:bg-black/70 text-white rounded-full"
+                      onClick={handleRemoveImage}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {isWhatsAppConnected && hasImage && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full text-xs border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 shadow-sm transition-all"
+                      variant="outline"
+                      disabled={whatsAppPictureMutation.isPending}
+                      onClick={handleSetWhatsAppPicture}
+                    >
+                      {whatsAppPictureMutation.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <WhatsAppIcon className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      Usar como foto do WhatsApp
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <label className="flex flex-col items-center justify-center w-full h-36 rounded-lg border-2 border-dashed border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors">

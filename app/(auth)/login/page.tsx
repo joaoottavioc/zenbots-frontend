@@ -154,16 +154,6 @@ function LoginContent() {
           <SmashBurgerAnimation />
         </div>
 
-        {/* Testimonial */}
-        <div className="space-y-4 z-10">
-          <blockquote className="space-y-2">
-            <p className="text-lg leading-relaxed">
-              &ldquo;Automatizar nosso atendimento com a ZenBots transformou nossa operacao.
-              Ganhamos 40 horas semanais e aumentamos as vendas em 30%.&rdquo;
-            </p>
-            <footer className="text-sm text-zinc-400">Joao Silva - Hamburgueria Top, Zona Sul SP</footer>
-          </blockquote>
-        </div>
       </div>
 
       {/* Form column */}

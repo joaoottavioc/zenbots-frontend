@@ -1,5 +1,12 @@
 // Centralized domain types for the ZenBots frontend
 
+export interface User {
+  id: number;
+  email: string;
+  is_email_verified: boolean;
+  is_admin: boolean;
+}
+
 export interface Bot {
   id: number;
   restaurant_name: string;
@@ -19,6 +26,10 @@ export interface Bot {
   menu_url?: string | null;
   restaurant_image_url?: string | null;
   schedule?: Record<string, { active: boolean; start: string; end: string }>;
+  default_delivery_time_minutes?: number | null;
+  default_pickup_time_minutes?: number | null;
+  owner_notification_phone?: string | null;
+  cancellation_window_minutes?: number | null;
 }
 
 export interface BotFormValues {
@@ -33,6 +44,10 @@ export interface BotFormValues {
   is_open: boolean;
   closing_message?: string;
   schedule?: Record<string, { active: boolean; start: string; end: string }>;
+  default_delivery_time_minutes?: number | null;
+  default_pickup_time_minutes?: number | null;
+  owner_notification_phone?: string | null;
+  cancellation_window_minutes?: number | null;
 }
 
 export interface OnboardingPayload {

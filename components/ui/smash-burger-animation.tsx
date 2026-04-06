@@ -231,25 +231,25 @@ function ZTrail({ started }: { started: boolean }) {
         >
           {/* Z bloom */}
           <path
-            d={zPath} stroke="#06b6d4" strokeWidth="5"
+            d={zPath} stroke="#06b6d4" strokeWidth="10"
             strokeLinecap="round" strokeLinejoin="round"
             filter="url(#rayBloom)"
-            opacity={0.1 * rayDraw}
+            opacity={0.15 * rayDraw}
             strokeDasharray="380"
             strokeDashoffset={380 * (1 - rayDraw)}
           />
           {/* Z trace */}
           <path
-            d={zPath} stroke="#22d3ee" strokeWidth="1.2"
+            d={zPath} stroke="#22d3ee" strokeWidth="4"
             strokeLinecap="round" strokeLinejoin="round"
-            opacity={0.35 * rayDraw}
+            opacity={0.45 * rayDraw}
             strokeDasharray="380"
             strokeDashoffset={380 * (1 - rayDraw)}
           />
           {/* Racing ray — bright short segment */}
           {progress < 0.35 && (
             <path
-              d={zPath} stroke="#e0f9ff" strokeWidth="2"
+              d={zPath} stroke="#e0f9ff" strokeWidth="5"
               strokeLinecap="round" strokeLinejoin="round"
               filter="url(#rayGlow)"
               opacity={0.9}

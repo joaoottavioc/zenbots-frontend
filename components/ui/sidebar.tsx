@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import type { User } from "@/lib/types";
 import {
   ShoppingBag,
   Package,
@@ -10,7 +13,8 @@ import {
   QrCode,
   Settings,
   LifeBuoy,
-  Bot
+  Bot,
+  Activity,
 } from "lucide-react";
 
 const routes = [
@@ -23,8 +27,20 @@ const routes = [
   { label: "Suporte", icon: LifeBuoy, href: "/suporte" },
 ];
 
+const adminRoutes = [
+  { label: "Observability", icon: Activity, href: "/admin/observability", color: "text-cyan-400" },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: user } = useQuery<User>({
+    queryKey: ["currentUser"],
+    queryFn: async () => (await api.get("/auth/me")).data,
+    staleTime: 1000 * 60 * 10,
+    retry: false,
+  });
+
+  const allRoutes = user?.is_admin ? [...routes, ...adminRoutes] : routes;
 
   return (
     <nav aria-label="Menu principal" className="w-[200px] flex flex-col h-full bg-brand-nav text-white border-r border-slate-800 relative">
@@ -35,7 +51,7 @@ export function Sidebar() {
       />
       <div className="px-3 pt-5 pb-2 flex-1 flex flex-col">
         <div className="space-y-1">
-          {routes.map((route) => (
+          {allRoutes.map((route) => (
             <Link
               key={route.href}
               href={route.href}
