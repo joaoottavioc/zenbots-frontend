@@ -49,7 +49,7 @@ export function Header() {
             Planos
           </a>
           <a
-            href="https://app.zenbotz.com.br/login"
+            href="https://dev.zenbotz.com.br/login"
             className="text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
           >
             Entrar
@@ -107,7 +107,7 @@ export function Header() {
             </a>
             <hr className="border-slate-200" />
             <a
-              href="https://app.zenbotz.com.br/login"
+              href="https://dev.zenbotz.com.br/login"
               className="text-lg text-slate-700 hover:text-slate-900"
             >
               Entrar

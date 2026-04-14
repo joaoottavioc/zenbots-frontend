@@ -112,7 +112,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://app.zenbotz.com.br/login"
+                  href="https://dev.zenbotz.com.br/login"
                   className="text-sm text-zinc-500 transition-colors hover:text-cyan-400"
                 >
                   Acessar Plataforma
@@ -125,7 +125,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-cyan-900/20 pt-8 sm:flex-row">
           <p className="text-xs text-zinc-600">
-            &copy; {new Date().getFullYear()} ZenBotZ. Todos os direitos
+            &copy; {new Date().getFullYear()} Zenaide Automações LTDA. Todos os direitos
             reservados.
           </p>
           <p className="text-xs text-zinc-600">

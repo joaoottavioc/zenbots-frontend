@@ -166,10 +166,7 @@ export default function PrivacyPolicy() {
       </p>
       <ul>
         <li>
-          E-mail: <a href="mailto:privacidade@zenbotz.com.br">privacidade@zenbotz.com.br</a>
-        </li>
-        <li>
-          E-mail geral: <a href="mailto:contato@zenbotz.com.br">contato@zenbotz.com.br</a>
+          E-mail: <a href="mailto:contato@zenbotz.com.br">contato@zenbotz.com.br</a>
         </li>
       </ul>
     </PolicyLayout>

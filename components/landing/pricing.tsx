@@ -8,7 +8,7 @@ const plans = [
     description: "Ideal para testar a plataforma e validar a ideia.",
     features: [
       "1 bot ativo",
-      "Até 100 pedidos/mês",
+      "Até 25 pedidos/mês",
       "Cardápio com até 30 itens",
       "Pagamento PIX",
       "Suporte por e-mail",

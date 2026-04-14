@@ -27,7 +27,7 @@ export default function DataDeletion() {
       <ol>
         <li>
           Envie um e-mail para{" "}
-          <a href="mailto:privacidade@zenbotz.com.br">privacidade@zenbotz.com.br</a>{" "}
+          <a href="mailto:contato@zenbotz.com.br">contato@zenbotz.com.br</a>{" "}
           com o assunto <strong>&ldquo;Solicitação de Exclusão de Dados&rdquo;</strong>
         </li>
         <li>
@@ -70,7 +70,7 @@ export default function DataDeletion() {
       <ol>
         <li>
           Envie um e-mail para{" "}
-          <a href="mailto:privacidade@zenbotz.com.br">privacidade@zenbotz.com.br</a>{" "}
+          <a href="mailto:contato@zenbotz.com.br">contato@zenbotz.com.br</a>{" "}
           com o assunto{" "}
           <strong>&ldquo;Exclusão de Dados — Cliente Final&rdquo;</strong>
         </li>
@@ -117,7 +117,7 @@ export default function DataDeletion() {
       </ol>
       <p>
         Alternativamente, envie um e-mail para{" "}
-        <a href="mailto:privacidade@zenbotz.com.br">privacidade@zenbotz.com.br</a>{" "}
+        <a href="mailto:contato@zenbotz.com.br">contato@zenbotz.com.br</a>{" "}
         informando o e-mail associado à sua conta Facebook.
       </p>
 
@@ -149,10 +149,7 @@ export default function DataDeletion() {
       </p>
       <ul>
         <li>
-          E-mail: <a href="mailto:privacidade@zenbotz.com.br">privacidade@zenbotz.com.br</a>
-        </li>
-        <li>
-          E-mail geral: <a href="mailto:contato@zenbotz.com.br">contato@zenbotz.com.br</a>
+          E-mail: <a href="mailto:contato@zenbotz.com.br">contato@zenbotz.com.br</a>
         </li>
       </ul>
     </PolicyLayout>
