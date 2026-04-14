@@ -30,16 +30,10 @@ function handler(event) {
         };
     }
 
-    // Next.js 16 static export generates /route.html (not /route/index.html)
-    // No root page exists — redirect "/" to "/login"
+    // Next.js static export: root "/" serves the landing page at /index.html
     if (uri === '/' || uri === '') {
-        return {
-            statusCode: 302,
-            statusDescription: 'Found',
-            headers: {
-                'location': { value: '/login' }
-            }
-        };
+        request.uri = '/index.html';
+        return request;
     }
 
     if (!uri.includes('.')) {

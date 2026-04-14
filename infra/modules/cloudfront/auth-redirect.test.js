@@ -132,18 +132,43 @@ describe('CloudFront Function: auth-redirect', () => {
     });
   });
 
-  describe('root redirect', () => {
-    it('redirects / to /login', () => {
+  describe('root landing page', () => {
+    it('rewrites / to /index.html (landing page, no auth required)', () => {
       const result = handler(makeEvent('/'));
-      expect(result.statusCode).toBe(302);
-      expect(result.headers.location.value).toBe('/login');
+      expect(result.statusCode).toBeUndefined();
+      expect(result.uri).toBe('/index.html');
     });
 
-    it('redirects empty string to /login', () => {
+    it('rewrites empty string to /index.html', () => {
       const result = handler(makeEvent(''));
-      expect(result.statusCode).toBe(302);
-      expect(result.headers.location.value).toBe('/login');
+      expect(result.statusCode).toBeUndefined();
+      expect(result.uri).toBe('/index.html');
     });
+
+    it('serves landing page even without auth cookies', () => {
+      const result = handler(makeEvent('/'));
+      expect(result.statusCode).toBeUndefined();
+      expect(result.uri).toBe('/index.html');
+    });
+
+    it('serves landing page when auth cookies are present', () => {
+      const result = handler(
+        makeEvent('/', { zenbots_auth: '1', access_token: 'jwt' })
+      );
+      expect(result.statusCode).toBeUndefined();
+      expect(result.uri).toBe('/index.html');
+    });
+  });
+
+  describe('public landing sub-pages', () => {
+    const subPaths = ['/privacidade', '/termos', '/exclusao-dados'];
+    for (const path of subPaths) {
+      it(`allows ${path} without cookies`, () => {
+        const result = handler(makeEvent(path));
+        expect(result.statusCode).toBeUndefined();
+        expect(result.uri).toBe(`${path}.html`);
+      });
+    }
   });
 
   describe('URL rewriting', () => {
