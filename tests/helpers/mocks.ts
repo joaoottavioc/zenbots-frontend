@@ -54,10 +54,3 @@ export function createMockOrder(overrides: Record<string, unknown> = {}) {
   };
 }
 
-export function createMockUser(overrides: Record<string, unknown> = {}) {
-  return {
-    email: 'teste@example.com',
-    name: 'Teste User',
-    ...overrides,
-  };
-}

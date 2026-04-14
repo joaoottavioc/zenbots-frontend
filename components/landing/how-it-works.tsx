@@ -49,53 +49,49 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="como-funciona" className="relative py-32 px-6">
-      {/* Background accent */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-950/5 to-transparent" />
-
+    <section id="como-funciona" className="relative bg-slate-50 px-6 py-28 sm:py-32">
       <div className="relative mx-auto max-w-5xl">
         {/* Section header */}
-        <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-cyan-400">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-semibold uppercase tracking-widest text-cyan-600">
             Como Funciona
           </p>
-          <h2 className="mt-3 font-heading text-3xl font-bold text-white sm:text-4xl lg:text-5xl">
+          <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
             Do cadastro ao primeiro pedido em{" "}
-            <span className="text-cyan-400">minutos</span>
+            <span className="text-cyan-600">minutos</span>
           </h2>
+          <p className="mt-4 text-base text-slate-600 sm:text-lg">
+            Quatro passos. Sem código, sem burocracia, sem suporte técnico.
+          </p>
         </div>
 
         {/* Steps */}
-        <div className="mt-20 space-y-16">
+        <div className="mt-20 space-y-14 md:space-y-20">
           {steps.map((step, i) => (
             <div
               key={i}
-              className={`flex flex-col items-center gap-8 md:flex-row ${
+              className={`flex flex-col items-center gap-8 md:flex-row md:gap-14 ${
                 i % 2 === 1 ? "md:flex-row-reverse" : ""
               }`}
             >
               {/* Number + Icon */}
               <div className="flex shrink-0 flex-col items-center">
                 <div className="relative">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-cyan-700/30 bg-surface text-cyan-400 shadow-lg shadow-cyan-950/30">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-cyan-100 bg-white text-cyan-600 shadow-lg shadow-cyan-500/10">
                     {step.icon}
                   </div>
-                  <span className="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-xs font-bold text-white shadow-lg shadow-cyan-500/30">
+                  <span className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-xs font-bold text-white shadow-md shadow-cyan-500/40 ring-4 ring-slate-50">
                     {step.number}
                   </span>
                 </div>
-                {/* Connector line */}
-                {i < steps.length - 1 && (
-                  <div className="mt-4 hidden h-16 w-px bg-gradient-to-b from-cyan-700/40 to-transparent md:block" />
-                )}
               </div>
 
               {/* Content */}
               <div className="text-center md:text-left">
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="font-heading text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
                   {step.title}
                 </h3>
-                <p className="mt-2 max-w-md text-zinc-400 leading-relaxed">
+                <p className="mt-2 max-w-md text-base leading-relaxed text-slate-600">
                   {step.description}
                 </p>
               </div>

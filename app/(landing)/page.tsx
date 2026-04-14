@@ -1,6 +1,6 @@
-import { CircuitBackground } from "@/components/landing/circuit-background";
 import { Header } from "@/components/landing/header";
 import { Hero } from "@/components/landing/hero";
+import { TrustBand } from "@/components/landing/trust-band";
 import { Features } from "@/components/landing/features";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Pricing } from "@/components/landing/pricing";
@@ -10,10 +10,10 @@ import { Footer } from "@/components/landing/footer";
 export default function Home() {
   return (
     <>
-      <CircuitBackground />
       <Header />
-      <main className="relative z-10">
+      <main>
         <Hero />
+        <TrustBand />
         <Features />
         <HowItWorks />
         <Pricing />

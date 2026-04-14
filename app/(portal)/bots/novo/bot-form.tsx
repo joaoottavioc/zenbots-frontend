@@ -34,7 +34,7 @@ const dayScheduleSchema = z.object({
 });
 
 // --- SCHEMA ATUALIZADO ---
-export const formSchema = z.object({
+const formSchema = z.object({
   restaurant_name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }).max(100, { message: "Máximo de 100 caracteres." }),
 
   delivery_fee: z.coerce.number().min(0).max(500, { message: "Taxa máxima de R$ 500." }).optional(),

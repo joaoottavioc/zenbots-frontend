@@ -57,18 +57,18 @@ const plans = [
 
 export function Pricing() {
   return (
-    <section id="planos" className="relative py-32 px-6">
+    <section id="planos" className="relative bg-slate-50 py-32 px-6">
       <div className="mx-auto max-w-7xl">
         {/* Section header */}
         <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-cyan-400">
+          <p className="text-sm font-semibold uppercase tracking-widest text-cyan-600">
             Planos
           </p>
-          <h2 className="mt-3 font-heading text-3xl font-bold text-white sm:text-4xl lg:text-5xl">
+          <h2 className="mt-3 font-heading text-3xl font-bold text-slate-900 sm:text-4xl lg:text-5xl">
             Preço justo,{" "}
-            <span className="text-cyan-400">zero comissão</span> por pedido
+            <span className="text-cyan-600">zero comissão</span> por pedido
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-400">
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
             Diferente de marketplaces que cobram até 30% por pedido, o ZenBotZ
             cobra apenas uma mensalidade fixa. Quanto mais você vende, mais
             economiza.
@@ -82,8 +82,8 @@ export function Pricing() {
               key={i}
               className={`relative flex flex-col rounded-2xl border p-8 transition-all duration-300 ${
                 plan.featured
-                  ? "border-cyan-500/40 bg-gradient-to-b from-cyan-950/30 to-surface/80 shadow-2xl shadow-cyan-950/30 scale-[1.02]"
-                  : "border-cyan-900/20 bg-surface/60 hover:border-cyan-800/30"
+                  ? "border-cyan-400 bg-gradient-to-b from-cyan-50 to-white shadow-2xl shadow-cyan-500/20 scale-[1.02]"
+                  : "border-slate-200 bg-white hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-500/10"
               }`}
             >
               {/* Popular badge */}
@@ -94,22 +94,22 @@ export function Pricing() {
               )}
 
               <div>
-                <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
+                <h3 className="text-lg font-semibold text-slate-900">{plan.name}</h3>
                 <div className="mt-4 flex items-baseline gap-1">
-                  <span className="font-heading text-4xl font-bold text-white">
+                  <span className="font-heading text-4xl font-bold text-slate-900">
                     {plan.price}
                   </span>
-                  <span className="text-zinc-500">{plan.period}</span>
+                  <span className="text-slate-500">{plan.period}</span>
                 </div>
-                <p className="mt-2 text-sm text-zinc-400">{plan.description}</p>
+                <p className="mt-2 text-sm text-slate-600">{plan.description}</p>
               </div>
 
               {/* Features */}
               <ul className="mt-8 flex-1 space-y-3">
                 {plan.features.map((feature, j) => (
-                  <li key={j} className="flex items-start gap-3 text-sm text-zinc-300">
+                  <li key={j} className="flex items-start gap-3 text-sm text-slate-700">
                     <svg
-                      className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400"
+                      className="mt-0.5 h-4 w-4 shrink-0 text-cyan-600"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -132,7 +132,7 @@ export function Pricing() {
                 className={`mt-8 block rounded-xl px-6 py-3 text-center text-sm font-semibold transition-all ${
                   plan.featured
                     ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 hover:shadow-cyan-400/30"
-                    : "border border-cyan-800/40 bg-cyan-500/5 text-cyan-300 hover:bg-cyan-500/10 hover:border-cyan-700/50"
+                    : "border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 hover:border-cyan-300"
                 }`}
               >
                 {plan.cta}

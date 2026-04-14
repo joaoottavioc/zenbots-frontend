@@ -4,7 +4,7 @@ const FREE_ATTEMPTS = 3;
 const BASE_COOLDOWN_MS = 2000;
 const MAX_COOLDOWN_MS = 30000;
 
-export interface SubmitThrottle {
+interface SubmitThrottle {
   /** Whether the user is currently throttled. */
   isThrottled: boolean;
   /** Seconds remaining until the cooldown expires. 0 when not throttled. */

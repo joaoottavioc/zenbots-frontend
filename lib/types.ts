@@ -50,15 +50,6 @@ export interface BotFormValues {
   cancellation_window_minutes?: number | null;
 }
 
-export interface OnboardingPayload {
-  business_id: string | null;
-  waba_id: string | null;
-  phone_number_id: string | null;
-  display_phone_number: string | null;
-  code: string | null;
-  access_token: string | null;
-}
-
 export interface Plan {
   id: number;
   key: string;
@@ -68,6 +59,3 @@ export interface Plan {
   currency: string;
   frequency: number;
 }
-
-// Re-export pedidos types for convenience
-export type { Order, OrderStatus, OrderItem } from '@/app/(portal)/pedidos/types';

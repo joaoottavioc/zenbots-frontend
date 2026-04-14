@@ -16,17 +16,6 @@ function createTestQueryClient() {
   });
 }
 
-export function createWrapper() {
-  const queryClient = createTestQueryClient();
-  return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
-  };
-}
-
 export function renderWithProviders(
   ui: React.ReactElement,
   options?: Omit<RenderOptions, 'wrapper'>

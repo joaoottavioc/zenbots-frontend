@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -451,6 +451,41 @@ export function CorpusGamePanel() {
   const [elapsed, setElapsed] = useState(0);
   const [finalElapsed, setFinalElapsed] = useState(0);
 
+  // Pillar 1 (F8) — per-restaurant sample count for the QA run.
+  // 1 = historical single-attempt mode (~1 min/run).
+  // 3 = variance-reduced baseline (~3 min/run, cuts per-scenario σ by ~1.7×).
+  // 5 = high-fidelity baseline (~5 min/run, for hard signal-to-noise checks).
+  const [qaSamples, setQaSamples] = useState<1 | 3 | 5>(1);
+
+  // Phase 1C — restaurant selection mode.
+  // 'random' = pick 5 random validated restaurants (broad-baseline check).
+  // 'baseline' = use the locked 10-restaurant pool (clean per-fix attribution).
+  const [qaPool, setQaPool] = useState<"random" | "baseline" | "prospect">("random");
+
+  // Phase 1A polling — server-side run-status detection so the in-progress
+  // UI survives tab switches and component remounts. The frontend's local
+  // operationStart state vanishes when the corpus-game component unmounts
+  // (e.g. user clicks another admin tab and returns), so previously the
+  // PipelineStepper would disappear even though the backend run was still
+  // alive. This polls /admin/corpus/run-tests/status every 3s and re-derives
+  // operationStart from the server's `started_at` epoch when a run is
+  // detected. The same polling fires the completion toast + invalidates
+  // the qa-runs query when the server transitions in_progress true→false.
+  const { data: runStatus } = useQuery<{
+    in_progress: boolean;
+    owner_id?: string;
+    started_at?: number;
+    elapsed_seconds?: number;
+  }>({
+    queryKey: ["corpus-qa-status"],
+    queryFn: async () =>
+      (await api.get("/monitoring/admin/corpus/run-tests/status")).data,
+    refetchInterval: 3000, // 3s — cheap Redis GET
+    staleTime: 0,
+  });
+
+  const serverInProgress = runStatus?.in_progress ?? false;
+
   useEffect(() => {
     if (!operationStart) return;
     const interval = setInterval(() => {
@@ -458,6 +493,35 @@ export function CorpusGamePanel() {
     }, 1000);
     return () => clearInterval(interval);
   }, [operationStart]);
+
+  // Sync server-detected run state into local operationStart so the
+  // PipelineStepper renders even on a fresh component mount.
+  useEffect(() => {
+    if (
+      serverInProgress &&
+      runStatus?.started_at &&
+      operationStart === null
+    ) {
+      // Backend started_at is epoch seconds; convert to ms
+      setOperationStart(runStatus.started_at * 1000);
+    }
+  }, [serverInProgress, runStatus?.started_at, operationStart]);
+
+  // When server transitions in_progress true → false (run completed while
+  // we were on another tab, OR completed normally), invalidate the qa-runs
+  // query so the new report appears, and fire the completion toast.
+  const prevServerInProgressRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (prevServerInProgressRef.current === true && serverInProgress === false) {
+      // Run finished — clear local progress, invalidate caches, toast.
+      finishOperation();
+      queryClient.invalidateQueries({ queryKey: ["corpus-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-qa-runs"] });
+      showToastMsg("Tests complete!", "success");
+    }
+    prevServerInProgressRef.current = serverInProgress;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverInProgress]);
 
   const formatElapsed = (s: number) => {
     const m = Math.floor(s / 60);
@@ -490,9 +554,20 @@ export function CorpusGamePanel() {
 
   // Run tests mutation
   const runTestsMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (opts: { samples: number; pool: "random" | "baseline" | "prospect" }) => {
       setOperationStart(Date.now());
-      const resp = await api.post("/monitoring/admin/corpus/run-tests", {}, { timeout: 600000 });
+      // Timeout scales with samples × restaurants. Baseline pool has 10
+      // restaurants vs random pool's 5, so the timeout has to cover both
+      // the larger setup phase and the larger pytest invocations. Frontend
+      // adds a 60s buffer on top of the backend's ceiling so we surface
+      // backend errors before axios cancels. Prospect pool size is variable.
+      const nRestaurants = opts.pool === "baseline" ? 10 : opts.pool === "prospect" ? 10 : 5;
+      const timeoutMs = (60 * nRestaurants * opts.samples + 240) * 1000;
+      const resp = await api.post(
+        `/monitoring/admin/corpus/run-tests?samples=${opts.samples}&pool=${opts.pool}`,
+        {},
+        { timeout: timeoutMs },
+      );
       return resp.data;
     },
     onSuccess: () => {
@@ -728,32 +803,124 @@ export function CorpusGamePanel() {
             </CardTitle>
             <CardDescription>Run validation or QA tests on the corpus</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={() => validateMutation.mutate()}
-              disabled={validateMutation.isPending || (stats?.unvalidated ?? 0) === 0}
-              className="flex-1"
-            >
-              {validateMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <FlaskConical className="h-4 w-4 mr-2" />
-              )}
-              Validate ({stats?.unvalidated ?? 0})
-            </Button>
-            <Button
-              onClick={() => runTestsMutation.mutate()}
-              disabled={runTestsMutation.isPending || (stats?.validated ?? 0) < 5}
-              className="flex-1"
-            >
-              {runTestsMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4 mr-2" />
-              )}
-              Run QA Tests
-            </Button>
+          <CardContent className="flex flex-col gap-3">
+            {/* If the server reports a run is in progress (started by another
+                tab, a CLI invocation, or a previous click that survived a
+                page reload), show the holder so the user knows what's
+                running and roughly how long it's been alive. */}
+            {serverInProgress && !runTestsMutation.isPending && (
+              <div className="flex items-start gap-2 p-3 rounded-md bg-blue-500/5 border border-blue-500/20 text-xs">
+                <Loader2 className="h-4 w-4 text-blue-500 mt-0.5 shrink-0 animate-spin" />
+                <div className="text-blue-700">
+                  <strong>QA run in progress on the backend.</strong>{" "}
+                  {runStatus?.elapsed_seconds !== undefined && (
+                    <>
+                      Started ~{Math.floor(runStatus.elapsed_seconds / 60)}m
+                      {runStatus.elapsed_seconds % 60}s ago
+                      {runStatus.owner_id && (
+                        <span className="opacity-60">
+                          {" "}
+                          (owner {runStatus.owner_id})
+                        </span>
+                      )}
+                      . Wait for it to finish before starting another.
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                variant="outline"
+                onClick={() => validateMutation.mutate()}
+                disabled={
+                  validateMutation.isPending ||
+                  serverInProgress ||
+                  (stats?.unvalidated ?? 0) === 0
+                }
+                className="flex-1"
+              >
+                {validateMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FlaskConical className="h-4 w-4 mr-2" />
+                )}
+                Validate ({stats?.unvalidated ?? 0})
+              </Button>
+              <Button
+                onClick={() =>
+                  runTestsMutation.mutate({ samples: qaSamples, pool: qaPool })
+                }
+                disabled={
+                  runTestsMutation.isPending ||
+                  serverInProgress ||
+                  (stats?.validated ?? 0) < 5
+                }
+                className="flex-1"
+              >
+                {runTestsMutation.isPending || serverInProgress ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4 mr-2" />
+                )}
+                Run QA Tests
+                {qaPool === "baseline" && " · pool"}
+                {qaSamples > 1 && ` · ${qaSamples}×`}
+              </Button>
+            </div>
+            {/* Pillar 1 (F8) — sample count selector. Picks how many times
+                pytest re-runs against the same test data per QA invocation.
+                Higher = lower per-scenario stddev = cleaner fix attribution.
+                Default 1 keeps the historical fast path (~1 min). */}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground w-16">Sampling:</span>
+              {([1, 3, 5] as const).map((n) => (
+                <Button
+                  key={n}
+                  size="sm"
+                  variant={qaSamples === n ? "default" : "outline"}
+                  onClick={() => setQaSamples(n)}
+                  disabled={runTestsMutation.isPending || serverInProgress}
+                  className="h-7 px-3 text-[11px]"
+                >
+                  {n}×
+                </Button>
+              ))}
+              <span className="text-[10px] text-muted-foreground ml-1">
+                {qaSamples === 1 && "~1 min/restaurant — fast, noisy"}
+                {qaSamples === 3 && "~3 min/restaurant — variance-reduced"}
+                {qaSamples === 5 && "~5 min/restaurant — high-fidelity"}
+              </span>
+            </div>
+            {/* Phase 1C — restaurant selection mode. 'random' picks 5 random
+                validated entries (broad-baseline check, samples a different
+                slice of the corpus each run). 'baseline' uses the locked
+                10-restaurant pool from baseline_pool.json — same restaurants
+                every run, so before/after deltas isolate fix impact from
+                sampling lottery. */}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground w-16">Pool:</span>
+              {(["random", "baseline", "prospect"] as const).map((p) => (
+                <Button
+                  key={p}
+                  size="sm"
+                  variant={qaPool === p ? "default" : "outline"}
+                  onClick={() => setQaPool(p)}
+                  disabled={runTestsMutation.isPending || serverInProgress}
+                  className="h-7 px-3 text-[11px]"
+                >
+                  {p}
+                </Button>
+              ))}
+              <span className="text-[10px] text-muted-foreground ml-1">
+                {qaPool === "random" &&
+                  "5 random restaurants — broad-baseline check"}
+                {qaPool === "baseline" &&
+                  "10-restaurant locked pool — clean per-fix attribution"}
+                {qaPool === "prospect" &&
+                  "prospect pool — verify demos before client visits"}
+              </span>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QAReportsPanel } from "./qa-reports";
 import { CorpusGamePanel } from "./corpus-game";
+import { ProspectsPanel } from "./prospects";
 import {
   Select,
   SelectContent,
@@ -39,6 +40,7 @@ import {
   Trophy,
   FileBarChart,
   Gamepad2,
+  Briefcase,
 } from "lucide-react";
 import {
   AreaChart,
@@ -282,7 +284,7 @@ export default function ObservabilityPage() {
       </PageHeader>
 
       <Tabs defaultValue="costs" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="costs" className="flex items-center gap-1.5">
             <Activity className="h-3.5 w-3.5" />
             Costs
@@ -294,6 +296,10 @@ export default function ObservabilityPage() {
           <TabsTrigger value="corpus" className="flex items-center gap-1.5">
             <Gamepad2 className="h-3.5 w-3.5" />
             Corpus Game
+          </TabsTrigger>
+          <TabsTrigger value="prospects" className="flex items-center gap-1.5">
+            <Briefcase className="h-3.5 w-3.5" />
+            Prospects
           </TabsTrigger>
         </TabsList>
 
@@ -528,6 +534,10 @@ export default function ObservabilityPage() {
 
         <TabsContent value="corpus" className="space-y-6">
           <CorpusGamePanel />
+        </TabsContent>
+
+        <TabsContent value="prospects" className="space-y-6">
+          <ProspectsPanel />
         </TabsContent>
       </Tabs>
     </PageContainer>
