@@ -106,6 +106,29 @@
   30%           { transform: translateY(-3px); opacity: 1; }
 }
 
+/* Bot reading animation — Cadastro Mágico loading state */
+@keyframes br-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes br-halo {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.95; transform: scale(1.06); }
+}
+@keyframes br-pulse-dot {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(0.82); }
+}
+@keyframes br-scan {
+  0%, 100% { transform: translateX(0); }
+  45%      { transform: translateX(28px); }
+  55%      { transform: translateX(28px); }
+}
+@keyframes br-line-in {
+  from { transform: scaleX(0); opacity: 0.3; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
 /* Hero ambient drift — soft cyan orbs that wander across the hero */
 @keyframes hero-drift-1 {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }

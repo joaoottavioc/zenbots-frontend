@@ -145,7 +145,7 @@ describe('MyBotsPage', () => {
       }
     });
 
-    // Verify that if put was called, it does NOT contain the full bot spread
+    // Verify that if put was called, it only sends credential-clearing fields (not full bot spread)
     if (vi.mocked(api.put).mock.calls.length > 0) {
       const payload = vi.mocked(api.put).mock.calls[0][1] as Record<string, unknown>;
       expect(payload.whatsapp_token).toBe('');

@@ -46,10 +46,10 @@ export default function MyBotsPage() {
     },
   });
 
-  // 2. Toggle Status (Correção da cor do Toast aqui)
+  // 2. Toggle Status — send only is_open to avoid wiping other fields
   const toggleStatusMutation = useMutation({
-    mutationFn: async (bot: Bot) => {
-      return api.put(`/bots/${bot.id}`, bot);
+    mutationFn: async ({ id, is_open }: { id: number; is_open: boolean }) => {
+      return api.put(`/bots/${id}`, { is_open });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["myBots"] });
@@ -83,10 +83,7 @@ export default function MyBotsPage() {
   // 4. Disconnect Bot Mutation (Limpa as credenciais)
   const disconnectBotMutation = useMutation({
     mutationFn: async (bot: Bot) => {
-      // Only send the fields needed to clear credentials — never spread the full bot object
       return api.put(`/bots/${bot.id}`, {
-        restaurant_name: bot.restaurant_name,
-        is_open: bot.is_open,
         phone_number_id: "",
         whatsapp_token: ""
       });
@@ -107,10 +104,7 @@ export default function MyBotsPage() {
   };
 
   const handleToggleStatus = (id: number, newStatus: boolean) => {
-    const botToUpdate = bots?.find((b) => b.id === id);
-    if (!botToUpdate) return;
-    const updatedBot = { ...botToUpdate, is_open: newStatus };
-    toggleStatusMutation.mutate(updatedBot);
+    toggleStatusMutation.mutate({ id, is_open: newStatus });
   };
 
   return (

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { QARunControls } from "./qa-run-controls";
 import {
   Table,
   TableBody,
@@ -23,6 +24,9 @@ import {
   FileBarChart,
   History,
   AlertTriangle,
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   LineChart,
@@ -132,6 +136,116 @@ const SCENARIO_LABELS: Record<string, string> = {
   trap_clear: "Trap C",
   trap_unrelated_add: "Trap +",
   trap_finish: "Trap F",
+};
+
+// Plain-Portuguese descriptions for each scenario. Shown in tooltips on the
+// heatmap column headers and in the Scenario Guide card.
+const SCENARIO_DESCRIPTIONS: Record<string, { title: string; desc: string; example: string }> = {
+  add_single: {
+    title: "Adicionar um item",
+    desc: "Cliente pede UM produto. O bot deve colocar no carrinho com quantidade 1.",
+    example: "\"quero uma coca-cola\"",
+  },
+  add_multi: {
+    title: "Adicionar múltiplos itens",
+    desc: "Cliente pede 2+ produtos diferentes com quantidades variadas em uma única mensagem.",
+    example: "\"quero 2 hambúrgueres e uma coca\"",
+  },
+  digit_in_name: {
+    title: "Dígitos no nome do produto",
+    desc: "Testa se o bot não confunde números que fazem parte do nome (ex: \"pizza 4 queijos\") com quantidade.",
+    example: "\"quero uma pizza 4 queijos\" (não 4 pizzas)",
+  },
+  abbreviation: {
+    title: "Pedido por abreviação",
+    desc: "Cliente usa apelido/abreviação do produto em vez do nome completo.",
+    example: "\"manda uma brahma\" (para Cerveja Brahma 600ml)",
+  },
+  double_add: {
+    title: "Mesmo item duas vezes",
+    desc: "Cliente pede o mesmo produto em duas mensagens separadas. A quantidade deve somar (não duplicar linha).",
+    example: "\"quero uma coca\" → ... → \"manda mais uma\"",
+  },
+  continuation: {
+    title: "Continuação sem verbo",
+    desc: "Após adicionar algo, cliente continua a lista sem repetir \"quero\". O padrão mais comum em produção.",
+    example: "\"quero um hambúrguer\" → \"e uma coca\"",
+  },
+  remove: {
+    title: "Remover item",
+    desc: "Cliente pede para tirar um produto do carrinho pelo nome.",
+    example: "\"tira o hambúrguer\"",
+  },
+  add_remove: {
+    title: "Adicionar e depois remover",
+    desc: "Cliente adiciona um produto e em seguida remove-o. O carrinho deve ficar vazio no final.",
+    example: "\"quero uma coca\" → \"pode tirar a coca\"",
+  },
+  subset_remove: {
+    title: "Remover parte do carrinho",
+    desc: "Com múltiplos itens no carrinho, remover apenas UM deles sem afetar os outros.",
+    example: "Carrinho [A×2, B×1] → \"tira o B\" → [A×2]",
+  },
+  multi_remove: {
+    title: "Remover múltiplos itens",
+    desc: "Cliente remove 2+ produtos diferentes de uma vez, mantendo os restantes.",
+    example: "Carrinho [A, B, C] → \"tira o A e o B\" → [C]",
+  },
+  qty_reduction: {
+    title: "Redução de quantidade",
+    desc: "\"Deixa só N\" — muda a quantidade para um valor fixo (não subtrai). Guard F2.",
+    example: "Carrinho [Coca×3] → \"deixa só 1 coca\" → [Coca×1]",
+  },
+  unavailable: {
+    title: "Produto em falta",
+    desc: "Cliente pede produtos, alguns disponíveis e outros em falta. Bot deve adicionar disponíveis e avisar sobre faltantes.",
+    example: "\"quero X e Y\" (Y está em falta)",
+  },
+  multiturn_flow: {
+    title: "Fluxo multi-turno (9 passos)",
+    desc: "Conversa completa: saudação → sugestão → adicionar → continuar → pergunta → remover → finalizar → entrega → carrinho persiste.",
+    example: "Teste composto de 9 mensagens consecutivas",
+  },
+  suggestions: {
+    title: "Pedir sugestões",
+    desc: "\"O que tem de bom?\" — bot mostra lista numerada, NÃO adiciona nada ao carrinho.",
+    example: "\"o que vocês recomendam?\"",
+  },
+  trap_question: {
+    title: "Armadilha: pergunta com sugestões ativas",
+    desc: "Com sugestões visíveis, cliente pergunta sobre preço. Bot não pode confundir com seleção.",
+    example: "(sugestões mostradas) → \"quanto custa o X?\"",
+  },
+  trap_clear: {
+    title: "Armadilha: limpar com sugestões ativas",
+    desc: "Com sugestões visíveis, cliente pede para limpar carrinho. Guard F4.",
+    example: "(sugestões mostradas) → \"limpa tudo\"",
+  },
+  trap_unrelated_add: {
+    title: "Armadilha: adicionar item não listado",
+    desc: "Com sugestões visíveis, cliente pede um produto que NÃO está nas sugestões. Guard F5.",
+    example: "(sugestões: A, B, C) → \"quero um D\"",
+  },
+  trap_finish: {
+    title: "Armadilha: finalizar com sugestões ativas",
+    desc: "Com sugestões visíveis, cliente fala \"finalizar\" em gíria. Bot deve iniciar checkout. Guard F1.",
+    example: "(sugestões mostradas) → \"vamo finalizar\"",
+  },
+  question: {
+    title: "Pergunta sobre produto",
+    desc: "Cliente pergunta preço/descrição de um item. Bot responde, NÃO adiciona ao carrinho.",
+    example: "\"quanto custa o hambúrguer?\"",
+  },
+  checkout: {
+    title: "Proteção no checkout",
+    desc: "Verifica que o carrinho persiste durante o fluxo de checkout (endereço, pagamento, etc.).",
+    example: "Navegar pela máquina de estados do checkout",
+  },
+  greeting: {
+    title: "Saudação",
+    desc: "Cliente diz \"oi\", \"bom dia\". Bot responde amigável, sem modificar carrinho.",
+    example: "\"oi\", \"boa noite\"",
+  },
 };
 
 // Grouped by failure-mode family so the matrix reads left-to-right as
@@ -687,11 +801,21 @@ function Heatmap({ report }: { report: QAReport }) {
               <TableRow>
                 <TableHead className="min-w-[180px]">Restaurant</TableHead>
                 <TableHead className="text-center w-16">Cat.</TableHead>
-                {SCENARIO_ORDER.map((s) => (
-                  <TableHead key={s} className="text-center w-20 text-xs px-1">
-                    {SCENARIO_LABELS[s] ?? s}
-                  </TableHead>
-                ))}
+                {SCENARIO_ORDER.map((s) => {
+                  const info = SCENARIO_DESCRIPTIONS[s];
+                  const tooltip = info
+                    ? `${info.title}\n\n${info.desc}\n\nExemplo: ${info.example}`
+                    : s;
+                  return (
+                    <TableHead
+                      key={s}
+                      className="text-center w-20 text-xs px-1 cursor-help"
+                      title={tooltip}
+                    >
+                      {SCENARIO_LABELS[s] ?? s}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -726,6 +850,104 @@ function Heatmap({ report }: { report: QAReport }) {
           </Table>
         </div>
       </CardContent>
+    </Card>
+  );
+}
+
+// Groups for the Scenario Guide — mirrors SCENARIO_ORDER families
+const SCENARIO_GROUPS: { title: string; ids: string[] }[] = [
+  {
+    title: "Adicionar produtos",
+    ids: ["add_single", "add_multi", "digit_in_name", "abbreviation", "double_add"],
+  },
+  {
+    title: "Fluxo e remoção",
+    ids: [
+      "continuation", "remove", "add_remove", "subset_remove",
+      "multi_remove", "qty_reduction", "unavailable", "multiturn_flow",
+    ],
+  },
+  {
+    title: "Sugestões e armadilhas",
+    ids: [
+      "suggestions", "trap_question", "trap_clear",
+      "trap_unrelated_add", "trap_finish", "question",
+    ],
+  },
+  {
+    title: "Estado / Fáceis",
+    ids: ["checkout", "greeting"],
+  },
+];
+
+function ScenarioGuide() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-2 text-left w-full group"
+          aria-expanded={open}
+        >
+          {open ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+          <BookOpen className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-base font-heading">
+            Guia dos Cenários
+          </CardTitle>
+          <span className="text-xs text-muted-foreground ml-auto">
+            {open ? "Ocultar" : "O que cada coluna testa?"}
+          </span>
+        </button>
+      </CardHeader>
+      {open && (
+        <CardContent>
+          <div className="space-y-5">
+            {SCENARIO_GROUPS.map((group) => (
+              <div key={group.title}>
+                <h4 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-semibold">
+                  {group.title}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {group.ids.map((id) => {
+                    const info = SCENARIO_DESCRIPTIONS[id];
+                    if (!info) return null;
+                    return (
+                      <div
+                        key={id}
+                        className="border-l-2 border-l-muted pl-3 py-1"
+                      >
+                        <div className="flex items-baseline gap-2 mb-0.5">
+                          <Badge variant="outline" className="text-[10px] font-mono">
+                            {SCENARIO_LABELS[id] ?? id}
+                          </Badge>
+                          <span className="text-sm font-medium">{info.title}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-snug">
+                          {info.desc}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground/70 italic mt-1">
+                          {info.example}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-4 pt-3 border-t border-border">
+            <strong>Compreensão</strong> = média das colunas acima, exceto{" "}
+            <em>Checkout</em> e <em>Greet</em> (testes de estado, fáceis demais —
+            inflavam a métrica). As 3 gates de lançamento usam só a Compreensão.
+          </p>
+        </CardContent>
+      )}
     </Card>
   );
 }
@@ -782,20 +1004,26 @@ export function QAReportsPanel() {
 
   if (reports.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-16 text-center">
-          <FileBarChart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground font-medium">No QA test reports found</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Run QA tests from the Corpus Game tab to generate reports
-          </p>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <QARunControls />
+        <Card>
+          <CardContent className="py-16 text-center">
+            <FileBarChart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground font-medium">No QA test reports found</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Use the controls above to run your first QA test.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Run controls — moved here from the Corpus Game tab */}
+      <QARunControls />
+
       {/* Recent N-run aggregate (mean ± stddev) */}
       {allReports && allReports.length >= 2 && <StatsAggregate reports={allReports} />}
 
@@ -826,6 +1054,9 @@ export function QAReportsPanel() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Scenario Guide (collapsible) */}
+      <ScenarioGuide />
 
       {/* Selected report */}
       {reportLoading ? (

@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { BotForm } from "../bots/novo/bot-form"; // Importando seu formulário existente
+import { BotForm } from "../bots/novo/bot-form";
 import {
   Sheet,
   SheetContent,
@@ -11,6 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import type { Bot, BotFormValues } from "@/lib/types";
 
@@ -24,7 +25,16 @@ export function EditBotSheet({ bot, isOpen, onClose }: EditBotSheetProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // 1. Mutação de Atualização (PUT)
+  // Fetch full bot details (list endpoint may omit cep, schedule, etc.)
+  const { data: fullBot, isLoading: isLoadingBot } = useQuery<Bot>({
+    queryKey: ["bot", bot?.id],
+    queryFn: async () => {
+      const res = await api.get(`/bots/${bot!.id}`);
+      return res.data;
+    },
+    enabled: isOpen && !!bot,
+  });
+
   const updateBotMutation = useMutation({
     mutationFn: async ({ values, image }: { values: BotFormValues; image?: File }) => {
       const res = await api.put(`/bots/${bot!.id}`, values);
@@ -37,8 +47,9 @@ export function EditBotSheet({ bot, isOpen, onClose }: EditBotSheetProps) {
     },
     onSuccess: () => {
       toast({ title: "Bot atualizado!", description: "As configurações foram salvas." });
-      queryClient.invalidateQueries({ queryKey: ["myBots"] }); // Atualiza a lista no fundo
-      onClose(); // Fecha a gaveta
+      queryClient.invalidateQueries({ queryKey: ["myBots"] });
+      queryClient.invalidateQueries({ queryKey: ["bot", bot?.id] });
+      onClose();
     },
     onError: () => {
       toast({
@@ -48,6 +59,8 @@ export function EditBotSheet({ bot, isOpen, onClose }: EditBotSheetProps) {
       });
     },
   });
+
+  const botData = fullBot ?? bot;
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -59,16 +72,20 @@ export function EditBotSheet({ bot, isOpen, onClose }: EditBotSheetProps) {
           </SheetDescription>
         </SheetHeader>
 
-        {/* Renderizamos o BotForm apenas se houver um bot selecionado.
-            Passamos os dados atuais como 'initialData'.
-        */}
-        {bot && (
+        {bot && isLoadingBot ? (
+          <div className="space-y-6">
+            <Skeleton className="h-[200px] w-full rounded-lg" />
+            <Skeleton className="h-[150px] w-full rounded-lg" />
+            <Skeleton className="h-[150px] w-full rounded-lg" />
+          </div>
+        ) : botData ? (
           <BotForm
-            initialData={bot}
+            key={fullBot?.id}
+            initialData={botData}
             onSubmit={(values, image) => updateBotMutation.mutate({ values, image })}
             isPending={updateBotMutation.isPending}
           />
-        )}
+        ) : null}
       </SheetContent>
     </Sheet>
   );

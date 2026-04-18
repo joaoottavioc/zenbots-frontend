@@ -48,7 +48,7 @@ describe('BotCard', () => {
     renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByText('Pizzaria Teste')).toBeInTheDocument();
-    expect(screen.getByText('5511999999999')).toBeInTheDocument();
+    expect(screen.getByText('+55 (11) 99999-9999')).toBeInTheDocument();
   });
 
   it('does not show WhatsApp number when not available', () => {
@@ -56,7 +56,7 @@ describe('BotCard', () => {
     renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
     expect(screen.getByText('Pizzaria Teste')).toBeInTheDocument();
-    expect(screen.queryByText('5511999999999')).not.toBeInTheDocument();
+    expect(screen.queryByText('+55 (11) 99999-9999')).not.toBeInTheDocument();
   });
 
   it('shows connected status when phone_number_id is present', () => {

@@ -23,6 +23,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import ConnectWhatsappButton from "@/components/ui/connect-whatsapp-button";
+import { WhatsAppIcon } from "@/app/(portal)/pedidos/whatsapp-icon";
 import { cn } from "@/lib/utils"; 
 
 interface BotData {
@@ -40,6 +41,20 @@ interface BotCardProps {
   onToggleStatus: (id: number, currentStatus: boolean) => void;
   onDelete: (bot: BotData) => void;
   onDisconnect: (bot: BotData) => void;
+}
+
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  // Brazilian: 55 + 2-digit DDD + 9-digit mobile (or 8-digit landline)
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
+    const ddd = digits.slice(2, 4);
+    const number = digits.slice(4);
+    const formatted = number.length === 9
+      ? `${number.slice(0, 5)}-${number.slice(5)}`
+      : `${number.slice(0, 4)}-${number.slice(4)}`;
+    return `+55 (${ddd}) ${formatted}`;
+  }
+  return raw;
 }
 
 export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }: BotCardProps) {
@@ -134,11 +149,8 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
                       ? "bg-amber-500/20 text-amber-300 border-amber-400/30 backdrop-blur-sm"
                       : "bg-amber-50 text-amber-700 border-amber-200"
                 )}>
-                  <span className={cn(
-                    "flex h-1.5 w-1.5 rounded-full",
-                    isConnected ? "bg-emerald-500" : "bg-amber-400"
-                  )} />
-                  {isConnected ? "Conectado" : "Não Conectado"}
+                  <WhatsAppIcon className="h-3 w-3" />
+                  {isConnected ? "WhatsApp Conectado" : "WhatsApp Não Conectado"}
                 </span>
               </div>
             </div>
@@ -199,7 +211,7 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
                 : "text-slate-600 bg-white/50 border-slate-100/50"
             )}>
               <MessageCircle className={cn("h-4 w-4", hasImage ? "text-white/70" : "text-slate-400")} />
-              <span className="font-mono">{bot.whatsapp_number}</span>
+              <span className="font-mono">{formatPhone(bot.whatsapp_number!)}</span>
             </div>
           )}
 
