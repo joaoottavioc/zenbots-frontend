@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Play, Loader2 } from "lucide-react";
 import { BotReadingAnimation } from "@/components/ui/bot-reading-animation";
+import { SCENARIO_COUNT } from "./qa-scenarios";
 
 interface RunStatus {
   in_progress: boolean;
@@ -19,11 +20,6 @@ interface RunStatus {
 
 type Pool = "random" | "baseline" | "prospect";
 type Samples = 1 | 3 | 5;
-
-// Total distinct scenarios in the suite (mirrors SCENARIO_ORDER in qa-reports.tsx).
-// Used only for the "X of Y tests" denominator — not authoritative, so a drift of
-// ±1 scenario is cosmetic, not correctness.
-const SCENARIO_COUNT = 21;
 
 interface ParsedLog {
   percent: number | null;
@@ -118,70 +114,64 @@ function RunProgressPanel({
         : "Inicializando suíte...";
 
   return (
-    <div className="rounded-lg border border-cyan-500/25 bg-gradient-to-br from-cyan-50/60 to-blue-50/40 p-4">
-      <div className="flex items-start gap-4">
-        <div className="shrink-0 -my-2 -ml-2 hidden sm:block">
-          <BotReadingAnimation progress={pct} status="active" />
+    <div className="rounded-xl border border-slate-200/70 bg-white/60 backdrop-blur-sm p-5">
+      <div className="flex items-center gap-5">
+        <div className="shrink-0">
+          <BotReadingAnimation progress={pct} status="active" size={96} />
         </div>
         <div className="flex-1 min-w-0 space-y-3">
           <div className="flex items-baseline justify-between gap-3">
-            <div className="text-sm font-semibold text-slate-900">
+            <div className="text-sm font-semibold tracking-tight text-slate-900">
               QA run em andamento
             </div>
-            <div className="text-xs font-mono text-cyan-700 tabular-nums">
+            <div className="text-xs font-mono text-slate-500 tabular-nums">
               {Math.round(pct)}%
             </div>
           </div>
 
-          <div className="h-2 w-full bg-slate-200/60 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-[width] duration-500 ease-out"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-
-          <div className="text-xs text-slate-700 truncate" title={stageLabel}>
+          <div className="text-xs text-slate-600 truncate" title={stageLabel}>
             {stageLabel}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-            <Stat label="Decorrido" value={fmtDuration(elapsedSec)} />
-            <Stat
-              label="ETA"
-              value={etaSec > 1 ? `~${fmtDuration(etaSec)}` : "concluindo"}
-            />
-            <Stat
-              label="Testes"
-              value={`${completedTests}/${totalExpectedTests}`}
-            />
-            <Stat
-              label="Passou / Falhou"
-              value={
-                <span className="font-mono">
-                  <span className="text-emerald-600">{parsed.passed}</span>
-                  <span className="text-slate-400 mx-0.5">·</span>
-                  <span
-                    className={
-                      parsed.failed > 0 ? "text-red-600" : "text-slate-400"
-                    }
-                  >
-                    {parsed.failed}
-                  </span>
-                </span>
-              }
-            />
+          <div className="flex items-center gap-5 text-[11px] text-slate-500">
+            <span className="tabular-nums">
+              <span className="text-slate-400 mr-1">elapsed</span>
+              <span className="font-medium text-slate-700">{fmtDuration(elapsedSec)}</span>
+            </span>
+            <span className="tabular-nums">
+              <span className="text-slate-400 mr-1">eta</span>
+              <span className="font-medium text-slate-700">
+                {etaSec > 1 ? `~${fmtDuration(etaSec)}` : "concluindo"}
+              </span>
+            </span>
+            <span className="tabular-nums">
+              <span className="text-slate-400 mr-1">tests</span>
+              <span className="font-medium text-slate-700">
+                {completedTests}/{totalExpectedTests}
+              </span>
+            </span>
+            <span className="tabular-nums font-mono">
+              <span className="text-emerald-600">{parsed.passed}</span>
+              <span className="text-slate-300 mx-1">/</span>
+              <span className={parsed.failed > 0 ? "text-red-600" : "text-slate-400"}>
+                {parsed.failed}
+              </span>
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-cyan-500/15 text-[10px] text-slate-600">
-        <span className="font-mono">{pool}</span> · {samples}× sampling ·
-        fechando a aba o run continua no servidor
+      <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] text-slate-400">
+        <span className="font-mono text-slate-500">{pool}</span>
+        <span className="mx-1.5">·</span>
+        <span>{samples}× sampling</span>
+        <span className="mx-1.5">·</span>
+        <span>fechando a aba o run continua no servidor</span>
       </div>
 
       {logTail && logTail.trim().length > 0 && (
         <details className="mt-2 group">
-          <summary className="text-[11px] cursor-pointer text-cyan-700 hover:text-cyan-900 select-none list-none flex items-center gap-1">
+          <summary className="text-[11px] cursor-pointer text-slate-500 hover:text-slate-700 select-none list-none flex items-center gap-1">
             <span className="transition-transform group-open:rotate-90">›</span>
             Ver log (últimas linhas)
           </summary>
@@ -190,19 +180,6 @@ function RunProgressPanel({
           </pre>
         </details>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-muted-foreground uppercase tracking-wider text-[9px] mb-0.5">
-        {label}
-      </div>
-      <div className="font-semibold text-slate-900 text-sm tabular-nums">
-        {value}
-      </div>
     </div>
   );
 }
