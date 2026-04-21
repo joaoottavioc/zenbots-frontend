@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import type { User } from "@/lib/types";
+import { BillingUsageWidget } from "@/components/ui/billing-usage-widget";
 import {
   ShoppingBag,
   Package,
@@ -15,6 +16,7 @@ import {
   LifeBuoy,
   Bot,
   Activity,
+  Sparkles,
 } from "lucide-react";
 
 const routes = [
@@ -23,6 +25,7 @@ const routes = [
   { label: "Pedidos", icon: Package, href: "/pedidos", color: "text-pink-700" },
   { label: "Mais Vendidos", icon: BarChart3, href: "/analytics", color: "text-orange-700" },
   { label: "Integração Pix", icon: QrCode, href: "/pagamentos", color: "text-emerald-500" },
+  { label: "Plano & uso", icon: Sparkles, href: "/billing", color: "text-cyan-500" },
   { label: "Configurações", icon: Settings, href: "/settings" },
   { label: "Suporte", icon: LifeBuoy, href: "/suporte" },
 ];
@@ -49,8 +52,8 @@ export function Sidebar() {
         className="absolute top-0 left-3 right-3 h-px pointer-events-none"
         style={{ background: "linear-gradient(90deg, transparent 0%, #0e7490 30%, #06b6d4 50%, #0e7490 70%, transparent 100%)" }}
       />
-      <div className="px-3 pt-5 pb-2 flex-1 flex flex-col">
-        <div className="space-y-1">
+      <div className="pt-5 pb-2 flex-1 flex flex-col min-h-0">
+        <div className="space-y-1 px-3">
           {allRoutes.map((route) => (
             <Link
               key={route.href}
@@ -67,6 +70,10 @@ export function Sidebar() {
             </Link>
           ))}
         </div>
+
+        <div className="flex-1" />
+
+        <BillingUsageWidget />
       </div>
     </nav>
   );

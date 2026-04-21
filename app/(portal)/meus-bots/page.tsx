@@ -10,8 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { EmptyState } from "@/components/ui/empty-state";
-import { EditBotSheet } from "./edit-bot-sheet"; 
-import { BotCard } from "@/components/ui/bot-card"; 
+import { EditBotSheet } from "./edit-bot-sheet";
+import { BotCard } from "@/components/ui/bot-card";
+import { BillingUsageBanner } from "@/components/ui/billing-usage-banner";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import type { Bot } from "@/lib/types";
@@ -119,6 +120,8 @@ export default function MyBotsPage() {
           </Link>
         </Button>
       </PageHeader>
+
+      <BillingUsageBanner />
 
       {/* GRID DE CARDS */}
       {isLoading ? (
