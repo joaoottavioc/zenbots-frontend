@@ -17,6 +17,25 @@ interface LandingPlan {
 
 const plans: LandingPlan[] = [
   {
+    name: "Grátis",
+    price: "R$ 0",
+    period: "para sempre",
+    description:
+      "Valide seu atendimento com o ZenBotZ® sem cartão de crédito.",
+    features: [
+      "Chatbot WhatsApp completo",
+      "15 pedidos/mês grátis",
+      "R$ 1,39 por pedido excedente",
+      "PIX + Cadastro Mágico",
+      "1 bot",
+      "Mensagens assinadas pelo ZenBotZ®",
+    ],
+    cta: "Começar Grátis",
+    href: "https://app.zenbotz.com.br/cadastro",
+    accent: "slate",
+    footnote: "Sem cartão. Upgrade a qualquer momento.",
+  },
+  {
     name: "Founder Lifetime",
     price: "R$ 59,90",
     period: "/mês · para sempre",
@@ -72,25 +91,6 @@ const plans: LandingPlan[] = [
     cta: "Assinar Pro Mensal",
     href: "https://app.zenbotz.com.br/cadastro?plan=pro_monthly",
     accent: "cyan",
-  },
-  {
-    name: "Grátis",
-    price: "R$ 0",
-    period: "para sempre",
-    description:
-      "Valide seu atendimento com o ZenBotZ® sem cartão de crédito.",
-    features: [
-      "Chatbot WhatsApp completo",
-      "15 pedidos/mês grátis",
-      "R$ 1,39 por pedido excedente",
-      "PIX + Cadastro Mágico",
-      "1 bot",
-      "Mensagens assinadas pelo ZenBotZ®",
-    ],
-    cta: "Começar Grátis",
-    href: "https://app.zenbotz.com.br/cadastro",
-    accent: "slate",
-    footnote: "Sem cartão. Upgrade a qualquer momento.",
   },
 ];
 
