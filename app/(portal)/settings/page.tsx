@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from "@/components/ui/separator";
 import {
-  Check,
   Loader2,
   KeyRound,
   UserCircle,
@@ -28,7 +27,7 @@ import { isTrustedRedirectUrl } from '@/lib/url-validation';
 import { getSafeErrorMessage } from '@/lib/error-messages';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -38,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { PasswordReq } from "@/components/ui/password-req";
+import { PlanCard, type PlanAccent } from "@/components/ui/plan-card";
 import {
   Form,
   FormControl,
@@ -47,6 +47,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+import { formatBRL } from "@/lib/billing";
 import type { Plan } from '@/lib/types';
 
 // --- Tipos ---
@@ -63,42 +64,59 @@ interface SubscriptionStatus {
   plan_type?: string;
 }
 
-const PLAN_FEATURES: Record<string, string[]> = {
-  basic: ['Bot de Atendimento 24h', 'Cardápio Digital Simples'],
-  pro: ['Tudo do Básico', 'Leitura de Cardápio por Foto (IA)', 'Relatório de Mais Vendidos'],
+const FREE_FEATURES = [
+  "Chatbot WhatsApp completo",
+  "15 pedidos/mês grátis",
+  "R$ 1,39 por pedido excedente",
+  "PIX + Cadastro Mágico",
+  "1 bot",
+];
+
+const PRO_FEATURES = [
+  "Tudo do Grátis",
+  "Pedidos ilimitados (fair-use 5.000/mês)",
+  "Sem marca ZenBotZ® nas mensagens",
+  "Suporte por e-mail 24h",
+  "Dashboard de análise",
+];
+
+const FOUNDER_FEATURES = [
+  "Tudo do Pro",
+  "Preço de fundador: R$ 59,90/mês para sempre",
+  "Vaga garantida mesmo em aumentos futuros",
+];
+
+const PLAN_CATALOG: Record<string, {
+  accent: PlanAccent;
+  features: string[];
+  badge?: string;
+  highlight?: boolean;
+}> = {
+  free: { accent: "slate", features: FREE_FEATURES },
+  basic: { accent: "slate", features: FREE_FEATURES },
+  pro: { accent: "cyan", features: PRO_FEATURES, badge: "Recomendado", highlight: true },
+  pro_monthly: { accent: "cyan", features: PRO_FEATURES },
+  pro_annual: { accent: "cyan", features: PRO_FEATURES, badge: "Melhor valor", highlight: true },
+  founder: { accent: "amber", features: FOUNDER_FEATURES, badge: "Edição limitada" },
 };
 
-const PLAN_STYLES: Record<string, { border: string; activeBorder: string; activeBg: string; badgeBg: string; badgeText: string; badgeBorder: string; checkColor: string; buttonClass: string; activeButtonClass: string; titleColor: string; recommended: boolean }> = {
-  basic: {
-    border: 'hover:border-slate-300 border-slate-100',
-    activeBorder: 'border-emerald-500 bg-emerald-50/10',
-    activeBg: 'bg-emerald-500',
-    badgeBg: 'bg-emerald-100',
-    badgeText: 'text-emerald-800',
-    badgeBorder: 'border-emerald-200',
-    checkColor: 'text-emerald-500',
-    buttonClass: '',
-    activeButtonClass: '',
-    titleColor: '',
-    recommended: false,
-  },
-  pro: {
-    border: 'border-sky-100 shadow-sm hover:shadow-md',
-    activeBorder: 'border-sky-500 bg-sky-50/10',
-    activeBg: 'bg-sky-500',
-    badgeBg: 'bg-sky-100',
-    badgeText: 'text-sky-700',
-    badgeBorder: 'border-sky-200',
-    checkColor: 'text-sky-500',
-    buttonClass: 'bg-sky-500 hover:bg-sky-600 text-white',
-    activeButtonClass: 'bg-sky-100 text-sky-700 hover:bg-sky-200 border-none',
-    titleColor: 'text-sky-700',
-    recommended: true,
-  },
-};
+function priceSublabelFor(plan: Plan): string {
+  if (plan.frequency === 12) {
+    const monthly = plan.price / 12;
+    return `cobrado à vista · ${formatBRL(monthly)}/mês`;
+  }
+  if (plan.price === 0) return "grátis para sempre";
+  return "por mês";
+}
 
-const formatPrice = (price: number, currency: string) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(price);
+const PLAN_ORDER: Record<string, number> = {
+  founder: 0,
+  pro_annual: 1,
+  pro_monthly: 2,
+  pro: 2,
+  basic: 3,
+  free: 4,
+};
 
 const changePasswordSchema = z.object({
   current: z.string().min(1, { message: "Senha atual é obrigatória." }),
@@ -348,7 +366,7 @@ export default function ConfiguracoesPage() {
                                             Status
                                             {subStatus?.is_active ? (
                                                 <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100">
-                                                    Ativo - {subStatus.plan_type === 'pro' ? 'PRO' : 'Básico'}
+                                                    Ativo · {plans.find((p) => p.key === subStatus.plan_type)?.title ?? subStatus.plan_type}
                                                 </Badge>
                                             ) : (
                                                 <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">Inativo / Gratuito</Badge>
@@ -371,36 +389,30 @@ export default function ConfiguracoesPage() {
                         ) : plans.length === 0 ? (
                             <div className="text-center py-10 text-sm text-muted-foreground">Nenhum plano disponível</div>
                         ) : (
-                        <div className="grid md:grid-cols-2 gap-6 pb-10">
-                            {[...plans].sort((a, b) => (a.key === 'basic' ? -1 : b.key === 'basic' ? 1 : 0)).map((plan) => {
-                                const style = PLAN_STYLES[plan.key] || PLAN_STYLES.basic;
-                                const features = PLAN_FEATURES[plan.key] || [];
+                        <div className="grid gap-6 pb-10 md:grid-cols-2 lg:grid-cols-3">
+                            {[...plans]
+                              .sort((a, b) => (PLAN_ORDER[a.key] ?? 99) - (PLAN_ORDER[b.key] ?? 99))
+                              .map((plan) => {
+                                const catalog = PLAN_CATALOG[plan.key] ?? { accent: "slate" as PlanAccent, features: [] };
                                 const isCurrent = isCurrentPlan(plan.key);
-
+                                const ctaTitle = plan.title.replace(/^ZenBotZ[®\s]+/i, "").trim();
                                 return (
-                                    <Card key={plan.id} className={`flex flex-col border-2 transition-all relative ${isCurrent ? style.activeBorder : style.border}`}>
-                                        {isCurrent && (<div className={`absolute -top-3 left-1/2 -translate-x-1/2 ${style.activeBg} text-white text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wide shadow-sm`}>Plano Atual</div>)}
-                                        {!isCurrent && style.recommended && (<div className={`absolute top-0 right-0 ${style.activeBg} text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold uppercase tracking-wide`}>Recomendado</div>)}
-                                        <CardHeader><CardTitle className={`text-xl ${style.titleColor}`}>{plan.title}</CardTitle><CardDescription>{plan.description}</CardDescription></CardHeader>
-                                        <CardContent className="space-y-4 flex-1">
-                                            <div className="text-3xl font-bold">{formatPrice(plan.price, plan.currency)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
-                                            <ul className="space-y-2 text-sm text-slate-600">
-                                                {features.map((feature) => (
-                                                    <li key={feature} className="flex gap-2"><Check className={`h-4 w-4 ${style.checkColor}`}/> {feature.startsWith('Tudo') ? <strong>{feature}</strong> : feature}</li>
-                                                ))}
-                                            </ul>
-                                        </CardContent>
-                                        <CardFooter>
-                                            <Button
-                                                onClick={() => handleSubscribe(plan.key)}
-                                                disabled={!!processingPlan || isCurrent}
-                                                variant={style.buttonClass ? undefined : "outline"}
-                                                className={`w-full ${isCurrent ? style.activeButtonClass : style.buttonClass}`}
-                                            >
-                                                {isCurrent ? "Plano Atual" : processingPlan === plan.key ? <Loader2 className="animate-spin h-4 w-4"/> : `Assinar ${plan.title.replace('ZenBotZ ', '')}`}
-                                            </Button>
-                                        </CardFooter>
-                                    </Card>
+                                    <PlanCard
+                                      key={plan.id}
+                                      title={plan.title}
+                                      description={plan.description}
+                                      priceLabel={formatBRL(plan.price)}
+                                      priceSublabel={priceSublabelFor(plan)}
+                                      features={catalog.features}
+                                      accent={catalog.accent}
+                                      badge={catalog.badge}
+                                      highlight={catalog.highlight}
+                                      isCurrent={isCurrent}
+                                      ctaLabel={`Assinar ${ctaTitle || plan.title}`}
+                                      ctaLoading={processingPlan === plan.key}
+                                      ctaDisabled={!!processingPlan && processingPlan !== plan.key}
+                                      onSelect={() => handleSubscribe(plan.key)}
+                                    />
                                 );
                             })}
                         </div>
