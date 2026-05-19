@@ -30,6 +30,13 @@ export interface Bot {
   default_pickup_time_minutes?: number | null;
   owner_notification_phone?: string | null;
   cancellation_window_minutes?: number | null;
+  // Web widget channel (plan/in_browser_bots.md). Set by the dashboard
+  // via PATCH /bots/{id}; auto-populated for new bots.
+  slug?: string;
+  whatsapp_enabled?: boolean;
+  web_widget_enabled?: boolean;
+  web_widget_allowed_origins?: string[];
+  web_widget_offline_message?: string | null;
 }
 
 export interface BotFormValues {

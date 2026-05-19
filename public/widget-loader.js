@@ -4,10 +4,15 @@
  * Paste this snippet on your restaurant's website:
  *
  *   <script src="https://widget.zenbotz.com.br/widget-loader.js"
- *           data-bot-id="123"
+ *           data-slug="sabor-da-serra-zenbot"
  *           data-position="br"
  *           data-primary-color="#00B14F"
  *           defer></script>
+ *
+ * The slug form is preferred — the iframe lands at /sabor-da-serra-zenbot
+ * which the customer can also share directly. The older data-bot-id form
+ * (e.g. data-bot-id="123") keeps working for embeds already pasted on
+ * customer sites — the iframe falls back to /widget?bot_id=...
  *
  * Reads its config from data-* attributes on the <script> tag itself —
  * the recommended pattern from Intercom/Crisp/HelpScout. Creates:
@@ -55,9 +60,12 @@
     return;
   }
 
+  // Prefer data-slug (pretty URL); fall back to data-bot-id for older
+  // embeds that predate the slug rollout.
+  var SLUG = script.getAttribute("data-slug");
   var BOT_ID = script.getAttribute("data-bot-id");
-  if (!BOT_ID) {
-    console.warn("[ZenBotZ] data-bot-id missing on script tag");
+  if (!SLUG && !BOT_ID) {
+    console.warn("[ZenBotZ] data-slug or data-bot-id required on script tag");
     return;
   }
 
@@ -145,10 +153,16 @@
 
   function createIframe() {
     var iframe = document.createElement("iframe");
+    // Build the iframe URL. Both forms point at /widget; the slug case
+    // uses ?slug= because the frontend is statically exported (no
+    // dynamic Next.js routes). A future CloudFront rewrite can map
+    // /<slug> → /widget?slug=<slug> for prettier customer URLs.
+    var path = SLUG
+      ? "/widget?slug=" + encodeURIComponent(SLUG)
+      : "/widget?bot_id=" + encodeURIComponent(BOT_ID);
     iframe.src =
       origin +
-      "/widget?bot_id=" +
-      encodeURIComponent(BOT_ID) +
+      path +
       "&primary_color=" +
       encodeURIComponent(PRIMARY_COLOR);
     iframe.style.cssText =

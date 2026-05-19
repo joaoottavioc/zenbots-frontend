@@ -1,15 +1,16 @@
 "use client";
 
 import React from "react";
-import Image from "next/image"; 
-import { 
-  MessageCircle, 
-  Settings, 
-  MoreVertical, 
+import Image from "next/image";
+import {
+  MessageCircle,
+  Settings,
+  MoreVertical,
   Copy,
   ExternalLink,
+  Globe,
   Trash2,
-  Unplug 
+  Unplug
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +34,10 @@ interface BotData {
   is_open?: boolean;
   phone_number_id?: string;
   restaurant_image_url?: string | null;
+  // Web widget fields (plan/in_browser_bots.md §4). Optional so the
+  // BotCard stays usable from tests/storybook with minimal fixture data.
+  web_widget_enabled?: boolean;
+  slug?: string;
 }
 
 interface BotCardProps {
@@ -41,6 +46,10 @@ interface BotCardProps {
   onToggleStatus: (id: number, currentStatus: boolean) => void;
   onDelete: (bot: BotData) => void;
   onDisconnect: (bot: BotData) => void;
+  /** Optional — when provided, the dropdown menu shows
+   *  "Atendimento Web". Tests/storybook can omit this to keep the
+   *  card surface narrow. */
+  onConfigureWebWidget?: (bot: BotData) => void;
 }
 
 function formatPhone(raw: string): string {
@@ -57,7 +66,14 @@ function formatPhone(raw: string): string {
   return raw;
 }
 
-export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }: BotCardProps) {
+export function BotCard({
+  bot,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  onDisconnect,
+  onConfigureWebWidget,
+}: BotCardProps) {
   const { toast } = useToast();
   
   const isConnected = !!bot.phone_number_id && bot.phone_number_id.trim() !== "";
@@ -177,6 +193,14 @@ export function BotCard({ bot, onEdit, onToggleStatus, onDelete, onDisconnect }:
               <DropdownMenuItem onClick={() => onEdit(bot)}>
                 <Settings className="mr-2 h-4 w-4" /> Configurações
               </DropdownMenuItem>
+              {onConfigureWebWidget && (
+                <DropdownMenuItem onClick={() => onConfigureWebWidget(bot)}>
+                  <Globe className="mr-2 h-4 w-4" /> Atendimento Web
+                  {bot.web_widget_enabled && (
+                    <span className="ml-auto inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  )}
+                </DropdownMenuItem>
+              )}
               {bot.whatsapp_number && (
                 <DropdownMenuItem onClick={() => copyToClipboard(bot.whatsapp_number!)}>
                   <Copy className="mr-2 h-4 w-4" /> Copiar Número

@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { EmptyState } from "@/components/ui/empty-state";
 import { EditBotSheet } from "./edit-bot-sheet";
+import { WebWidgetDialog } from "./web-widget-dialog";
 import { BotCard } from "@/components/ui/bot-card";
 import { BillingUsageBanner } from "@/components/ui/billing-usage-banner";
 import Link from "next/link";
@@ -37,6 +38,9 @@ export default function MyBotsPage() {
   // Estado para controlar qual bot será deletado
   const [botToDelete, setBotToDelete] = useState<Bot | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  // Atendimento Web dialog state (Phase 4 — plan/in_browser_bots.md)
+  const [webWidgetBot, setWebWidgetBot] = useState<Bot | null>(null);
 
   // 1. Fetch Bots
   const { data: bots, isLoading, isError } = useQuery<Bot[]>({
@@ -159,6 +163,7 @@ export default function MyBotsPage() {
                 onToggleStatus={handleToggleStatus}
                 onDelete={(b) => setBotToDelete(b as Bot)}
                 onDisconnect={(b) => disconnectBotMutation.mutate(b as Bot)}
+                onConfigureWebWidget={(b) => setWebWidgetBot(b as Bot)}
             />
           ))}
         </div>
@@ -169,6 +174,15 @@ export default function MyBotsPage() {
         bot={selectedBot}
         isOpen={isEditSheetOpen}
         onClose={() => setIsEditSheetOpen(false)}
+      />
+
+      {/* ATENDIMENTO WEB */}
+      <WebWidgetDialog
+        bot={webWidgetBot}
+        open={!!webWidgetBot}
+        onOpenChange={(open) => {
+          if (!open) setWebWidgetBot(null);
+        }}
       />
 
       {/* DIALOG DE CONFIRMAÇÃO DE EXCLUSÃO */}
