@@ -60,6 +60,14 @@ export function Footer() {
                   Como Funciona
                 </a>
               </li>
+              <li>
+                <Link
+                  href="/eval"
+                  className="text-sm text-zinc-500 transition-colors hover:text-cyan-400"
+                >
+                  Compreensão (eval)
+                </Link>
+              </li>
             </ul>
           </div>
 
