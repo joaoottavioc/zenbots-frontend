@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { Button } from "@/components/ui/button"; 
-import { Loader2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Loader2, Clock } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getSafeErrorMessage } from "@/lib/error-messages";
+import { isWhatsappSignupEnabled } from "@/lib/feature-flags";
 
 // Tipagem global para o SDK do Facebook
 interface FBLoginResponse {
@@ -47,6 +48,23 @@ interface ConnectWhatsappButtonProps {
 }
 
 export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonProps) {
+  // WhatsApp signup deferred — render a disabled "Em breve" state instead
+  // of loading the FB SDK. The backend `/bots/whatsapp/complete-onboarding`
+  // endpoint also 503s in this mode (app/feature_flags.py), so this is the
+  // UX-level gate paired with the security-level gate.
+  //
+  // Implemented at the outer boundary (not inside the inner component)
+  // because React hooks rules require the same hooks to be called on
+  // every render. Switching the gate without unmounting would violate
+  // that. The flag is build-time-constant via NEXT_PUBLIC env, so this
+  // conditional itself is stable across renders.
+  if (!isWhatsappSignupEnabled()) {
+    return <WhatsappSoonButton />;
+  }
+  return <ConnectWhatsappButtonLive botId={botId} />;
+}
+
+function ConnectWhatsappButtonLive({ botId }: ConnectWhatsappButtonProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
@@ -222,6 +240,30 @@ export default function ConnectWhatsappButton({ botId }: ConnectWhatsappButtonPr
         </svg>
       )}
       {isLoading ? "Conectando..." : "Conectar WhatsApp"}
+    </Button>
+  );
+}
+
+/**
+ * Disabled "Em breve" state shown while WhatsApp Embedded Signup is
+ * gated by `NEXT_PUBLIC_WHATSAPP_SIGNUP_ENABLED=false`. Doesn't load the
+ * FB SDK, doesn't expose any onboarding handler — purely visual.
+ *
+ * Pairs with the backend 503 gate at `POST /bots/whatsapp/complete-onboarding`
+ * so a curious user inspecting the dashboard understands why the button
+ * is disabled and what the alternative is (the web widget).
+ */
+function WhatsappSoonButton() {
+  return (
+    <Button
+      type="button"
+      disabled
+      aria-label="Conexão com WhatsApp em breve"
+      title="Conexão com WhatsApp está em revisão pela Meta. Use o Atendimento Web por enquanto."
+      className="w-full bg-slate-200 text-slate-600 font-medium h-9 text-xs cursor-not-allowed"
+    >
+      <Clock className="mr-2 h-3.5 w-3.5" />
+      WhatsApp em breve
     </Button>
   );
 }

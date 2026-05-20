@@ -26,7 +26,7 @@ export function Hero() {
         <h1 className="font-heading text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-[4.25rem] lg:leading-[1.05]">
           Seu restaurante atendendo
           <br className="hidden sm:block" />{" "}
-          no WhatsApp{" "}
+          no site{" "}
           <span className="relative inline-block">
             <span className="relative z-10 text-amber-700">24 horas por dia</span>
             <span
@@ -45,10 +45,10 @@ export function Hero() {
         {/* CTAs */}
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <a
-            href="https://app.zenbotz.com.br/cadastro"
-            className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-900/20"
+            href="/pizzaria-do-ze"
+            className="group inline-flex items-center gap-2 rounded-xl bg-amber-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-amber-600/20 transition-all hover:bg-amber-700 hover:shadow-xl hover:shadow-amber-600/25"
           >
-            Criar meu bot grátis
+            Experimente o demo agora
             <svg
               className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
               fill="none"
@@ -64,6 +64,12 @@ export function Hero() {
             </svg>
           </a>
           <a
+            href="https://app.zenbotz.com.br/cadastro"
+            className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-900/20"
+          >
+            Criar meu bot grátis
+          </a>
+          <a
             href="#como-funciona"
             className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition-all hover:border-slate-400 hover:bg-slate-50"
           >
@@ -71,9 +77,11 @@ export function Hero() {
           </a>
         </div>
 
-        {/* Microcopy */}
+        {/* Microcopy — flags WhatsApp deferral so visitors understand
+            the dashboard's "Em breve" state and the demo link goes to
+            the live web widget channel. */}
         <p className="mt-4 text-xs text-slate-500">
-          Sem cartão de crédito · Configuração em minutos
+          Atendimento Web disponível agora · WhatsApp em breve · Sem cartão de crédito
         </p>
 
         {/* Phone mockup with floating dish cards */}

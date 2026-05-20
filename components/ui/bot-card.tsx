@@ -25,7 +25,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import ConnectWhatsappButton from "@/components/ui/connect-whatsapp-button";
 import { WhatsAppIcon } from "@/app/(portal)/pedidos/whatsapp-icon";
-import { cn } from "@/lib/utils"; 
+import { cn } from "@/lib/utils";
+import { isWhatsappSignupEnabled } from "@/lib/feature-flags";
 
 interface BotData {
   id: number;
@@ -154,20 +155,31 @@ export function BotCard({
                 {bot.restaurant_name}
               </h3>
 
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <span className={cn(
-                  "inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-md border uppercase tracking-wide",
-                  isConnected
-                    ? hasImage
-                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/30 backdrop-blur-sm"
-                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : hasImage
-                      ? "bg-amber-500/20 text-amber-300 border-amber-400/30 backdrop-blur-sm"
-                      : "bg-amber-50 text-amber-700 border-amber-200"
-                )}>
-                  <WhatsAppIcon className="h-3 w-3" />
-                  {isConnected ? "WhatsApp Conectado" : "WhatsApp Não Conectado"}
-                </span>
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                {/* Channel chips — web widget status is primary; WhatsApp
+                    becomes secondary while signup is deferred. */}
+                <ChannelChip
+                  active={!!bot.web_widget_enabled}
+                  hasImage={hasImage}
+                  label={bot.web_widget_enabled ? "Web Ativo" : "Web Inativo"}
+                  icon={<Globe className="h-3 w-3" />}
+                />
+                {isWhatsappSignupEnabled() ? (
+                  <ChannelChip
+                    active={isConnected}
+                    hasImage={hasImage}
+                    label={isConnected ? "WhatsApp Conectado" : "WhatsApp Não Conectado"}
+                    icon={<WhatsAppIcon className="h-3 w-3" />}
+                  />
+                ) : (
+                  <ChannelChip
+                    active={false}
+                    hasImage={hasImage}
+                    label="WhatsApp em breve"
+                    icon={<WhatsAppIcon className="h-3 w-3" />}
+                    muted
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -300,7 +312,7 @@ export function BotCard({
            </div>
         )}
 
-        {bot.whatsapp_number && (
+        {bot.whatsapp_number && isWhatsappSignupEnabled() && (
           <Button
               variant="brand"
               className="flex-1 text-xs h-9"
@@ -311,5 +323,40 @@ export function BotCard({
         )}
       </div>
     </div>
+  );
+}
+
+interface ChannelChipProps {
+  active: boolean;
+  hasImage: boolean;
+  label: string;
+  icon: React.ReactNode;
+  /** When true, render in a neutral gray regardless of `active` — used
+   *  for the "WhatsApp em breve" state where activity is intentionally
+   *  ambiguous (no real connection possible right now). */
+  muted?: boolean;
+}
+
+function ChannelChip({ active, hasImage, label, icon, muted = false }: ChannelChipProps) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-md border uppercase tracking-wide",
+        muted
+          ? hasImage
+            ? "bg-slate-500/20 text-slate-200 border-slate-400/30 backdrop-blur-sm"
+            : "bg-slate-100 text-slate-600 border-slate-200"
+          : active
+            ? hasImage
+              ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/30 backdrop-blur-sm"
+              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+            : hasImage
+              ? "bg-amber-500/20 text-amber-300 border-amber-400/30 backdrop-blur-sm"
+              : "bg-amber-50 text-amber-700 border-amber-200",
+      )}
+    >
+      {icon}
+      {label}
+    </span>
   );
 }

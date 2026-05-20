@@ -25,6 +25,13 @@ vi.mock('@/components/ui/connect-whatsapp-button', () => ({
   ),
 }));
 
+// Default tests assume WhatsApp signup is open — overridable per-test
+// via `vi.mocked(isWhatsappSignupEnabled).mockReturnValue(false)` for the
+// "Em breve" deferred-state cases.
+vi.mock('@/lib/feature-flags', () => ({
+  isWhatsappSignupEnabled: vi.fn(() => true),
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/',
@@ -63,14 +70,27 @@ describe('BotCard', () => {
     const bot = createMockBot({ phone_number_id: 'phone_123' });
     renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
-    expect(screen.getByText(/conectado/i)).toBeInTheDocument();
+    // Match the WhatsApp chip specifically — there is also a "Web Ativo/Inativo"
+    // chip whose label can contain "conectado"-like substrings depending on
+    // future copy changes.
+    expect(screen.getByText(/WhatsApp Conectado/i)).toBeInTheDocument();
   });
 
   it('shows not connected when phone_number_id is empty', () => {
     const bot = createMockBot({ phone_number_id: '' });
     renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
 
-    expect(screen.getByText(/não conectado/i)).toBeInTheDocument();
+    expect(screen.getByText(/WhatsApp Não Conectado/i)).toBeInTheDocument();
+  });
+
+  it('shows "WhatsApp em breve" chip when signup flag is closed', async () => {
+    const flags = await import('@/lib/feature-flags');
+    vi.mocked(flags.isWhatsappSignupEnabled).mockReturnValueOnce(false);
+    const bot = createMockBot({ phone_number_id: 'phone_123' });
+    renderWithProviders(<BotCard bot={bot as Bot} {...defaultProps} />);
+
+    expect(screen.getByText(/WhatsApp em breve/i)).toBeInTheDocument();
+    expect(screen.queryByText(/WhatsApp Conectado/i)).not.toBeInTheDocument();
   });
 
   it('shows "Aberta" when bot is open', () => {
