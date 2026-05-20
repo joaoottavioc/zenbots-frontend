@@ -175,6 +175,11 @@
       "sandbox",
       "allow-scripts allow-same-origin allow-forms allow-popups",
     );
+    // Permissions policy — voice-note recording (WW-3) requires the
+    // microphone to be explicitly allowed for cross-origin iframes.
+    // Without this, getUserMedia({audio:true}) inside the iframe is
+    // blocked by the browser even after the user grants permission.
+    iframe.setAttribute("allow", "microphone");
     return iframe;
   }
 

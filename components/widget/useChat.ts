@@ -25,14 +25,17 @@ import {
   ChatApiError,
   fetchChatSession,
   generateMessageId,
+  postChatAudio,
   postChatMessage,
 } from "./api";
 import type {
   ChatBubble,
   ChatSessionResponse,
   ConnectionStatus,
+  DeliveryStatus,
   SSEEvent,
 } from "./types";
+import { DELIVERY_RANK } from "./types";
 
 const SESSION_STORAGE_KEY = (botId: number) => `zenbotz:widget:session:${botId}`;
 
@@ -52,6 +55,10 @@ interface UseChatReturn {
    *  disabled, channel down). Surface to the user as an inline banner. */
   fatalError: string | null;
   sendMessage: (text: string) => Promise<void>;
+  /** Upload a recorded audio blob — server transcribes and enqueues a
+   *  normal chat message. Mirrors sendMessage's bubble flow but the
+   *  initial text is the placeholder "🎤 …" until the transcript lands. */
+  sendAudio: (blob: Blob) => Promise<void>;
   /** Manually close the SSE connection — used by the iframe page when
    *  the user dismisses the widget. */
   disconnect: () => void;
@@ -72,7 +79,26 @@ export function useChat({ botId }: UseChatOptions): UseChatReturn {
 
   // ── SSE lifecycle ──────────────────────────────────────────────────
 
-  const dispatchEvent = useCallback((event: SSEEvent) => {
+  // Advance a user bubble's status only if the new state outranks the
+  // current one. Out-of-order receipts (e.g., "delivered" arriving after
+  // "read" because of PubSub ordering) must not regress the tick UI.
+  const advanceStatus = useCallback(
+    (messageId: string, nextStatus: DeliveryStatus) => {
+      setMessages((m) =>
+        m.map((b) => {
+          if (b.id !== messageId || b.role !== "user") return b;
+          const currentRank = b.status ? DELIVERY_RANK[b.status] : -1;
+          const nextRank = DELIVERY_RANK[nextStatus];
+          if (nextRank <= currentRank) return b;
+          return { ...b, status: nextStatus };
+        }),
+      );
+    },
+    [],
+  );
+
+  const dispatchEvent = useCallback(
+    (event: SSEEvent) => {
     switch (event.type) {
       case "ping":
         // Server keep-alive — no UI change.
@@ -80,6 +106,16 @@ export function useChat({ botId }: UseChatOptions): UseChatReturn {
       case "typing":
         setIsTyping(event.payload.on);
         return;
+      case "receipt": {
+        // Backend publishes "delivered" and "read". "sent" is set
+        // optimistically below when POST resolves. "failed" is set on
+        // the catch branch.
+        const status = event.payload.status as DeliveryStatus;
+        if (status in DELIVERY_RANK) {
+          advanceStatus(event.payload.message_id, status);
+        }
+        return;
+      }
       case "message": {
         const bubble: ChatBubble = {
           id: generateMessageId(),
@@ -115,7 +151,9 @@ export function useChat({ botId }: UseChatOptions): UseChatReturn {
         return;
       }
     }
-  }, []);
+    },
+    [advanceStatus],
+  );
 
   // openStream and scheduleReconnect call each other on reconnect.
   // Break the circular reference with a ref that points at the latest
@@ -261,6 +299,7 @@ export function useChat({ botId }: UseChatOptions): UseChatReturn {
           id: messageId,
           role: "user",
           text: trimmed,
+          status: "sending",
           createdAt: Date.now(),
         },
       ]);
@@ -271,7 +310,22 @@ export function useChat({ botId }: UseChatOptions): UseChatReturn {
           message_id: messageId,
           text: trimmed,
         });
+        // POST returned 200 → message is at least sent. Worker will
+        // publish "delivered" + "read" receipts shortly via SSE; the
+        // dispatch path advances the tick monotonically from here.
+        advanceStatus(messageId, "sent");
       } catch (err: unknown) {
+        // Mark the bubble as failed regardless of the error shape — the
+        // user-facing feedback below still appends a separate bot bubble
+        // explaining what to do. The red "!" trailing the bubble is the
+        // primary signal that this specific message didn't go through.
+        setMessages((m) =>
+          m.map((b) =>
+            b.id === messageId && b.role === "user"
+              ? { ...b, status: "failed" }
+              : b,
+          ),
+        );
         if (err instanceof ChatApiError && err.status === 429) {
           // Per-IP rate limit. Don't show as a fatal — the user can
           // try again in a few seconds. Append a friendly note.
@@ -297,7 +351,82 @@ export function useChat({ botId }: UseChatOptions): UseChatReturn {
         }
       }
     },
-    [botId],
+    [botId, advanceStatus],
+  );
+
+  const sendAudio = useCallback(
+    async (blob: Blob) => {
+      const sid = sessionIdRef.current;
+      if (!sid || !blob || blob.size === 0) return;
+
+      const messageId = generateMessageId();
+      // Optimistic bubble with a mic-prefixed placeholder. We patch the
+      // text to the transcript when the upload returns, then advance the
+      // tick state on each receipt event (same as a typed message).
+      setMessages((m) => [
+        ...m,
+        {
+          id: messageId,
+          role: "user",
+          text: "🎤 transcrevendo…",
+          status: "sending",
+          createdAt: Date.now(),
+        },
+      ]);
+
+      try {
+        const res = await postChatAudio(botId, {
+          sessionId: sid,
+          messageId,
+          blob,
+        });
+        // Replace the placeholder text with the actual transcript so the
+        // user can confirm what the system heard.
+        setMessages((m) =>
+          m.map((b) =>
+            b.id === messageId && b.role === "user"
+              ? { ...b, text: res.transcript ? `🎤 ${res.transcript}` : b.text }
+              : b,
+          ),
+        );
+        advanceStatus(messageId, "sent");
+      } catch (err: unknown) {
+        setMessages((m) =>
+          m.map((b) =>
+            b.id === messageId && b.role === "user"
+              ? { ...b, status: "failed" }
+              : b,
+          ),
+        );
+        // Map known backend signals to specific reply bubbles so the
+        // user knows what to do.
+        let reply =
+          "Houve um problema ao enviar o áudio. Tente novamente ou digite a mensagem.";
+        if (err instanceof ChatApiError) {
+          const code = err.errorCode();
+          if (code === "audio_unintelligible") {
+            reply =
+              "Não consegui entender o áudio. Pode digitar ou gravar de novo?";
+          } else if (code === "audio_too_large") {
+            reply =
+              "Áudio muito longo. Tente uma gravação mais curta (até 90s).";
+          } else if (err.status === 429) {
+            reply =
+              "Muitos áudios em sequência. Aguarde alguns segundos e tente novamente.";
+          }
+        }
+        setMessages((m) => [
+          ...m,
+          {
+            id: generateMessageId(),
+            role: "bot",
+            text: reply,
+            createdAt: Date.now(),
+          },
+        ]);
+      }
+    },
+    [botId, advanceStatus],
   );
 
   const disconnect = useCallback(() => {
@@ -316,6 +445,7 @@ export function useChat({ botId }: UseChatOptions): UseChatReturn {
     status,
     fatalError,
     sendMessage,
+    sendAudio,
     disconnect,
   };
 }

@@ -12,6 +12,7 @@
  */
 
 import type {
+  ChatAudioAccepted,
   ChatMessageAccepted,
   ChatMessageRequest,
   ChatSessionResponse,
@@ -82,6 +83,40 @@ export async function postChatMessage(
   if (!res.ok) {
     throw new ChatApiError(
       `Message send failed`,
+      res.status,
+      await safeJson(res),
+    );
+  }
+  return res.json();
+}
+
+/** POST /chat/{bot_id}/audio — upload a voice note for transcription.
+ *
+ * The backend transcribes via Whisper and returns the resulting text in
+ * the response so the widget can immediately patch its optimistic
+ * "🎤 transcribing…" bubble. The reply itself arrives on the SSE stream,
+ * same as a typed message.
+ */
+export async function postChatAudio(
+  botId: number,
+  args: { sessionId: string; messageId: string; blob: Blob },
+): Promise<ChatAudioAccepted> {
+  const form = new FormData();
+  form.append("session_id", args.sessionId);
+  form.append("message_id", args.messageId);
+  // Filename for the multipart part — backend doesn't care about it, but
+  // many HTTP middlewares log it. Use the blob's MIME extension when
+  // available so the log isn't confusing.
+  const ext = (args.blob.type.split("/")[1] || "webm").split(";")[0];
+  form.append("audio", args.blob, `voice.${ext}`);
+
+  const res = await fetch(`${apiBase()}/chat/${botId}/audio`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    throw new ChatApiError(
+      `Audio upload failed`,
       res.status,
       await safeJson(res),
     );

@@ -20,7 +20,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { formatWhatsAppText } from "./formatText";
 import { useChat } from "./useChat";
+import { useRecorder, MAX_RECORDING_MS } from "./useRecorder";
 import type { ChatBubble } from "./types";
 
 interface ZenBotsWidgetProps {
@@ -28,9 +30,9 @@ interface ZenBotsWidgetProps {
 }
 
 export function ZenBotsWidget({ botId }: ZenBotsWidgetProps) {
-  const { session, messages, isTyping, fatalError, sendMessage } = useChat({
-    botId,
-  });
+  const { session, messages, isTyping, fatalError, sendMessage, sendAudio } =
+    useChat({ botId });
+  const recorder = useRecorder();
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -51,6 +53,24 @@ export function ZenBotsWidget({ botId }: ZenBotsWidgetProps) {
     setInput("");
     await sendMessage(text);
   };
+
+  // Press once to start recording, press the stop button to finish (or
+  // the cancel button to discard). The recorder hook handles permission,
+  // auto-stop at MAX_RECORDING_MS, and cleanup. We just orchestrate the
+  // upload here.
+  const handleMicStart = async () => {
+    await recorder.start();
+  };
+  const handleMicStop = async () => {
+    const blob = await recorder.stop();
+    if (blob) await sendAudio(blob);
+  };
+  const handleMicCancel = () => {
+    recorder.cancel();
+  };
+
+  const isRecording =
+    recorder.status === "recording" || recorder.status === "stopping";
 
   const primaryColor = session?.theme?.primary_color || "#00B14F";
   const showFreeTierFooter = (session?.plan_tier ?? "free") === "free";
@@ -94,33 +114,68 @@ export function ZenBotsWidget({ botId }: ZenBotsWidgetProps) {
         <div ref={scrollRef} />
       </div>
 
-      {/* Input */}
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-center gap-2 border-t bg-white px-3 py-3"
-      >
-        <label htmlFor="zenbotz-input" className="sr-only">
-          Digite sua mensagem
-        </label>
-        <input
-          id="zenbotz-input"
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Digite uma mensagem"
-          autoComplete="off"
-          className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:border-gray-400 focus:outline-none"
-          maxLength={4096}
+      {/* Composer — text input or recording controls depending on state. */}
+      {isRecording ? (
+        <RecordingControls
+          elapsedMs={recorder.elapsedMs}
+          onCancel={handleMicCancel}
+          onStop={handleMicStop}
+          primaryColor={primaryColor}
+          isStopping={recorder.status === "stopping"}
         />
-        <button
-          type="submit"
-          disabled={!input.trim()}
-          className="rounded-full px-4 py-2 text-sm font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-          style={{ backgroundColor: primaryColor }}
+      ) : (
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-center gap-2 border-t bg-white px-3 py-3"
         >
-          Enviar
-        </button>
-      </form>
+          {/* Mic button — gated on browser support. Errors from the
+              recorder (permission denied) surface inline below. */}
+          {recorder.supported && (
+            <button
+              type="button"
+              onClick={handleMicStart}
+              disabled={recorder.status === "requesting-permission"}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Gravar áudio"
+              data-testid="mic-button"
+            >
+              <MicIcon />
+            </button>
+          )}
+          <label htmlFor="zenbotz-input" className="sr-only">
+            Digite sua mensagem
+          </label>
+          <input
+            id="zenbotz-input"
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Digite uma mensagem"
+            autoComplete="off"
+            className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:border-gray-400 focus:outline-none"
+            maxLength={4096}
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="rounded-full px-4 py-2 text-sm font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ backgroundColor: primaryColor }}
+          >
+            Enviar
+          </button>
+        </form>
+      )}
+
+      {/* Recorder error banner — only when the user explicitly tried and
+          failed; "idle" is the resting state and doesn't render anything. */}
+      {recorder.status === "error" && recorder.errorMessage && (
+        <div
+          role="alert"
+          className="border-t bg-red-50 px-3 py-1 text-center text-[11px] text-red-700"
+        >
+          {recorder.errorMessage}
+        </div>
+      )}
 
       {/* Free-tier footer */}
       {showFreeTierFooter && (
@@ -159,7 +214,11 @@ function BubbleView({ bubble, primaryColor }: BubbleProps) {
         }`}
         style={isUser ? { backgroundColor: primaryColor } : undefined}
       >
-        {bubble.text}
+        {/* Bot replies arrive with WhatsApp markup (*bold*, _italic_, etc.).
+            Run them through formatWhatsAppText so the widget renders the
+            same emphasis WhatsApp does. User-typed text is rendered
+            verbatim — the customer types what they mean. */}
+        {isUser ? bubble.text : formatWhatsAppText(bubble.text)}
         {/* Attachments: render an image attachment inline; for documents
             (PDF cardápio), show a link the customer can tap to download. */}
         {bubble.attachments?.map((a, i) => (
@@ -168,8 +227,50 @@ function BubbleView({ bubble, primaryColor }: BubbleProps) {
         {/* PIX QR rendering — separate from generic attachments because it
             has its own copy-button UX. */}
         {bubble.paymentQR && <PaymentQRView qr={bubble.paymentQR} />}
+        {/* Delivery ticks — only on user bubbles; mirrors WhatsApp's ✓✓. */}
+        {isUser && bubble.status && <DeliveryTicks status={bubble.status} />}
       </div>
     </li>
+  );
+}
+
+function DeliveryTicks({ status }: { status: ChatBubble["status"] }) {
+  if (!status) return null;
+
+  // Match WhatsApp's color cues: muted while in flight, primary (white
+  // here since the bubble bg is the brand color and the text is white)
+  // once "read" lands. "failed" gets a small red exclamation.
+  const muted = "rgba(255,255,255,0.65)";
+  const active = "#ffffff";
+  const failed = "#ff6b6b";
+
+  if (status === "failed") {
+    return (
+      <span
+        aria-label="Falha no envio"
+        className="ml-2 inline-block align-baseline text-[11px] font-semibold"
+        style={{ color: failed }}
+        data-testid="bubble-status-failed"
+      >
+        !
+      </span>
+    );
+  }
+
+  // Glyph: ✓ for sending/sent, ✓✓ for delivered/read. Color shifts to
+  // brand-white at "read" to mirror the blue checks in WhatsApp.
+  const double = status === "delivered" || status === "read";
+  const color = status === "read" ? active : muted;
+
+  return (
+    <span
+      aria-label={`Status: ${status}`}
+      className="ml-2 inline-block align-baseline text-[11px] tracking-tighter"
+      style={{ color }}
+      data-testid={`bubble-status-${status}`}
+    >
+      {double ? "✓✓" : "✓"}
+    </span>
   );
 }
 
@@ -221,6 +322,109 @@ function PaymentQRView({
         Validade: 15 minutos
       </span>
     </div>
+  );
+}
+
+interface RecordingControlsProps {
+  elapsedMs: number;
+  primaryColor: string;
+  isStopping: boolean;
+  onCancel: () => void;
+  onStop: () => void;
+}
+
+function RecordingControls({
+  elapsedMs,
+  primaryColor,
+  isStopping,
+  onCancel,
+  onStop,
+}: RecordingControlsProps) {
+  const seconds = Math.floor(elapsedMs / 1000);
+  const mm = Math.floor(seconds / 60)
+    .toString()
+    .padStart(1, "0");
+  const ss = (seconds % 60).toString().padStart(2, "0");
+  const remaining = Math.max(0, Math.floor((MAX_RECORDING_MS - elapsedMs) / 1000));
+
+  return (
+    <div
+      className="flex items-center gap-3 border-t bg-white px-3 py-3"
+      data-testid="recording-controls"
+    >
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={isStopping}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition hover:bg-gray-200 disabled:opacity-50"
+        aria-label="Cancelar gravação"
+      >
+        ×
+      </button>
+      <div className="flex flex-1 items-center gap-2">
+        <span
+          className="h-2.5 w-2.5 animate-pulse rounded-full"
+          style={{ backgroundColor: "#ef4444" }}
+        />
+        <span className="text-sm font-medium tabular-nums">
+          {mm}:{ss}
+        </span>
+        <span className="text-xs text-gray-500">
+          {remaining}s restantes
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={onStop}
+        disabled={isStopping}
+        className="flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm disabled:opacity-50"
+        style={{ backgroundColor: primaryColor }}
+        aria-label="Enviar áudio"
+        data-testid="stop-recording"
+      >
+        <SendIcon />
+      </button>
+    </div>
+  );
+}
+
+function MicIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <line x1="22" y1="2" x2="11" y2="13" />
+      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </svg>
   );
 }
 

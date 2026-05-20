@@ -20,6 +20,15 @@ export interface ChatMessageAccepted {
   message_id: string;
 }
 
+export interface ChatAudioAccepted {
+  accepted: boolean;
+  message_id: string;
+  /** Echo of the Whisper transcript so the widget can replace its
+   *  optimistic "🎤 transcribing…" bubble before the bot's SSE reply
+   *  even arrives. */
+  transcript: string;
+}
+
 export interface ChatSessionResponse {
   session_id: string;
   bot_display_name: string;
@@ -46,7 +55,15 @@ export type SSEEvent =
   | { type: "typing"; payload: SSETyping }
   | { type: "message"; payload: SSEMessage }
   | { type: "payment_qr"; payload: SSEPaymentQR }
-  | { type: "order_status"; payload: SSEOrderStatus };
+  | { type: "order_status"; payload: SSEOrderStatus }
+  | { type: "receipt"; payload: SSEReceipt };
+
+export interface SSEReceipt {
+  message_id: string;
+  /** "sent" | "delivered" | "read" — backend publishes "delivered"/"read";
+   *  "sent" is set client-side when POST /message returns 200. */
+  status: string;
+}
 
 export interface SSETyping {
   on: boolean;
@@ -77,6 +94,24 @@ export interface SSEOrderStatus {
 
 export type ChatRole = "user" | "bot";
 
+/** Delivery state for outbound user messages — drives the tick icons.
+ *  Ordered: monotonic forward only. Receipt events that would regress
+ *  (e.g. "delivered" arriving after "read") are ignored. */
+export type DeliveryStatus =
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "failed";
+
+export const DELIVERY_RANK: Record<DeliveryStatus, number> = {
+  sending: 0,
+  sent: 1,
+  delivered: 2,
+  read: 3,
+  failed: 99,
+};
+
 export interface ChatBubble {
   /** Client-generated; matches the SSE `message_id` for correlation. */
   id: string;
@@ -84,6 +119,8 @@ export interface ChatBubble {
   text: string;
   attachments?: Attachment[];
   paymentQR?: SSEPaymentQR;
+  /** Delivery state — only set for role === "user". */
+  status?: DeliveryStatus;
   /** ms timestamp when the bubble was created — for sort ordering. */
   createdAt: number;
 }
