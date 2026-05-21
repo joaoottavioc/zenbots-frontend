@@ -259,6 +259,14 @@ export function useChat({ botId }: UseChatOptions): UseChatReturn {
             setFatalError(
               "O canal de pedidos pelo site está indisponível no momento.",
             );
+          } else if (code === "demo_daily_cap") {
+            // The demo abuse cap fires when a single IP creates too
+            // many fresh widget sessions in a day. Surface the
+            // specific message instead of the generic "couldn't
+            // start" so the recruiter knows it's a quota, not a bug.
+            setFatalError(
+              "Você atingiu o limite diário de sessões no demo. Volte amanhã ou peça acesso ao dashboard.",
+            );
           } else if (err.status === 404) {
             setFatalError("Restaurante não encontrado.");
           } else {
