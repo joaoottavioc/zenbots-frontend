@@ -122,6 +122,32 @@ interface IndexResponse {
   conversations: ConversationSummary[];
 }
 
+interface MenuProduct {
+  name: string;
+  price: number;
+  description: string;
+}
+
+interface MenuCategory {
+  name: string;
+  products: MenuProduct[];
+}
+
+interface MenuResponse {
+  bot_slug: string;
+  restaurant_name: string;
+  categories: MenuCategory[];
+  total_products: number;
+}
+
+interface RouterSavings {
+  window_days: number;
+  total_messages: number;
+  router_only_messages: number;
+  with_llm_messages: number;
+  router_only_pct: number;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────
 
 function apiBase(): string {
@@ -193,6 +219,8 @@ function OverviewMode() {
   const [snapErr, setSnapErr] = useState<string | null>(null);
   const [index, setIndex] = useState<IndexResponse | null>(null);
   const [indexErr, setIndexErr] = useState<string | null>(null);
+  const [menu, setMenu] = useState<MenuResponse | null>(null);
+  const [savings, setSavings] = useState<RouterSavings | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -218,6 +246,29 @@ function OverviewMode() {
       .catch(() => {
         if (!cancelled) setIndexErr("Conversas do demo indisponíveis agora.");
       });
+    fetch(`${apiBase()}/public/demo/menu`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<MenuResponse>;
+      })
+      .then((d) => {
+        if (!cancelled) setMenu(d);
+      })
+      .catch(() => {
+        // Non-fatal: the menu is a nice-to-have. The rest of the page
+        // works without it.
+      });
+    fetch(`${apiBase()}/public/eval/router-savings`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<RouterSavings>;
+      })
+      .then((d) => {
+        if (!cancelled) setSavings(d);
+      })
+      .catch(() => {
+        // Also non-fatal — the 4th headline card just doesn't render.
+      });
     return () => {
       cancelled = true;
     };
@@ -225,18 +276,28 @@ function OverviewMode() {
 
   return (
     <Shell>
-      <HeadlineSection snapshot={snapshot} error={snapErr} />
+      <HeadlineSection
+        snapshot={snapshot}
+        savings={savings}
+        error={snapErr}
+      />
+      <HowToTestSection />
+      <MenuSection menu={menu} />
+      <SuggestedPromptsSection />
       <MethodologySection snapshot={snapshot} />
       <ConversationsSection index={index} error={indexErr} />
+      <ReadingGuideSection />
     </Shell>
   );
 }
 
 function HeadlineSection({
   snapshot,
+  savings,
   error,
 }: {
   snapshot: EvalSnapshot | null;
+  savings: RouterSavings | null;
   error: string | null;
 }) {
   if (error)
@@ -247,25 +308,27 @@ function HeadlineSection({
     );
   if (!snapshot)
     return (
-      <div className="grid animate-pulse gap-4 sm:grid-cols-3">
-        {[0, 1, 2].map((i) => (
+      <div className="grid animate-pulse gap-4 sm:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
           <div key={i} className="h-32 rounded-2xl bg-slate-100" />
         ))}
       </div>
     );
 
   return (
-    <section className="grid gap-4 sm:grid-cols-3">
+    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <MetricCard
         label="Compreensão"
         value={`${snapshot.comprehension.pass_rate_pct.toFixed(1)}%`}
         sub={`${snapshot.comprehension.passed} / ${snapshot.comprehension.total} cenários`}
+        hint="Cada cenário do corpus é considerado entendido se o bot interpretou a intenção do cliente e produziu o estado de carrinho correto. 'No crash' não conta."
         highlight
       />
       <MetricCard
         label="Total de testes"
         value={snapshot.headline.total_tests.toLocaleString("pt-BR")}
         sub={`${snapshot.headline.failed} falhas · ${snapshot.headline.skipped} pulados`}
+        hint="Suíte completa do corpus: combinações de adicionar/remover/modificar itens, fluxos ambíguos e cenários de checkout em vários restaurantes."
       />
       <MetricCard
         label="Restaurantes no corpus"
@@ -277,6 +340,17 @@ function HeadlineSection({
             ? `${snapshot.methodology.samples_per_restaurant} amostras cada`
             : "amostras variáveis"
         }
+        hint="Menus reais extraídos de fontes públicas. Testa consistência entre restaurantes — não só um caminho feliz."
+      />
+      <MetricCard
+        label="Sem LLM (router)"
+        value={savings ? `${savings.router_only_pct.toFixed(0)}%` : "—"}
+        sub={
+          savings
+            ? `${savings.router_only_messages} / ${savings.total_messages} msgs em ${savings.window_days}d`
+            : "30d demo"
+        }
+        hint="Mensagens classificadas só pelo router de embeddings, sem invocar LLM. Cada chamada economizada é ~$0.0006 que não foi gasto."
       />
     </section>
   );
@@ -730,26 +804,42 @@ function MetricCard({
   label,
   value,
   sub,
+  hint,
   highlight = false,
   mono = false,
 }: {
   label: string;
   value: string;
   sub: string;
+  hint?: string;
   highlight?: boolean;
   mono?: boolean;
 }) {
   return (
     <div
-      className={`rounded-2xl border p-6 ${
+      className={`group relative rounded-2xl border p-6 ${
         highlight
           ? "border-amber-200 bg-gradient-to-br from-amber-50 to-white"
           : "border-slate-200 bg-white"
       }`}
     >
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-        {label}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          {label}
+        </p>
+        {hint && (
+          // Native `title` tooltip for hover; the body text below renders
+          // a small italic hint that's always visible too — recruiters
+          // skim, not hover.
+          <span
+            className="cursor-help text-[10px] text-slate-400"
+            title={hint}
+            aria-label={hint}
+          >
+            ⓘ
+          </span>
+        )}
+      </div>
       <p
         className={`mt-2 font-heading font-semibold ${
           highlight ? "text-amber-700" : "text-slate-900"
@@ -758,6 +848,11 @@ function MetricCard({
         {value}
       </p>
       <p className="mt-2 text-xs text-slate-500">{sub}</p>
+      {hint && (
+        <p className="mt-3 border-t border-slate-100 pt-3 text-[11px] leading-relaxed text-slate-500">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -815,6 +910,291 @@ function Stat({ label, value }: { label: string; value: string }) {
       <p className="mt-0.5 font-semibold tabular-nums text-slate-800">
         {value}
       </p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Recruiter-first sections
+//
+// These sit between the headline metrics and the methodology block.
+// Goal: a non-engineer should be able to test the demo and form a
+// hire opinion in <60 seconds. The friction loop used to be: read
+// metrics → scroll to empty gallery → guess what to type → wander
+// the widget. Now: read metrics → see the menu → click a suggested
+// prompt → trace appears.
+// ─────────────────────────────────────────────────────────────────────
+
+function HowToTestSection() {
+  const steps: { n: number; title: string; body: string }[] = [
+    {
+      n: 1,
+      title: "Olhe o cardápio",
+      body: "Lista o que o restaurante demo aceita pedir. Logo abaixo, com preços.",
+    },
+    {
+      n: 2,
+      title: "Abra o widget",
+      body: "Botão no canto inferior direito quando aberto. Mande mensagens como faria pelo WhatsApp.",
+    },
+    {
+      n: 3,
+      title: "Veja a telemetria",
+      body: "Volte aqui e recarregue. Sua conversa aparece logo abaixo — clique para ver intenção, ferramentas, tokens, custo.",
+    },
+  ];
+  return (
+    <section className="mt-10 rounded-2xl border border-amber-200 bg-amber-50/40 p-6 sm:p-8">
+      <h2 className="font-heading text-xl font-semibold text-slate-900">
+        Como testar em 60 segundos
+      </h2>
+      <ol className="mt-5 grid gap-4 sm:grid-cols-3">
+        {steps.map((s) => (
+          <li key={s.n} className="rounded-xl border border-amber-100 bg-white p-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-600 text-sm font-bold text-white">
+              {s.n}
+            </div>
+            <p className="mt-3 font-semibold text-slate-900">{s.title}</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              {s.body}
+            </p>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-5 flex flex-wrap gap-3">
+        <a
+          href="/widget?slug=pizzaria-do-ze"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700"
+        >
+          Abrir o widget agora →
+        </a>
+      </div>
+    </section>
+  );
+}
+
+function MenuSection({ menu }: { menu: MenuResponse | null }) {
+  const [open, setOpen] = useState(true);
+  if (!menu) {
+    return (
+      <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+        <h2 className="font-heading text-xl font-semibold text-slate-900">
+          Cardápio do demo
+        </h2>
+        <p className="mt-2 text-sm text-slate-500">
+          Carregando produtos...
+        </p>
+      </section>
+    );
+  }
+  return (
+    <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="font-heading text-xl font-semibold text-slate-900">
+            Cardápio do demo
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            {menu.total_products} itens em {menu.categories.length} categorias.
+            Use os nomes abaixo quando conversar com o bot.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="text-xs font-medium text-slate-600 hover:text-amber-700"
+        >
+          {open ? "Esconder ▲" : "Mostrar ▼"}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-5 space-y-5">
+          {menu.categories.map((cat) => (
+            <div key={cat.name}>
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-700">
+                {cat.name}
+              </p>
+              <ul className="mt-2 divide-y divide-slate-100">
+                {cat.products.map((p) => (
+                  <li
+                    key={p.name}
+                    className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-slate-900">{p.name}</p>
+                      {p.description && (
+                        <p className="text-xs text-slate-500">
+                          {p.description}
+                        </p>
+                      )}
+                    </div>
+                    <p className="shrink-0 font-mono text-sm font-semibold tabular-nums text-slate-800">
+                      R$ {p.price.toFixed(2)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+interface SuggestedPrompt {
+  label: string;
+  text: string;
+  expected: string;
+  intent: string;
+}
+
+const SUGGESTED_PROMPTS: SuggestedPrompt[] = [
+  {
+    label: "Pedido simples",
+    text: "quero uma pizza margherita",
+    expected: "Router classifica como ADD com alta confiança. Sem LLM.",
+    intent: "ADD",
+  },
+  {
+    label: "Quantidade múltipla",
+    text: "manda 2 cocas e uma pizza calabresa",
+    expected:
+      "Router → ADD. Extração de itens pode chamar LLM se houver ambiguidade.",
+    intent: "ADD (multi)",
+  },
+  {
+    label: "Remover",
+    text: "pode tirar a calabresa",
+    expected: "Router classifica como REMOVE. Mutação determinística do carrinho.",
+    intent: "REMOVE",
+  },
+  {
+    label: "Sugestão",
+    text: "o que vocês têm de doce?",
+    expected:
+      "Router → REQUEST_SUGGESTION. Resposta gerada pelo LLM com contexto do menu.",
+    intent: "SUGGEST",
+  },
+  {
+    label: "Pergunta ambígua",
+    text: "qual a pizza mais pedida?",
+    expected:
+      "Router não classifica com confiança → LLM tool calling decide a resposta. Veja o custo.",
+    intent: "QUESTION",
+  },
+];
+
+function SuggestedPromptsSection() {
+  const [copied, setCopied] = useState<string | null>(null);
+  return (
+    <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="font-heading text-xl font-semibold text-slate-900">
+            Sugestões para testar
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Cada exemplo exercita um caminho diferente do pipeline. Copie e cole
+            no widget para ver a telemetria correspondente.
+          </p>
+        </div>
+      </div>
+      <ul className="grid gap-3 sm:grid-cols-2">
+        {SUGGESTED_PROMPTS.map((p) => (
+          <li
+            key={p.text}
+            className="rounded-xl border border-slate-200 bg-slate-50/60 p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                {p.label}
+              </span>
+              <span className="rounded bg-slate-200 px-1.5 py-0.5 font-mono text-[10px] uppercase text-slate-700">
+                {p.intent}
+              </span>
+            </div>
+            <p className="mt-3 font-mono text-sm text-slate-900">
+              &ldquo;{p.text}&rdquo;
+            </p>
+            <p className="mt-2 text-xs italic text-slate-500">
+              {p.expected}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(p.text);
+                  setCopied(p.text);
+                  setTimeout(() => setCopied(null), 1500);
+                }}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                {copied === p.text ? "✓ Copiado" : "📋 Copiar"}
+              </button>
+              <a
+                href="/widget?slug=pizzaria-do-ze"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-md bg-amber-600 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-amber-700"
+              >
+                Abrir widget →
+              </a>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ReadingGuideSection() {
+  return (
+    <section className="mt-12 rounded-2xl border border-slate-200 bg-slate-50/60 p-6 sm:p-8">
+      <h2 className="font-heading text-lg font-semibold text-slate-900">
+        Como ler a telemetria
+      </h2>
+      <p className="mt-2 text-sm text-slate-600">
+        Cada mensagem do cliente passa por uma cadeia de operações instrumentadas.
+        Os ícones abaixo aparecem nos cards de cada conversa:
+      </p>
+      <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+        <GuideRow
+          label="semantic_router/classify_intent"
+          desc="Classificador local de intenção (embeddings, sem LLM). Mais barato e mais rápido. Custo $0, ~10-15ms."
+        />
+        <GuideRow
+          label="openai/get_ai_decision"
+          desc="Chamada gpt-4o-mini para tool calling. Dispara quando o router não tem confiança suficiente. ~3500↓/150↑ tokens, ~$0.0006."
+        />
+        <GuideRow
+          label="openai/extract_potential_items"
+          desc="Extração estruturada de produtos quando a fala do cliente lista vários itens. Roda com gpt-4o-mini em JSON mode."
+        />
+        <GuideRow
+          label="openai/transcribe_audio"
+          desc="Whisper (Groq primário, OpenAI fallback) para áudios. Trace de voz é separado do trace de texto."
+        />
+        <GuideRow
+          label="↓ tokens / ↑ tokens"
+          desc="Entrada (prompt + contexto) versus saída (resposta gerada). Custos OpenAI são por token de cada tipo."
+        />
+        <GuideRow
+          label="c=0.87"
+          desc="Confiança do router. Acima do threshold (varia por intenção), a classificação é aceita; abaixo, o LLM assume."
+        />
+      </dl>
+    </section>
+  );
+}
+
+function GuideRow({ label, desc }: { label: string; desc: string }) {
+  return (
+    <div>
+      <p className="font-mono text-xs font-semibold text-slate-800">{label}</p>
+      <p className="mt-1 text-xs leading-relaxed text-slate-600">{desc}</p>
     </div>
   );
 }
