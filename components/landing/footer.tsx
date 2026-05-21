@@ -65,15 +65,7 @@ export function Footer() {
                   href="/eval"
                   className="text-sm text-zinc-500 transition-colors hover:text-cyan-400"
                 >
-                  Compreensão (eval)
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/trace"
-                  className="text-sm text-zinc-500 transition-colors hover:text-cyan-400"
-                >
-                  Por trás da conversa
+                  Eval + telemetria
                 </Link>
               </li>
             </ul>
