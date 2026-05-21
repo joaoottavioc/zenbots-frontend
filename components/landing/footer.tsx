@@ -68,6 +68,14 @@ export function Footer() {
                   Compreensão (eval)
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/trace"
+                  className="text-sm text-zinc-500 transition-colors hover:text-cyan-400"
+                >
+                  Por trás da conversa
+                </Link>
+              </li>
             </ul>
           </div>
 
