@@ -286,6 +286,7 @@ function OverviewMode() {
       <SuggestedPromptsSection />
       <MethodologySection snapshot={snapshot} />
       <ConversationsSection index={index} error={indexErr} />
+      <AccessRequestSection />
       <ReadingGuideSection />
     </Shell>
   );
@@ -1146,6 +1147,64 @@ function SuggestedPromptsSection() {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+function AccessRequestSection() {
+  // Pre-filled subject lets João bucket "recruiter wants access" emails
+  // separately from general inbox. Body left blank so the recruiter writes
+  // their own ask.
+  const subject = encodeURIComponent("Acesso ao dashboard do ZenBotZ");
+  const body = encodeURIComponent(
+    "Olá João,\n\n" +
+      "Cheguei no /eval do seu portfólio e queria explorar o lado do dono " +
+      "(criação de bot, fluxo de pedidos, upload de cardápio). Pode me " +
+      "compartilhar acesso?\n\n" +
+      "— [seu nome / empresa / papel]\n",
+  );
+  const mailto = `mailto:joaoottavioc@gmail.com?subject=${subject}&body=${body}`;
+  return (
+    <section className="mt-10 rounded-2xl border border-slate-900 bg-slate-900 p-6 text-white sm:p-8">
+      <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">
+        Quer ver o lado do dono?
+      </p>
+      <h2 className="font-heading mt-2 text-2xl font-semibold">
+        Acesso ao dashboard de criação de bots
+      </h2>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300">
+        O dashboard do restaurante está atrás de auth e inclui: criação de
+        bot, upload de cardápio por PDF/imagem (extração via gpt-4o),
+        kitchen-display em tempo real (SSE), painel de custos por bot,
+        e configuração do widget. Mando credenciais sob demanda para
+        recruiters / engineering managers avaliando o portfólio — basta
+        mandar um email.
+      </p>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <a
+          href={mailto}
+          className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-amber-400"
+        >
+          📧 Pedir acesso
+        </a>
+        <a
+          href="https://github.com/joaoottavioc"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:text-white"
+        >
+          GitHub
+        </a>
+        <span className="text-xs text-slate-400">
+          ou direto:{" "}
+          <a
+            href="mailto:joaoottavioc@gmail.com"
+            className="font-mono text-slate-300 underline-offset-2 hover:text-amber-400 hover:underline"
+          >
+            joaoottavioc@gmail.com
+          </a>
+        </span>
+      </div>
     </section>
   );
 }
