@@ -45,7 +45,7 @@ export function Hero() {
         {/* CTAs */}
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <a
-            href="/pizzaria-do-ze"
+            href="/widget?slug=pizzaria-do-ze"
             className="group inline-flex items-center gap-2 rounded-xl bg-amber-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-amber-600/20 transition-all hover:bg-amber-700 hover:shadow-xl hover:shadow-amber-600/25"
           >
             Experimente o demo agora

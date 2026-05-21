@@ -200,7 +200,7 @@ function Loaded({ snapshot }: { snapshot: EvalSnapshot }) {
             Ver código do harness →
           </a>
           <a
-            href="/pizzaria-do-ze"
+            href="/widget?slug=pizzaria-do-ze"
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
             Testar o bot agora
