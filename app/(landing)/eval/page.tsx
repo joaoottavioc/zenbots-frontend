@@ -281,11 +281,11 @@ function OverviewMode() {
         savings={savings}
         error={snapErr}
       />
-      <HowToTestSection />
+      <HowToTestSection menu={menu} />
       <MenuSection menu={menu} />
-      <SuggestedPromptsSection />
-      <MethodologySection snapshot={snapshot} />
-      <ConversationsSection index={index} error={indexErr} />
+      <SuggestedPromptsSection menu={menu} />
+      <MethodologySection snapshot={snapshot} menu={menu} />
+      <ConversationsSection index={index} error={indexErr} menu={menu} />
       <AccessRequestSection />
       <ReadingGuideSection />
     </Shell>
@@ -359,10 +359,15 @@ function HeadlineSection({
 
 function MethodologySection({
   snapshot,
+  menu,
 }: {
   snapshot: EvalSnapshot | null;
+  menu: MenuResponse | null;
 }) {
   if (!snapshot) return null;
+  // Slug for the "Testar o bot agora" button — uses live demo slug
+  // from the menu API so a rename in the dashboard propagates here.
+  const slug = menu?.bot_slug ?? "pizzaria-do-ze";
   const generated = new Date(snapshot.generated_at);
   const generatedLabel = generated.toLocaleDateString("pt-BR", {
     year: "numeric",
@@ -408,7 +413,7 @@ function MethodologySection({
             Ver código do harness →
           </a>
           <a
-            href="/widget?slug=pizzaria-do-ze"
+            href={`/widget?slug=${encodeURIComponent(slug)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
@@ -444,10 +449,13 @@ function MethodologySection({
 function ConversationsSection({
   index,
   error,
+  menu,
 }: {
   index: IndexResponse | null;
   error: string | null;
+  menu: MenuResponse | null;
 }) {
+  const slug = menu?.bot_slug ?? index?.bot_slug ?? "pizzaria-do-ze";
   return (
     <section className="mt-12">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -456,7 +464,8 @@ function ConversationsSection({
             Veja na prática
           </p>
           <h2 className="font-heading mt-1 text-2xl font-semibold text-slate-900">
-            Conversas recentes no demo
+            Conversas recentes
+            {menu?.restaurant_name ? ` · ${menu.restaurant_name}` : ""}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
             Clique em uma conversa para ver intenção, ferramentas, tokens,
@@ -464,7 +473,7 @@ function ConversationsSection({
           </p>
         </div>
         <a
-          href="/widget?slug=pizzaria-do-ze"
+          href={`/widget?slug=${encodeURIComponent(slug)}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700"
@@ -488,7 +497,7 @@ function ConversationsSection({
           ))}
         </div>
       )}
-      {index && index.conversations.length === 0 && <EmptyIndex />}
+      {index && index.conversations.length === 0 && <EmptyIndex slug={slug} />}
       {index && index.conversations.length > 0 && (
         <ul className="grid gap-3 sm:grid-cols-2">
           {index.conversations.map((c) => (
@@ -547,7 +556,7 @@ function ConversationCard({ c }: { c: ConversationSummary }) {
   );
 }
 
-function EmptyIndex() {
+function EmptyIndex({ slug }: { slug: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
       <p className="text-sm font-semibold text-slate-700">
@@ -557,7 +566,7 @@ function EmptyIndex() {
         Abra o widget e mande algumas mensagens — depois recarregue esta página.
       </p>
       <a
-        href="/widget?slug=pizzaria-do-ze"
+        href={`/widget?slug=${encodeURIComponent(slug)}`}
         target="_blank"
         rel="noopener noreferrer"
         className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700"
@@ -926,12 +935,18 @@ function Stat({ label, value }: { label: string; value: string }) {
 // prompt → trace appears.
 // ─────────────────────────────────────────────────────────────────────
 
-function HowToTestSection() {
+function HowToTestSection({ menu }: { menu: MenuResponse | null }) {
+  // Slug + restaurant name come from the menu endpoint so the widget link
+  // and the visible copy follow whatever the demo bot is currently named.
+  // If the menu hasn't loaded yet, fall back to the seeded slug.
+  const slug = menu?.bot_slug ?? "pizzaria-do-ze";
+  const restaurantName = menu?.restaurant_name ?? "demo";
+
   const steps: { n: number; title: string; body: string }[] = [
     {
       n: 1,
       title: "Olhe o cardápio",
-      body: "Lista o que o restaurante demo aceita pedir. Logo abaixo, com preços.",
+      body: `Lista do que o ${restaurantName} aceita pedir. Logo abaixo, com preços.`,
     },
     {
       n: 2,
@@ -964,7 +979,7 @@ function HowToTestSection() {
       </ol>
       <div className="mt-5 flex flex-wrap gap-3">
         <a
-          href="/widget?slug=pizzaria-do-ze"
+          href={`/widget?slug=${encodeURIComponent(slug)}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700"
@@ -982,7 +997,7 @@ function MenuSection({ menu }: { menu: MenuResponse | null }) {
     return (
       <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
         <h2 className="font-heading text-xl font-semibold text-slate-900">
-          Cardápio do demo
+          Cardápio
         </h2>
         <p className="mt-2 text-sm text-slate-500">
           Carregando produtos...
@@ -995,7 +1010,7 @@ function MenuSection({ menu }: { menu: MenuResponse | null }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-heading text-xl font-semibold text-slate-900">
-            Cardápio do demo
+            Cardápio · {menu.restaurant_name}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
             {menu.total_products} itens em {menu.categories.length} categorias.
@@ -1052,44 +1067,107 @@ interface SuggestedPrompt {
   intent: string;
 }
 
-const SUGGESTED_PROMPTS: SuggestedPrompt[] = [
+// Fallback prompts used only when the menu endpoint hasn't loaded yet.
+// The real prompts are generated from the live menu (see buildPrompts
+// below) so a bot rename / menu edit on the dashboard reflows the
+// suggestions automatically.
+const FALLBACK_PROMPTS: SuggestedPrompt[] = [
   {
     label: "Pedido simples",
-    text: "quero uma pizza margherita",
+    text: "quero um item do cardápio",
     expected: "Router classifica como ADD com alta confiança. Sem LLM.",
     intent: "ADD",
   },
-  {
-    label: "Quantidade múltipla",
-    text: "manda 2 cocas e uma pizza calabresa",
-    expected:
-      "Router → ADD. Extração de itens pode chamar LLM se houver ambiguidade.",
-    intent: "ADD (multi)",
-  },
-  {
-    label: "Remover",
-    text: "pode tirar a calabresa",
-    expected: "Router classifica como REMOVE. Mutação determinística do carrinho.",
-    intent: "REMOVE",
-  },
-  {
-    label: "Sugestão",
-    text: "o que vocês têm de doce?",
-    expected:
-      "Router → REQUEST_SUGGESTION. Resposta gerada pelo LLM com contexto do menu.",
-    intent: "SUGGEST",
-  },
-  {
-    label: "Pergunta ambígua",
-    text: "qual a pizza mais pedida?",
-    expected:
-      "Router não classifica com confiança → LLM tool calling decide a resposta. Veja o custo.",
-    intent: "QUESTION",
-  },
 ];
 
-function SuggestedPromptsSection() {
+/** Detect which category looks like "drinks" so we can compose a
+ *  realistic "main + drink" multi-item prompt. Falls back to the second
+ *  category in declaration order when no match exists. */
+function findCategory(
+  menu: MenuResponse,
+  patterns: RegExp[],
+): MenuCategory | undefined {
+  for (const re of patterns) {
+    const hit = menu.categories.find((c) => re.test(c.name));
+    if (hit && hit.products.length > 0) return hit;
+  }
+  return undefined;
+}
+
+/** Generate menu-aware suggested prompts. Each one exercises a
+ *  different pipeline path. Falls back to a single generic prompt if
+ *  the menu is empty.
+ *
+ *  Design: prompt TEXT is dynamic (uses real product names) but the
+ *  expected-pipeline EXPLANATION is fixed because the pipeline behavior
+ *  doesn't depend on the bot's menu — only on the user's wording. */
+function buildPrompts(menu: MenuResponse | null): SuggestedPrompt[] {
+  if (!menu || menu.categories.length === 0) return FALLBACK_PROMPTS;
+
+  // Main = first category that's not drinks/desserts/sides. Most bots
+  // sort their primary category first, but if it happens to be drinks
+  // we fall back to scanning.
+  const sidePatterns = [
+    /bebida|drink|refri/i,
+    /sobremesa|dessert|doce/i,
+    /acompanhamento|extras|adicio/i,
+  ];
+  const isSide = (c: MenuCategory) => sidePatterns.some((re) => re.test(c.name));
+  const mainCategory =
+    menu.categories.find((c) => c.products.length > 0 && !isSide(c)) ??
+    menu.categories[0];
+  const drinkCategory = findCategory(menu, [/bebida|drink|refri/i]);
+
+  const main1 = mainCategory.products[0]?.name ?? "item";
+  const main2 = mainCategory.products[1]?.name ?? main1;
+  const drink = drinkCategory?.products[0]?.name ?? main2;
+  const sideCat = menu.categories.find(isSide);
+  const sideCategoryName = sideCat?.name.toLowerCase() ?? "bebida";
+
+  const lc = (s: string) => s.toLowerCase();
+
+  return [
+    {
+      label: "Pedido simples",
+      text: `quero um(a) ${lc(main1)}`,
+      expected: "Router classifica como ADD com alta confiança. Sem LLM.",
+      intent: "ADD",
+    },
+    {
+      label: "Quantidade múltipla",
+      text: `manda 2 ${lc(drink)} e um(a) ${lc(main2)}`,
+      expected:
+        "Router → ADD. Extração de itens pode chamar LLM se houver ambiguidade.",
+      intent: "ADD (multi)",
+    },
+    {
+      label: "Remover",
+      text: `pode tirar o(a) ${lc(main1)}`,
+      expected:
+        "Router classifica como REMOVE. Mutação determinística do carrinho.",
+      intent: "REMOVE",
+    },
+    {
+      label: "Sugestão",
+      text: `o que vocês têm de ${sideCategoryName}?`,
+      expected:
+        "Router → REQUEST_SUGGESTION. Resposta gerada pelo LLM com contexto do menu.",
+      intent: "SUGGEST",
+    },
+    {
+      label: "Pergunta ambígua",
+      text: "qual o item mais pedido?",
+      expected:
+        "Router não classifica com confiança → LLM tool calling decide a resposta. Veja o custo.",
+      intent: "QUESTION",
+    },
+  ];
+}
+
+function SuggestedPromptsSection({ menu }: { menu: MenuResponse | null }) {
   const [copied, setCopied] = useState<string | null>(null);
+  const slug = menu?.bot_slug ?? "pizzaria-do-ze";
+  const prompts = buildPrompts(menu);
   return (
     <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -1104,7 +1182,7 @@ function SuggestedPromptsSection() {
         </div>
       </div>
       <ul className="grid gap-3 sm:grid-cols-2">
-        {SUGGESTED_PROMPTS.map((p) => (
+        {prompts.map((p) => (
           <li
             key={p.text}
             className="rounded-xl border border-slate-200 bg-slate-50/60 p-4"
@@ -1136,7 +1214,7 @@ function SuggestedPromptsSection() {
                 {copied === p.text ? "✓ Copiado" : "📋 Copiar"}
               </button>
               <a
-                href="/widget?slug=pizzaria-do-ze"
+                href={`/widget?slug=${encodeURIComponent(slug)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 rounded-md bg-amber-600 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-amber-700"
