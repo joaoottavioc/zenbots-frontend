@@ -49,3 +49,13 @@ next-env.d.ts
 # Claude Code IDE configs — personal permissions/settings, not shared.
 .claude/settings.local.json
 .claude/settings.json
+
+# Internal planning + tech-debt backlogs (kept local, not pushed to the
+# public portfolio repo — they enumerate ongoing work, open security
+# findings, and strategic decisions that don't belong in a public history).
+plan/
+tech_debt/
+CLAUDE.md
+
+# Documentation (generated/internal, not tracked).
+docs/
