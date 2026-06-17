@@ -158,6 +158,18 @@ function apiBase(): string {
   return fromEnv || "http://localhost:8000";
 }
 
+// Href to the live demo widget. With a known slug we deep-link
+// same-origin (fast nav). Without one (menu fetch failed / cold start)
+// we hand off to the backend /demo redirect, which resolves the demo
+// bot's *current* slug server-side — so the button is never a dead link,
+// even right after a dashboard rename. (Previously fell back to a
+// hardcoded "pizzaria-do-ze", which broke when the bot was renamed.)
+function demoWidgetHref(slug: string | null | undefined): string {
+  return slug
+    ? `/widget?slug=${encodeURIComponent(slug)}`
+    : `${apiBase()}/demo`;
+}
+
 const fmtCost = (n: number) =>
   n < 0.0001 ? "<$0.0001" : `$${n.toFixed(4)}`;
 const fmtMs = (n: number) =>
@@ -365,9 +377,10 @@ function MethodologySection({
   menu: MenuResponse | null;
 }) {
   if (!snapshot) return null;
-  // Slug for the "Testar o bot agora" button — uses live demo slug
-  // from the menu API so a rename in the dashboard propagates here.
-  const slug = menu?.bot_slug ?? "pizzaria-do-ze";
+  // Slug for the "Testar o bot agora" button — uses the live demo slug
+  // from the menu API so a rename in the dashboard propagates here; when
+  // it hasn't loaded, demoWidgetHref falls back to the /demo redirect.
+  const slug = menu?.bot_slug ?? null;
   const generated = new Date(snapshot.generated_at);
   const generatedLabel = generated.toLocaleDateString("pt-BR", {
     year: "numeric",
@@ -413,7 +426,7 @@ function MethodologySection({
             Ver código do harness →
           </a>
           <a
-            href={`/widget?slug=${encodeURIComponent(slug)}`}
+            href={demoWidgetHref(slug)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
@@ -455,7 +468,7 @@ function ConversationsSection({
   error: string | null;
   menu: MenuResponse | null;
 }) {
-  const slug = menu?.bot_slug ?? index?.bot_slug ?? "pizzaria-do-ze";
+  const slug = menu?.bot_slug ?? index?.bot_slug ?? null;
   return (
     <section className="mt-12">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -473,7 +486,7 @@ function ConversationsSection({
           </p>
         </div>
         <a
-          href={`/widget?slug=${encodeURIComponent(slug)}`}
+          href={demoWidgetHref(slug)}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700"
@@ -556,7 +569,7 @@ function ConversationCard({ c }: { c: ConversationSummary }) {
   );
 }
 
-function EmptyIndex({ slug }: { slug: string }) {
+function EmptyIndex({ slug }: { slug: string | null }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
       <p className="text-sm font-semibold text-slate-700">
@@ -566,7 +579,7 @@ function EmptyIndex({ slug }: { slug: string }) {
         Abra o widget e mande algumas mensagens — depois recarregue esta página.
       </p>
       <a
-        href={`/widget?slug=${encodeURIComponent(slug)}`}
+        href={demoWidgetHref(slug)}
         target="_blank"
         rel="noopener noreferrer"
         className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700"
@@ -938,8 +951,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 function HowToTestSection({ menu }: { menu: MenuResponse | null }) {
   // Slug + restaurant name come from the menu endpoint so the widget link
   // and the visible copy follow whatever the demo bot is currently named.
-  // If the menu hasn't loaded yet, fall back to the seeded slug.
-  const slug = menu?.bot_slug ?? "pizzaria-do-ze";
+  // If the menu hasn't loaded yet, demoWidgetHref falls back to the
+  // backend /demo redirect (never a dead link).
+  const slug = menu?.bot_slug ?? null;
   const restaurantName = menu?.restaurant_name ?? "demo";
 
   const steps: { n: number; title: string; body: string }[] = [
@@ -979,7 +993,7 @@ function HowToTestSection({ menu }: { menu: MenuResponse | null }) {
       </ol>
       <div className="mt-5 flex flex-wrap gap-3">
         <a
-          href={`/widget?slug=${encodeURIComponent(slug)}`}
+          href={demoWidgetHref(slug)}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700"
@@ -1166,7 +1180,7 @@ function buildPrompts(menu: MenuResponse | null): SuggestedPrompt[] {
 
 function SuggestedPromptsSection({ menu }: { menu: MenuResponse | null }) {
   const [copied, setCopied] = useState<string | null>(null);
-  const slug = menu?.bot_slug ?? "pizzaria-do-ze";
+  const slug = menu?.bot_slug ?? null;
   const prompts = buildPrompts(menu);
   return (
     <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
@@ -1214,7 +1228,7 @@ function SuggestedPromptsSection({ menu }: { menu: MenuResponse | null }) {
                 {copied === p.text ? "✓ Copiado" : "📋 Copiar"}
               </button>
               <a
-                href={`/widget?slug=${encodeURIComponent(slug)}`}
+                href={demoWidgetHref(slug)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 rounded-md bg-amber-600 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-amber-700"
