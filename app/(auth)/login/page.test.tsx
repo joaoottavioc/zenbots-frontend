@@ -63,6 +63,21 @@ describe('LoginPage', () => {
     expect(screen.getByText(/esqueceu a senha/i)).toBeInTheDocument();
   });
 
+  it('renders the Google sign-in option when a client ID is configured', () => {
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_CLIENT_ID', 'test-client.apps.googleusercontent.com');
+    renderWithProviders(<LoginPage />);
+    expect(screen.getByText(/ou continue com/i)).toBeInTheDocument();
+    vi.unstubAllEnvs();
+  });
+
+  it('omits the Google sign-in option when no client ID is configured', () => {
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_CLIENT_ID', '');
+    renderWithProviders(<LoginPage />);
+    expect(screen.queryByText(/ou continue com/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /entrar na conta/i })).toBeInTheDocument();
+    vi.unstubAllEnvs();
+  });
+
   it('sets presence cookie and redirects on successful login', async () => {
     vi.mocked(api.post).mockResolvedValueOnce(mockResponse({ access_token: 'fake-jwt-token' }));
 

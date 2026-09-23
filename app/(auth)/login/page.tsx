@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 import { SmashBurgerAnimation, NightSkyline } from '@/components/ui/smash-burger-animation';
+import GoogleSignInButton from '@/components/ui/google-signin-button';
 import { useToast } from "@/hooks/use-toast";
 import { useSubmitThrottle } from "@/hooks/use-submit-throttle";
 import {
@@ -253,6 +254,8 @@ function LoginContent() {
               </Button>
             </form>
           </Form>
+
+          <GoogleSignInButton dividerLabel="ou continue com" buttonText="signin_with" />
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

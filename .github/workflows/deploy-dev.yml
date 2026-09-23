@@ -58,6 +58,9 @@ jobs:
           NEXT_PUBLIC_FB_LOGIN_CONFIG_ID: ${{ secrets.DEV_FB_LOGIN_CONFIG_ID }}
           NEXT_PUBLIC_WHATSAPP_DEV_MODE: "true"
           NEXT_PUBLIC_ENVIRONMENT: dev
+          # Public by design — same client ID the backend verifies ID tokens
+          # against (infra/environments/dev/main.tf in the ZenBots repo).
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: 546810534942-t9dgalf56uuc2jb0apct6m90383i9asn.apps.googleusercontent.com
         run: npm run build
 
       - name: Verify build output

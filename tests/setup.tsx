@@ -151,6 +151,21 @@ class MockEventSource {
 
 (globalThis as unknown as { EventSource: typeof MockEventSource }).EventSource = MockEventSource;
 
+// --- ResizeObserver mock (not implemented by jsdom) ---
+class MockResizeObserver {
+  callback: () => void;
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+
+  constructor(callback: () => void) {
+    this.callback = callback;
+  }
+}
+
+(globalThis as unknown as { ResizeObserver: typeof MockResizeObserver }).ResizeObserver =
+  MockResizeObserver;
+
 // --- BroadcastChannel mock ---
 const broadcastChannels = new Map<string, Set<MockBroadcastChannel>>();
 

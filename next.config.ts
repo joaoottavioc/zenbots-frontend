@@ -7,6 +7,7 @@ if (process.env.NODE_ENV === 'production') {
     'NEXT_PUBLIC_FB_APP_ID',
     'NEXT_PUBLIC_FB_CONFIG_ID',
     'NEXT_PUBLIC_FB_LOGIN_CONFIG_ID',
+    'NEXT_PUBLIC_GOOGLE_CLIENT_ID',
   ];
   const missing = required.filter(key => !process.env[key]);
   if (missing.length > 0) {

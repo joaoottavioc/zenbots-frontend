@@ -40,15 +40,18 @@ locals {
 
   # Content-Security-Policy for the frontend.
   # Allows the app to talk to its own origin plus the backend API, and
-  # includes the domains needed for Facebook/WhatsApp OAuth and Mercado Pago.
+  # includes the domains needed for Facebook/WhatsApp OAuth, Mercado Pago,
+  # and Google Sign-In (GIS loads a script, an iframe, a stylesheet and
+  # makes its own XHRs — all four directives are required, see
+  # https://developers.google.com/identity/gsi/web/guides/csp).
   csp_policy = join("; ", [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://connect.facebook.net",
-    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline' https://connect.facebook.net https://accounts.google.com/gsi/client",
+    "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
     "font-src 'self'",
-    "img-src 'self' data: blob: https://*.facebook.com https://*.fbcdn.net https://zenbots-dev-menus.s3.us-east-1.amazonaws.com https://zenbots-dev-menus.s3.amazonaws.com",
-    "connect-src 'self' ${var.api_base_url} https://*.facebook.com",
-    "frame-src https://www.facebook.com",
+    "img-src 'self' data: blob: https://*.facebook.com https://*.fbcdn.net https://zenbots-dev-menus.s3.us-east-1.amazonaws.com https://zenbots-dev-menus.s3.amazonaws.com https://lh3.googleusercontent.com",
+    "connect-src 'self' ${var.api_base_url} https://*.facebook.com https://accounts.google.com/gsi/",
+    "frame-src https://www.facebook.com https://accounts.google.com/gsi/",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

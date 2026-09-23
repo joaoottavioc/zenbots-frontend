@@ -9,6 +9,7 @@ import * as z from "zod";
 import { Loader2, MessageSquare, ShoppingBag, BarChart3 } from "lucide-react";
 import { PasswordReq } from "@/components/ui/password-req";
 import { NightSkyline } from "@/components/ui/smash-burger-animation";
+import GoogleSignInButton from "@/components/ui/google-signin-button";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -287,6 +288,8 @@ export default function RegisterPage() {
               </div>
             </form>
           </Form>
+
+          <GoogleSignInButton dividerLabel="ou cadastre-se com" buttonText="signup_with" />
 
           <p className="text-center text-sm text-muted-foreground">
             Ja possui cadastro?{" "}
